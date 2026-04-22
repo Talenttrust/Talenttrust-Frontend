@@ -1,6 +1,6 @@
 # TalentTrust Frontend
 
-Next.js web app for the TalentTrust decentralized freelancer escrow protocol. Dashboard and Stellar wallet integration.
+Next.js web app for secure freelance payments using blockchain technology. Includes a dashboard and Stellar wallet integration.
 
 ## Prerequisites
 
