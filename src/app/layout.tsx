@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'TalentTrust - Secure Freelance Payments',
-  description: 'Secure payments for freelancers and clients using blockchain technology.',
+  title: 'TalentTrust - Safe Freelance Payments',
+  description: 'Safe, secure payments that protect both freelancers and clients throughout your project.',
 };
 
 export default function RootLayout({

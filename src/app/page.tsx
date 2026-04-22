@@ -5,17 +5,17 @@ export default function Home() {
         TalentTrust
       </h1>
       <p className="text-center text-gray-600 max-w-md mb-8">
-        Secure payments for freelancers and clients using blockchain technology.
+        Safe, secure payments that protect both freelancers and clients throughout your project.
       </p>
       <div className="max-w-md text-left">
-        <h2 className="text-xl font-semibold mb-4">Glossary</h2>
+        <h2 className="text-xl font-semibold mb-4">Key Terms</h2>
         <dl className="space-y-2">
           <dt className="font-medium">Escrow</dt>
-          <dd className="text-gray-600">Funds held securely by a third party until work is completed and approved.</dd>
+          <dd className="text-gray-600">Money held safely until work is completed and approved.</dd>
           <dt className="font-medium">Milestone</dt>
-          <dd className="text-gray-600">A defined stage or deliverable in a project, often tied to payment release.</dd>
+          <dd className="text-gray-600">A project checkpoint where payment is held until you approve the work.</dd>
           <dt className="font-medium">Release</dt>
-          <dd className="text-gray-600">The process of transferring escrowed funds to the freelancer upon approval.</dd>
+          <dd className="text-gray-600">When approved work is finished, the payment goes to the freelancer.</dd>
         </dl>
       </div>
     </main>
