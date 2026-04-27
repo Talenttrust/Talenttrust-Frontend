@@ -1,42 +1,48 @@
-import ReputationProfile from '../components/ReputationProfile';
-
-const sampleReputation = {
-  name: 'TalentTrust Profile',
-  score: 82,
-  level: 'Verified Contributor',
-  history: [
-    {
-      id: 'evt-1',
-      type: 'Reputation boost',
-      summary: 'Completed successful milestone delivery',
-      date: '2026-04-24',
-    },
-    {
-      id: 'evt-2',
-      type: 'On-chain review',
-      summary: 'Received positive client trust signal',
-      date: '2026-04-22',
-    },
-  ],
-};
+import { ToastDemo } from '@/components/toast/toast-demo';
 
 export default function Home() {
-  return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl space-y-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h1 className="text-4xl font-bold text-slate-950">TalentTrust</h1>
-          <p className="mt-3 max-w-2xl text-lg leading-8 text-slate-600">
-            Decentralized Freelancer Escrow Protocol on Stellar. Your reputation profile explains trust, shows history safely, and keeps sensitive metadata hidden by default.
-          </p>
-        </section>
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState<{ fieldId: string; message: string }[]>([]);
 
-        <ReputationProfile
-          name={sampleReputation.name}
-          score={sampleReputation.score}
-          level={sampleReputation.level}
-          history={sampleReputation.history}
-        />
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors = [];
+
+    if (!email) {
+      newErrors.push({ fieldId: 'email', message: 'Email is required' });
+    } else if (!email.includes('@')) {
+      newErrors.push({ fieldId: 'email', message: 'Email must be valid' });
+    }
+
+    if (!password) {
+      newErrors.push({ fieldId: 'password', message: 'Password is required' });
+    } else if (password.length < 8) {
+      newErrors.push({ fieldId: 'password', message: 'Password must be at least 8 characters' });
+    }
+
+    setErrors(newErrors);
+
+    if (newErrors.length === 0) {
+      alert('Form submitted successfully!');
+    }
+  };
+
+  const getError = (fieldId: string) => errors.find((e) => e.fieldId === fieldId)?.message;
+
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#eff6ff_100%)] px-6 py-20">
+      <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl flex-col items-center justify-center rounded-[2rem] border border-white/70 bg-white/80 p-10 text-center shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
+        <h1 className="mb-4 text-3xl font-bold text-center text-slate-900 sm:text-5xl">
+          TalentTrust
+        </h1>
+        <p className="max-w-xl text-center text-base text-slate-600 sm:text-lg">
+          Decentralized Freelancer Escrow Protocol on Stellar
+        </p>
+        <p className="mt-4 max-w-lg text-center text-sm text-slate-500 sm:text-base">
+          Accessible toast feedback now supports transient success and error states, including screen reader announcements for critical wallet and payout events.
+        </p>
+        <ToastDemo />
       </div>
     </main>
   );
