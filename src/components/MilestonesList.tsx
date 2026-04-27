@@ -18,7 +18,10 @@ const statusColors: Record<Milestone['status'], string> = {
   Disputed: 'bg-rose-100 text-rose-800',
 };
 
+import { usePreferences } from '@/lib/preferences';
+
 const MilestonesList = ({ milestones }: MilestonesListProps) => {
+  const { formatAmount } = usePreferences();
   return (
     <section aria-labelledby="milestones-title" className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between gap-4">
@@ -46,10 +49,7 @@ const MilestonesList = ({ milestones }: MilestonesListProps) => {
             <div className="mt-4 flex items-center justify-between gap-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
               <p>Payout</p>
               <p className="font-semibold text-slate-900">
-                {new Intl.NumberFormat('en-US', {
-                  style: 'currency',
-                  currency: milestone.currency,
-                }).format(milestone.payout)}
+                {formatAmount(milestone.payout, milestone.currency)}
               </p>
             </div>
           </article>

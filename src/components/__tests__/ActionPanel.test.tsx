@@ -34,8 +34,8 @@ describe('ActionPanel', () => {
     const onViewSummary = jest.fn();
     render(<ActionPanel status="Completed" onViewSummary={onViewSummary} />);
 
-    expect(screen.getByRole('button', { name: /View Summary/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /View Summary/i }));
+    expect(screen.getByRole('button', { name: /View contract summary details/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /View contract summary details/i }));
     expect(onViewSummary).toHaveBeenCalledTimes(1);
   });
 });
