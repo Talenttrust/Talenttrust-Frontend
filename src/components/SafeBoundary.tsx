@@ -1,0 +1,58 @@
+'use client';
+
+import React, { Component, ReactNode } from 'react';
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+}
+
+export default class SafeBoundary extends Component<Props, State> {
+  state: State = { hasError: false };
+
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[SafeBoundary]', error, info.componentStack);
+    }
+  }
+
+  reset = () => this.setState({ hasError: false });
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) return this.props.fallback;
+
+      return (
+        <div className="flex flex-col items-center justify-center p-8 rounded-lg border border-red-200 bg-red-50 text-center space-y-4">
+          <p className="text-red-700 font-medium">
+            This section failed to load.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={this.reset}
+              className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 transition-colors"
+            >
+              Retry
+            </button>
+            <a
+              href="/"
+              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-100 transition-colors"
+            >
+              Go Home
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
