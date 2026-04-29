@@ -58,7 +58,7 @@ function ToastViewport({
 }: {
   toasts: ToastRecord[];
   onDismiss: (id: string) => void;
-  density: 'comfortable' | 'compact';
+  density: 'relaxed' | 'compact';
 }) {
   return (
     <div
@@ -191,8 +191,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [dismissToast, toasts]);
 
   useEffect(() => {
+    const timerIds = timerIdsRef.current;
     return () => {
-      Object.values(timerIdsRef.current).forEach((timerId) => {
+      Object.values(timerIds).forEach((timerId) => {
         window.clearTimeout(timerId);
       });
     };
