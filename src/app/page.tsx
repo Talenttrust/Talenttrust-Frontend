@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import { ToastDemo } from '@/components/toast/toast-demo';
 
 export default function Home() {

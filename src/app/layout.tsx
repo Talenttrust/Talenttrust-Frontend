@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   description: 'Safe, secure payments that protect both freelancers and clients throughout your project.',
 };
 
+import { PreferencesProvider } from '@/lib/preferences';
+import { SettingsTrigger } from '@/components/settings/SettingsTrigger';
+
 export default function RootLayout({
   children,
 }: {
@@ -15,7 +18,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ToastProvider>{children}</ToastProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            {children}
+            <SettingsTrigger />
+          </ToastProvider>
+        </PreferencesProvider>
       </body>
     </html>
   );

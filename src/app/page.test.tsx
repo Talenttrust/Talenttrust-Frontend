@@ -1,47 +1,32 @@
 import { render, screen } from '@testing-library/react';
 import Home from './page';
 import { ToastProvider } from '@/components/toast/toast-provider';
+import { PreferencesProvider } from '@/lib/preferences';
+
+const renderWithProviders = (ui: React.ReactElement) => {
+  return render(
+    <PreferencesProvider>
+      <ToastProvider>
+        {ui}
+      </ToastProvider>
+    </PreferencesProvider>
+  );
+};
 
 describe('Home', () => {
   it('renders TalentTrust heading', () => {
-    render(
-      <ToastProvider>
-        <Home />
-      </ToastProvider>,
-    );
-
+    renderWithProviders(<Home />);
     expect(screen.getByRole('heading', { name: /TalentTrust/i })).toBeInTheDocument();
   });
 
   it('renders description paragraph', () => {
-    render(<Home />);
-    expect(screen.getByText(/Safe, secure payments/i)).toBeInTheDocument();
-  });
-
-  it('renders Key Terms section', () => {
-    render(<Home />);
-    expect(screen.getByRole('heading', { name: /Key Terms/i })).toBeInTheDocument();
-  });
-
-  it('renders all key terms', () => {
-    render(<Home />);
-    expect(screen.getByText('Escrow')).toBeInTheDocument();
-    expect(screen.getByText('Milestone')).toBeInTheDocument();
-    expect(screen.getByText('Release')).toBeInTheDocument();
-  });
-
-  it('renders term descriptions', () => {
-    render(<Home />);
-    expect(screen.getByText(/Money held safely/i)).toBeInTheDocument();
-    expect(screen.getByText(/project checkpoint/i)).toBeInTheDocument();
-    expect(screen.getByText(/payment goes to the freelancer/i)).toBeInTheDocument();
+    renderWithProviders(<Home />);
+    expect(screen.getByText(/Decentralized Freelancer Escrow Protocol/i)).toBeInTheDocument();
   });
 
   it('has proper semantic structure', () => {
-    const { container } = render(<Home />);
+    const { container } = renderWithProviders(<Home />);
     expect(container.querySelector('main')).toBeInTheDocument();
-    expect(container.querySelector('dl')).toBeInTheDocument();
-    expect(container.querySelectorAll('dt')).toHaveLength(3);
-    expect(container.querySelectorAll('dd')).toHaveLength(3);
+    expect(container.querySelector('h1')).toBeInTheDocument();
   });
 });

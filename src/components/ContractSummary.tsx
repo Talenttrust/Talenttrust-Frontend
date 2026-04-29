@@ -1,4 +1,5 @@
 import { truncateAddress } from '@/lib/truncateAddress';
+import { usePreferences } from '@/lib/preferences';
 
 export type ContractParty = {
   label: string;
@@ -31,11 +32,8 @@ const ContractSummary = ({
   createdAt,
   milestoneCount,
 }: ContractSummaryProps) => {
-  const formattedValue = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-  }).format(totalValue);
+  const { formatAmount } = usePreferences();
+  const formattedValue = formatAmount(totalValue, currency);
 
   return (
     <section

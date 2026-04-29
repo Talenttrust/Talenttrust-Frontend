@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { usePreferences } from '@/lib/preferences';
 
 type ToastVariant = 'success' | 'error';
 
@@ -39,29 +40,33 @@ function getToastStyles(variant: ToastVariant) {
     return {
       accent: 'bg-emerald-500',
       badge: 'bg-emerald-100 text-emerald-800',
-      panel: 'border-emerald-200 bg-white text-slate-900 shadow-emerald-100/80',
+      panel: 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] shadow-sm',
     };
   }
 
   return {
     accent: 'bg-rose-500',
     badge: 'bg-rose-100 text-rose-800',
-    panel: 'border-rose-200 bg-white text-slate-900 shadow-rose-100/80',
+    panel: 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] shadow-sm',
   };
 }
 
 function ToastViewport({
   toasts,
   onDismiss,
+  density,
 }: {
   toasts: ToastRecord[];
   onDismiss: (id: string) => void;
+  density: 'comfortable' | 'compact';
 }) {
   return (
     <div
       aria-atomic="false"
       aria-label="Notifications"
-      className="pointer-events-none fixed right-4 top-4 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3"
+      className={`pointer-events-none fixed right-4 top-4 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col ${
+        density === 'compact' ? 'gap-1.5' : 'gap-3'
+      }`}
     >
       {toasts.map((toast) => {
         const styles = getToastStyles(toast.variant);
@@ -145,9 +150,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const { preferences } = usePreferences();
+
   const showSuccess = useCallback(
-    (toast: ToastInput) => createToast('success', toast),
-    [createToast],
+    (toast: ToastInput) => {
+      if (preferences.quietMode) {
+        return 'suppressed';
+      }
+      return createToast('success', toast);
+    },
+    [createToast, preferences.quietMode],
   );
 
   const showError = useCallback(
@@ -200,7 +212,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <ToastAnnouncer toasts={toasts} />
-      <ToastViewport onDismiss={dismissToast} toasts={toasts} />
+      <ToastViewport onDismiss={dismissToast} toasts={toasts} density={preferences.toastDensity} />
     </ToastContext.Provider>
   );
 }
