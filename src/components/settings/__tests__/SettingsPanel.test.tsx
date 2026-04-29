@@ -38,10 +38,39 @@ describe('SettingsPanel', () => {
   it('updates theme preference when theme button is clicked', () => {
     renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
     
-    const darkButton = screen.getByText('dark');
+    const darkButton = screen.getByRole('radio', { name: /dark/i });
     fireEvent.click(darkButton);
     
-    // Check if it's active (has the primary class)
+    // Check if it's active
+    expect(darkButton.getAttribute('aria-checked')).toBe('true');
     expect(darkButton.className).toContain('bg-[var(--primary)]');
+  });
+
+  it('updates currency preference when currency button is clicked', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    
+    const ngnButton = screen.getByRole('radio', { name: /ngn/i });
+    fireEvent.click(ngnButton);
+    
+    expect(ngnButton.getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('updates toast density preference', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    
+    const compactButton = screen.getByRole('radio', { name: /compact/i });
+    fireEvent.click(compactButton);
+    
+    expect(compactButton.getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('toggles quiet mode switch', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    
+    const quietSwitch = screen.getByRole('switch', { name: /Quiet Mode/i });
+    expect(quietSwitch.getAttribute('aria-checked')).toBe('false');
+    
+    fireEvent.click(quietSwitch);
+    expect(quietSwitch.getAttribute('aria-checked')).toBe('true');
   });
 });

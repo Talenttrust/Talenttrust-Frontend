@@ -3,8 +3,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export type Theme = 'light' | 'dark' | 'system';
-export type AmountFormat = 'xlm' | 'usd' | 'compact';
-export type ToastDensity = 'comfortable' | 'compact';
+export type AmountFormat = 'usd' | 'ngn' | 'compact';
+export type ToastDensity = 'relaxed' | 'compact';
 
 export interface UserPreferences {
   theme: Theme;
@@ -15,8 +15,8 @@ export interface UserPreferences {
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   theme: 'system',
-  amountFormat: 'xlm',
-  toastDensity: 'comfortable',
+  amountFormat: 'usd',
+  toastDensity: 'relaxed',
   quietMode: false,
 };
 
@@ -87,23 +87,21 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   const formatAmount = (amount: number, currency: string = 'USD') => {
     const { amountFormat } = preferences;
     
-    if (amountFormat === 'xlm') {
-      // Mock conversion for demo: 1 USD = 7 XLM approx
-      const xlmAmount = amount * 7.14;
-      return `${xlmAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })} XLM`;
-    }
+    // Determine which currency to use based on settings
+    const activeCurrency = amountFormat === 'ngn' ? 'NGN' : currency;
+    const locale = amountFormat === 'ngn' ? 'en-NG' : 'en-US';
 
     if (amountFormat === 'compact') {
       return new Intl.NumberFormat('en-US', {
         notation: 'compact',
         style: 'currency',
-        currency,
+        currency: activeCurrency,
       }).format(amount);
     }
 
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency,
+      currency: activeCurrency,
     }).format(amount);
   };
 
