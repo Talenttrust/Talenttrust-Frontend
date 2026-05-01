@@ -20,7 +20,7 @@ describe('PreferencesProvider', () => {
     const { result } = renderHook(() => usePreferences(), { wrapper });
 
     expect(result.current.preferences.theme).toBe('system');
-    expect(result.current.preferences.amountFormat).toBe('xlm');
+    expect(result.current.preferences.amountFormat).toBe('usd');
   });
 
   it('updates preferences and persists to localStorage', () => {

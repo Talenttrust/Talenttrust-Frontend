@@ -27,7 +27,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           <h2 className="text-xl font-bold text-[var(--foreground)]">Settings</h2>
           <button 
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-[var(--accent)] text-[var(--muted-foreground)]"
+            className="p-2 rounded-full hover:bg-[var(--accent)] text-[var(--muted-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
             aria-label="Close settings"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -43,13 +43,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--foreground)]">Theme</label>
-                <div className="grid grid-cols-3 gap-2">
+                <label id="theme-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Theme</label>
+                <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-labelledby="theme-label" aria-label="Theme">
                   {(['light', 'dark', 'system'] as Theme[]).map((t) => (
                     <button
                       key={t}
                       onClick={() => updatePreference('theme', t)}
-                      className={`px-3 py-2 text-sm rounded-md border capitalize transition-all ${
+                      role="radio"
+                      aria-checked={preferences.theme === t}
+                      className={`px-3 py-2 text-sm rounded-md border capitalize transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${
                         preferences.theme === t 
                           ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]' 
                           : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]'
@@ -62,13 +64,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--foreground)]">Amount Display</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['xlm', 'usd', 'compact'] as AmountFormat[]).map((f) => (
+                <label id="currency-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Currency Display</label>
+                <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-labelledby="currency-label" aria-label="Currency Display">
+                  {(['usd', 'ngn', 'compact'] as AmountFormat[]).map((f) => (
                     <button
                       key={f}
                       onClick={() => updatePreference('amountFormat', f)}
-                      className={`px-3 py-2 text-sm rounded-md border uppercase transition-all ${
+                      role="radio"
+                      aria-checked={preferences.amountFormat === f}
+                      className={`px-3 py-2 text-sm rounded-md border uppercase transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${
                         preferences.amountFormat === f 
                           ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]' 
                           : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]'
@@ -88,13 +92,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--foreground)]">Toast Density</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['comfortable', 'compact'] as ToastDensity[]).map((d) => (
+                <label id="density-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Toast Density</label>
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="density-label" aria-label="Toast Density">
+                  {(['relaxed', 'compact'] as ToastDensity[]).map((d) => (
                     <button
                       key={d}
                       onClick={() => updatePreference('toastDensity', d)}
-                      className={`px-3 py-2 text-sm rounded-md border capitalize transition-all ${
+                      role="radio"
+                      aria-checked={preferences.toastDensity === d}
+                      className={`px-3 py-2 text-sm rounded-md border capitalize transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${
                         preferences.toastDensity === d 
                           ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]' 
                           : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]'
@@ -108,12 +114,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <label className="text-sm font-medium text-[var(--foreground)]">Quiet Mode</label>
+                  <label id="quiet-mode-label" className="text-sm font-medium text-[var(--foreground)]">Quiet Mode</label>
                   <p className="text-xs text-[var(--muted-foreground)]">Suppress success notifications</p>
                 </div>
                 <button
                   onClick={() => updatePreference('quietMode', !preferences.quietMode)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  role="switch"
+                  aria-checked={preferences.quietMode}
+                  aria-labelledby="quiet-mode-label"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${
                     preferences.quietMode ? 'bg-[var(--primary)]' : 'bg-[var(--muted)]'
                   }`}
                 >
@@ -131,7 +140,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         <div className="p-6 border-t border-[var(--border)] bg-[var(--surface)]">
           <button 
             onClick={onClose}
-            className="w-full py-2 px-4 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-md font-medium hover:opacity-90 transition-opacity"
+            className="w-full py-2 px-4 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-md font-medium hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
           >
             Done
           </button>
