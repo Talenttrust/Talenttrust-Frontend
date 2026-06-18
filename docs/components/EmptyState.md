@@ -1,6 +1,8 @@
 # EmptyState Component
 
-The `EmptyState` component is a reusable UI element designed to provide clear guidance to users when a section or view has no data to display. It helps improve user experience by explaining the absence of content and optionally providing a call-to-action to guide the next steps.
+The `EmptyState` component gives users a clear next step when a page or section has no records to show. It is used by the placeholder pages for contracts, milestones, and reputation, and it supports both generic custom icons and named illustration variants for the most common onboarding states.
+
+Use this component when the user has reached a valid page but there is no data yet. Do not use it for errors, loading states, permission failures, or `not-found` pages.
 
 ## Props
 
@@ -14,6 +16,15 @@ The `EmptyState` component is a reusable UI element designed to provide clear gu
 | `onAction` | `() => void` | No | The callback function executed when the action button is clicked. |
 | `secondaryActionLabel` | `string` | No | The label for an optional secondary action. |
 | `onSecondaryAction` | `() => void` | No | The callback function executed when the secondary action button is clicked. |
+
+## Prop Behavior
+
+- `title` and `description` are always rendered and should describe the empty state without implying an error.
+- `illustration` selects one of the built-in SVG illustrations and its color treatment.
+- `icon` allows a caller to pass a custom React node. If both `icon` and `illustration` are passed, the custom `icon` is rendered inside the variant wrapper.
+- `actionLabel` only renders when `onAction` is also provided.
+- `secondaryActionLabel` only renders when `onSecondaryAction` is also provided.
+- Primary and secondary actions are grouped below the description and stack on small screens.
 
 ## Usage Examples
 
@@ -84,23 +95,38 @@ import EmptyState from '@/components/EmptyState';
 
 ## Illustration Variants
 
-| Variant | Intended context |
-|---------|------------------|
-| `contracts` | Empty contract list or first-contract onboarding. |
-| `milestones` | Empty milestone tracker or contract setup guidance. |
-| `reputation` | Empty reputation history before completed work. |
+| Variant | Intended context | Visual treatment |
+|---------|------------------|------------------|
+| `contracts` | Empty contract list or first-contract onboarding. | Blue wrapper: `bg-blue-50 text-blue-700 ring-blue-100`. |
+| `milestones` | Empty milestone tracker or contract setup guidance. | Emerald wrapper: `bg-emerald-50 text-emerald-700 ring-emerald-100`. |
+| `reputation` | Empty reputation history before completed work. | Amber wrapper: `bg-amber-50 text-amber-700 ring-amber-100`. |
+
+When no `illustration` is provided, a custom `icon` uses the neutral wrapper: `bg-slate-50 text-slate-500 ring-slate-200`.
+
+## Current Usage
+
+| Page | File | Variant | Action |
+|------|------|---------|--------|
+| Contracts | `src/app/contracts/page.tsx` | `contracts` | Primary action: `Create Contract`. |
+| Milestones | `src/app/milestones/page.tsx` | `milestones` | Primary action: `Add Milestone`. |
+| Reputation | `src/app/reputation/page.tsx` | `reputation` | No action yet; explanatory copy only. |
+
+These pages follow the same pattern: render the page heading first, then show `EmptyState` only when the local collection is empty.
 
 ## Accessibility
 
 The component is designed with accessibility in mind:
 
-- Uses semantic HTML with a `role="region"` for screen readers.
-- The title has an `id` and is referenced by `aria-labelledby`.
+- Uses `role="region"` so screen reader users can navigate to the empty-state block as a named region.
+- Calls React `useId()` to create a stable title id for each rendered instance.
+- The title id is referenced by `aria-labelledby`, so the region name matches the visible heading.
 - Action buttons include `aria-label` values for clarity.
 - Decorative icons and illustration variants are marked with `aria-hidden="true"` to avoid cluttering screen reader output.
 - Primary and secondary actions are native `button` elements, so they are reachable by keyboard and operable with `Enter` and `Space`.
 - Focus states use visible high-contrast `focus-visible` outlines.
 - Secondary actions use an outlined style so they are visually subordinate without being hidden from keyboard or screen reader users.
+
+When writing copy, keep the `title` short and put detailed guidance in `description`. This keeps the region label useful in screen reader landmark lists.
 
 ## Styling
 
@@ -131,5 +157,12 @@ The component includes comprehensive unit tests covering:
 - Named illustration variants with decorative `aria-hidden` wrappers.
 - Accessibility attributes.
 - Button click functionality.
+
+When adding or changing a variant, update tests for:
+
+- The variant name and rendered SVG wrapper.
+- The expected color class mapping.
+- The `role="region"` and `aria-labelledby` relationship.
+- Keyboard-reachable primary and secondary actions.
 
 Integration tests ensure the component appears correctly in empty data scenarios across the implemented views.
