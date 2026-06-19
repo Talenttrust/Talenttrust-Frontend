@@ -48,6 +48,34 @@ Axe audits run as part of the standard Jest suite. Any violation fails the suite
 
 The GitHub Actions workflow (`.github/workflows/ci.yml`) already runs `npm test` on every push and pull request to the `main` branch. Adding new a11y tests to `a11y.test.tsx` automatically gates violations in CI.
 
+## RouteAnnouncer — client-side navigation focus and announcement
+
+[`RouteAnnouncer`](../../src/components/RouteAnnouncer.tsx) is mounted in the root layout inside the provider tree. It uses `usePathname` from `next/navigation` to detect route changes and:
+
+1. **Focuses the `<main>` landmark** — the `<main>` element in the layout has `tabIndex={-1}` and `id="main-content"`, making it programmatically focusable. On each navigation, focus moves there so keyboard and screen-reader users start at the top of the new page (WCAG 2.4.3).
+2. **Announces the page title** — a visually hidden `role="status"` region (`.sr-only`) is updated with the text of the first `<h1>` on the page, falling back to `"Page: <pathname>"`. Assistive technology reads the announcement automatically.
+
+### Behaviour notes
+
+- **Initial mount**: no focus or announcement fires — the component waits for an actual route change.
+- **Same-path re-render**: no spurious announcement — a ref tracks the previous pathname.
+- **Missing `<main>` / `<h1>`**: gracefully handled — focus attempt is a no-op, and the pathname is used as fallback text.
+- **Skip-link compatibility**: the component targets `<main id="main-content">`, which is the standard skip-link destination. If a skip link is added later, the two will not conflict.
+
+### Test file
+
+Colocated tests live in `src/components/__tests__/RouteAnnouncer.test.tsx` and cover:
+
+| Test | Scenario |
+|------|----------|
+| Initial mount silence | No announcement before first navigation |
+| Title from `<h1>` | Announcement reads the `<h1>` text |
+| Focus on navigation | `document.activeElement` is the `<main>` after a route change |
+| Pathname fallback | No `<h1>` — uses `"Page: /path"` |
+| Same-path stability | Re-render with same pathname produces no announcement |
+| Multiple navigations | Correct announcement after several route changes |
+| Absent `<main>` | Component does not throw when no `<main>` exists |
+
 ## Adding a new component
 
 1. Render every distinct state of the component (empty, populated, error, loading, etc.).

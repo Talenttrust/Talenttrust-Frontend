@@ -11,6 +11,7 @@ import { PreferencesProvider } from '@/lib/preferences';
 import { SettingsTrigger } from '@/components/settings/SettingsTrigger';
 import { WalletProvider } from '@/contexts/WalletContext';
 import { WalletConnectButton } from '@/components/WalletConnectButton';
+import RouteAnnouncer from '@/components/RouteAnnouncer';
 
 export default function RootLayout({
   children,
@@ -23,6 +24,7 @@ export default function RootLayout({
         <PreferencesProvider>
           <ToastProvider>
             <WalletProvider>
+              <RouteAnnouncer />
               <div className="min-h-screen bg-slate-50 flex flex-col">
                 <header className="sticky top-0 z-40 flex w-full items-center justify-between border-b border-slate-200 bg-white/80 px-6 py-4 backdrop-blur-md">
                   <div className="flex items-center gap-2">
@@ -30,7 +32,7 @@ export default function RootLayout({
                   </div>
                   <WalletConnectButton />
                 </header>
-                <main className="flex-1 p-6">
+                <main className="flex-1 p-6" tabIndex={-1} id="main-content">
                   {children}
                 </main>
               </div>
