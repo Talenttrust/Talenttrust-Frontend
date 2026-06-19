@@ -1,9 +1,12 @@
 import React from 'react';
-import { testA11y } from '@/test-utils/a11y';
+import { fireEvent, screen } from '@testing-library/react';
+import { testA11y, renderWithA11y, assertNoA11yViolations } from '@/test-utils/a11y';
 import MilestonesList from '@/components/MilestonesList';
 import ContractSummary from '@/components/ContractSummary';
 import ReputationProfile from '@/components/ReputationProfile';
 import EmptyState from '@/components/EmptyState';
+import StatusBadge from '@/components/StatusBadge';
+import { ToastProvider, useToast } from '@/components/toast/toast-provider';
 
 describe('a11y: MilestonesList', () => {
   it('empty list has no violations', async () => {
@@ -171,5 +174,167 @@ describe('a11y: EmptyState', () => {
         onAction={jest.fn()}
       />
     );
+  });
+});
+
+/**
+ * a11y/theming-27: dark-theme contrast audit.
+ *
+ * The suites below render StatusBadge and the toast panels with
+ * document.documentElement set to [data-theme='dark'] (mirroring what
+ * src/lib/preferences.tsx does at runtime), alongside light-mode coverage,
+ * to confirm no axe violations in either theme.
+ *
+ * Note: jest-axe's color-contrast rule does not reliably evaluate colors
+ * resolved through compiled Tailwind classes under jsdom, since jsdom does
+ * not run a layout/paint engine. These tests verify structural a11y
+ * (roles, labels, live regions) via axe in both themes, while the actual
+ * WCAG AA contrast ratios for the colors involved are computed and
+ * recorded in docs/components/Accessibility.md. The extra assertions in
+ * each suite below (checking for the absence of the old fixed slate/pastel
+ * classes) act as a regression guard for the contrast fix itself, since
+ * axe alone won't catch a reverted color.
+ */
+function setTheme(theme: 'light' | 'dark') {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.documentElement.classList.remove('light', 'dark');
+  document.documentElement.classList.add(theme);
+}
+
+function ToastTrigger() {
+  const { showError, showSuccess } = useToast();
+  return (
+    <div>
+      <button
+        onClick={() =>
+          showSuccess({
+            title: 'Milestone released',
+            description: 'Funds are on the way to the freelancer wallet.',
+          })
+        }
+        type="button"
+      >
+        Trigger success
+      </button>
+      <button
+        onClick={() =>
+          showError({
+            title: 'Wallet not connected',
+            description: 'Connect a wallet before approving this release.',
+          })
+        }
+        type="button"
+      >
+        Trigger error
+      </button>
+    </div>
+  );
+}
+
+describe('a11y: StatusBadge dark theme', () => {
+  afterEach(() => {
+    setTheme('light');
+  });
+
+  it('Active status has no violations in light mode', async () => {
+    setTheme('light');
+    await testA11y(<StatusBadge status="Active" />);
+  });
+
+  it('Active status has no violations in dark mode', async () => {
+    setTheme('dark');
+    await testA11y(<StatusBadge status="Active" />);
+  });
+
+  it('Completed status has no violations in dark mode', async () => {
+    setTheme('dark');
+    await testA11y(<StatusBadge status="Completed" />);
+  });
+
+  it('Disputed status has no violations in dark mode', async () => {
+    setTheme('dark');
+    await testA11y(<StatusBadge status="Disputed" />);
+  });
+
+  it('Pending status has no violations in dark mode', async () => {
+    setTheme('dark');
+    await testA11y(<StatusBadge status="Pending" />);
+  });
+
+  it('Paid status has no violations in dark mode', async () => {
+    setTheme('dark');
+    await testA11y(<StatusBadge status="Paid" />);
+  });
+
+  it('uses themed status tokens instead of fixed Tailwind pastel classes', () => {
+    setTheme('dark');
+    renderWithA11y(<StatusBadge status="Disputed" />);
+    const badge = screen.getByRole('status', { name: 'Status: Disputed' });
+    expect(badge.className).toMatch(/--status-error-(bg|foreground)/);
+    expect(badge.className).not.toMatch(/bg-rose-100/);
+  });
+});
+
+describe('a11y: toast panels dark theme', () => {
+  afterEach(() => {
+    setTheme('light');
+  });
+
+  it('success toast has no violations in light mode', async () => {
+    setTheme('light');
+    const view = renderWithA11y(
+      <ToastProvider>
+        <ToastTrigger />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /trigger success/i }));
+    await assertNoA11yViolations(view.container);
+  });
+
+  it('success toast has no violations in dark mode', async () => {
+    setTheme('dark');
+    const view = renderWithA11y(
+      <ToastProvider>
+        <ToastTrigger />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /trigger success/i }));
+    await assertNoA11yViolations(view.container);
+  });
+
+  it('error toast has no violations in dark mode', async () => {
+    setTheme('dark');
+    const view = renderWithA11y(
+      <ToastProvider>
+        <ToastTrigger />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /trigger error/i }));
+    await assertNoA11yViolations(view.container);
+  });
+
+  it('toast description uses the themed muted-foreground token, not a fixed slate class', () => {
+    setTheme('dark');
+    renderWithA11y(
+      <ToastProvider>
+        <ToastTrigger />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /trigger success/i }));
+    const description = screen.getByText('Funds are on the way to the freelancer wallet.');
+    expect(description.className).not.toMatch(/text-slate-\d+/);
+    expect(description.className).toContain('text-[var(--muted-foreground)]');
+  });
+
+  it('dismiss button uses themed tokens, not fixed slate classes', () => {
+    setTheme('dark');
+    renderWithA11y(
+      <ToastProvider>
+        <ToastTrigger />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /trigger success/i }));
+    const dismissButton = screen.getByRole('button', { name: /dismiss success notification/i });
+    expect(dismissButton.className).not.toMatch(/slate-(100|500|900)/);
   });
 });

@@ -36,17 +36,22 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 const DEFAULT_DURATION = 5000;
 
 function getToastStyles(variant: ToastVariant) {
+  // a11y/theming-27: badge classes were `bg-emerald-100 text-emerald-800`
+  // / `bg-rose-100 text-rose-800` — fixed Tailwind pastels that don't
+  // respond to [data-theme='dark']. Swapped for the --status-* variables
+  // defined in globals.css, which carry an audited light AND dark pair.
+  // Light-mode hex values are unchanged from the originals.
   if (variant === 'success') {
     return {
       accent: 'bg-emerald-500',
-      badge: 'bg-emerald-100 text-emerald-800',
+      badge: 'bg-[var(--status-success-bg)] text-[var(--status-success-foreground)]',
       panel: 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] shadow-sm',
     };
   }
 
   return {
     accent: 'bg-rose-500',
-    badge: 'bg-rose-100 text-rose-800',
+    badge: 'bg-[var(--status-error-bg)] text-[var(--status-error-foreground)]',
     panel: 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] shadow-sm',
   };
 }
@@ -86,12 +91,24 @@ function ToastViewport({
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">{toast.title}</p>
                 {toast.description ? (
-                  <p className="mt-1 text-sm text-slate-600">{toast.description}</p>
+                  // a11y/theming-27: was `text-slate-600`, which measured
+                  // 2.36:1 against the dark --surface (#0f172a) — well
+                  // below the 4.5:1 AA minimum for body text. Replaced
+                  // with --muted-foreground, which is themed in
+                  // globals.css and passes AA in both modes (4.55:1
+                  // light, 6.96:1 dark). See docs/components/Accessibility.md.
+                  <p className="mt-1 text-sm text-[var(--muted-foreground)]">{toast.description}</p>
                 ) : null}
               </div>
               <button
                 aria-label={`Dismiss ${badgeLabel.toLowerCase()} notification`}
-                className="rounded-full p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                // a11y/theming-27: was `text-slate-500 hover:bg-slate-100
+                // hover:text-slate-900`. text-slate-500 measured 3.75:1
+                // against the dark --surface — fails AA. The light hover
+                // background also stayed fixed-light, producing a bright
+                // patch on a dark panel. Replaced with themed tokens that
+                // pass AA in both modes.
+                className="rounded-full p-1.5 text-[var(--muted-foreground)] transition hover:bg-[var(--accent)] hover:text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                 onClick={() => onDismiss(toast.id)}
                 type="button"
               >
