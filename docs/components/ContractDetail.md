@@ -2,6 +2,10 @@
 
 This page uses a set of reusable components to present contract metadata, milestone progress, and context-aware actions.
 
+## Route ID Validation
+
+The `/contracts/[id]` route validates the contract id before rendering any page content. Valid ids are limited to 1-64 characters and may contain only letters, numbers, underscores, and hyphens. Empty, oversized, path-like, whitespace-containing, or markup-like ids are rejected with the existing not-found route so untrusted input is never reflected into the heading or forwarded into future lookup code.
+
 ## Components
 
 ### `ContractSummary`
