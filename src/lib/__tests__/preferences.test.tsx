@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, act, renderHook, screen, fireEvent } from '@testing-library/react';
-import { PreferencesProvider, usePreferences } from '../preferences';
+import { PreferencesProvider, sanitizePreferences, usePreferences } from '../preferences';
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <PreferencesProvider>{children}</PreferencesProvider>
@@ -46,12 +46,97 @@ describe('PreferencesProvider', () => {
     expect(result.current.preferences.amountFormat).toBe('usd'); // default preserved
   });
 
+  it('drops invalid localStorage values and unknown keys during hydration', () => {
+    localStorage.setItem(
+      'talenttrust-user-preferences',
+      JSON.stringify({
+        theme: 'neon',
+        amountFormat: 'compact',
+        quietMode: 'yes',
+        adminMode: true,
+      }),
+    );
+
+    const { result } = renderHook(() => usePreferences(), { wrapper });
+
+    expect(result.current.preferences).toEqual({
+      theme: 'system',
+      amountFormat: 'compact',
+      toastDensity: 'relaxed',
+      quietMode: false,
+    });
+    expect('adminMode' in result.current.preferences).toBe(false);
+  });
+
+  it('does not hydrate prototype-pollution keys from localStorage', () => {
+    localStorage.setItem(
+      'talenttrust-user-preferences',
+      '{"theme":"dark","__proto__":{"polluted":true},"constructor":{"prototype":{"polluted":true}}}',
+    );
+
+    const { result } = renderHook(() => usePreferences(), { wrapper });
+
+    expect(result.current.preferences.theme).toBe('dark');
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    expect('polluted' in result.current.preferences).toBe(false);
+  });
+
   it('silently falls back to defaults when localStorage contains invalid JSON', () => {
     localStorage.setItem('talenttrust-user-preferences', '%%%invalid%%%');
     jest.spyOn(console, 'error').mockImplementation(() => {});
     const { result } = renderHook(() => usePreferences(), { wrapper });
     expect(result.current.preferences.theme).toBe('system');
     (console.error as jest.Mock).mockRestore();
+  });
+});
+
+describe('sanitizePreferences', () => {
+  it('returns defaults for empty or non-object payloads', () => {
+    expect(sanitizePreferences('')).toEqual({
+      theme: 'system',
+      amountFormat: 'usd',
+      toastDensity: 'relaxed',
+      quietMode: false,
+    });
+    expect(sanitizePreferences(['dark'])).toEqual({
+      theme: 'system',
+      amountFormat: 'usd',
+      toastDensity: 'relaxed',
+      quietMode: false,
+    });
+  });
+
+  it('keeps only valid whitelisted preference values', () => {
+    expect(
+      sanitizePreferences({
+        theme: 'light',
+        amountFormat: 'ngn',
+        toastDensity: 'compact',
+        quietMode: true,
+        extra: 'ignored',
+      }),
+    ).toEqual({
+      theme: 'light',
+      amountFormat: 'ngn',
+      toastDensity: 'compact',
+      quietMode: true,
+    });
+  });
+
+  it('falls back per field when enums or booleans are invalid', () => {
+    expect(
+      sanitizePreferences({
+        theme: 'blue',
+        amountFormat: 'crypto',
+        toastDensity: false,
+        quietMode: 'true',
+      }),
+    ).toEqual({
+      theme: 'system',
+      amountFormat: 'usd',
+      toastDensity: 'relaxed',
+      quietMode: false,
+    });
   });
 });
 

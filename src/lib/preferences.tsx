@@ -29,6 +29,46 @@ interface PreferencesContextType {
 const PreferencesContext = createContext<PreferencesContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'talenttrust-user-preferences';
+const THEME_VALUES = ['light', 'dark', 'system'] as const;
+const AMOUNT_FORMAT_VALUES = ['usd', 'ngn', 'compact'] as const;
+const TOAST_DENSITY_VALUES = ['relaxed', 'compact'] as const;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isOneOf = <T extends string>(value: unknown, allowed: readonly T[]): value is T =>
+  typeof value === 'string' && allowed.includes(value as T);
+
+/**
+ * Return a safe preference object from untrusted persisted data.
+ * Only known keys with valid values are copied, so malformed storage and
+ * prototype-pollution keys cannot reach application state.
+ */
+export function sanitizePreferences(raw: unknown): UserPreferences {
+  if (!isRecord(raw)) {
+    return { ...DEFAULT_PREFERENCES };
+  }
+
+  const sanitized = { ...DEFAULT_PREFERENCES };
+
+  if (isOneOf(raw.theme, THEME_VALUES)) {
+    sanitized.theme = raw.theme;
+  }
+
+  if (isOneOf(raw.amountFormat, AMOUNT_FORMAT_VALUES)) {
+    sanitized.amountFormat = raw.amountFormat;
+  }
+
+  if (isOneOf(raw.toastDensity, TOAST_DENSITY_VALUES)) {
+    sanitized.toastDensity = raw.toastDensity;
+  }
+
+  if (typeof raw.quietMode === 'boolean') {
+    sanitized.quietMode = raw.quietMode;
+  }
+
+  return sanitized;
+}
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
@@ -39,7 +79,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        setPreferences({ ...DEFAULT_PREFERENCES, ...JSON.parse(saved) });
+        setPreferences(sanitizePreferences(JSON.parse(saved)));
       } catch (e) {
         console.error('Failed to parse preferences', e);
       }

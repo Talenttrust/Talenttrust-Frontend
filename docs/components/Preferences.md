@@ -69,6 +69,14 @@ export function PayoutAmount({ amount, currency }: { amount: number; currency: s
 
 ---
 
+## Security
+
+Persisted preferences are treated as untrusted input. `sanitizePreferences(raw)` returns a fresh `UserPreferences` object, copies only the known keys (`theme`, `amountFormat`, `toastDensity`, and `quietMode`), validates each value against its allowed set, and ignores prototype-pollution keys such as `__proto__` or `constructor`.
+
+Malformed JSON still falls back to defaults during provider hydration. Unknown keys and invalid enum values are dropped rather than merged into state.
+
+---
+
 ## Accessibility
 
 - No interactive UI is provided by this module; it is a context/hook layer only.
@@ -87,6 +95,7 @@ Coverage targets (≥ 95%):
 | Default preferences | `provides default preferences` |
 | localStorage read | `loads preferences from localStorage on mount`, `merges partial data with defaults`, `falls back on invalid JSON` |
 | localStorage write | `updates preferences and persists` |
+| Sanitization | malformed, array, unknown-key, invalid-enum, and prototype-pollution payloads |
 | `formatAmount` – USD | zero, fraction, large, negative, default currency |
 | `formatAmount` – NGN | typical, zero, large |
 | `formatAmount` – compact | thousands (`K`), millions (`M`), zero |
