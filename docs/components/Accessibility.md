@@ -36,6 +36,23 @@ All a11y regression tests are colocated in `src/components/__tests__/a11y.test.t
 | `ReputationProfile` | No reputation, full score + history, partial (score without history), null score |
 | `EmptyState` | Text-only, with illustration variant, with primary action, with both actions |
 
+## ErrorSummary focus and anchors
+
+[`ErrorSummary`](../../src/components/ErrorSummary.tsx) is the form-level alert
+used to summarize validation errors. It renders nothing until errors are
+present. Once errors appear, it renders a `role="alert"` region with
+`tabIndex={-1}` so focus can move to the summary without adding it to the normal
+tab order.
+
+Each error is rendered as an anchor whose `href` points to the invalid field's
+`id`, for example `#email`. This lets keyboard and screen-reader users jump from
+the summary to the exact field that needs attention. Duplicate `fieldId` values
+are still rendered as separate messages, preserving all validation feedback.
+
+Colocated tests live in `src/components/__tests__/ErrorSummary.test.tsx` and
+cover the empty state, focus transition, anchor targets, duplicate field ids,
+and axe validation.
+
 ## Running
 
 ```bash
