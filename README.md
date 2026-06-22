@@ -41,6 +41,7 @@ The app includes a global accessible toast system for transient feedback:
 - Use `useToast()` in client components to trigger `showSuccess(...)` and `showError(...)`.
 - Success messages announce through a polite `aria-live` region.
 - Error messages announce through an assertive `aria-live` region.
+- Auto-dismiss pauses while a notification is hovered or focused, then restarts after interaction ends so users can read or manually dismiss it.
 
 Example:
 

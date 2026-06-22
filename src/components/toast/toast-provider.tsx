@@ -54,10 +54,18 @@ function getToastStyles(variant: ToastVariant) {
 function ToastViewport({
   toasts,
   onDismiss,
+  onBlurToast,
+  onFocusToast,
+  onMouseEnterToast,
+  onMouseLeaveToast,
   density,
 }: {
   toasts: ToastRecord[];
   onDismiss: (id: string) => void;
+  onBlurToast: (id: string) => void;
+  onFocusToast: (id: string) => void;
+  onMouseEnterToast: (id: string) => void;
+  onMouseLeaveToast: (id: string) => void;
   density: 'relaxed' | 'compact';
 }) {
   return (
@@ -76,6 +84,16 @@ function ToastViewport({
           <div
             key={toast.id}
             className={`pointer-events-auto overflow-hidden rounded-2xl border ${styles.panel} shadow-lg`}
+            onBlur={(event) => {
+              const nextFocusedElement = event.relatedTarget;
+
+              if (!(nextFocusedElement instanceof Node) || !event.currentTarget.contains(nextFocusedElement)) {
+                onBlurToast(toast.id);
+              }
+            }}
+            onFocus={() => onFocusToast(toast.id)}
+            onMouseEnter={() => onMouseEnterToast(toast.id)}
+            onMouseLeave={() => onMouseLeaveToast(toast.id)}
             role={toast.variant === 'error' ? 'alert' : 'status'}
           >
             <div className={`h-1.5 w-full ${styles.accent}`} />
@@ -123,12 +141,77 @@ function ToastAnnouncer({ toasts }: { toasts: ToastRecord[] }) {
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastRecord[]>([]);
+  const [focusedToastIds, setFocusedToastIds] = useState<Set<string>>(() => new Set());
+  const [hoveredToastIds, setHoveredToastIds] = useState<Set<string>>(() => new Set());
   const nextIdRef = useRef(0);
   const timerIdsRef = useRef<Record<string, number>>({});
 
-  const dismissToast = useCallback((id: string) => {
-    setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== id));
+  const clearToastTimer = useCallback((id: string) => {
+    if (timerIdsRef.current[id]) {
+      window.clearTimeout(timerIdsRef.current[id]);
+      delete timerIdsRef.current[id];
+    }
   }, []);
+
+  const updateInteractedToast = useCallback(
+    (
+      setIds: React.Dispatch<React.SetStateAction<Set<string>>>,
+      id: string,
+      isInteracting: boolean,
+    ) => {
+      setIds((currentIds) => {
+        if (currentIds.has(id) === isInteracting) {
+          return currentIds;
+        }
+
+        const nextIds = new Set(currentIds);
+
+        if (isInteracting) {
+          nextIds.add(id);
+        } else {
+          nextIds.delete(id);
+        }
+
+        return nextIds;
+      });
+    },
+    [],
+  );
+
+  const pauseToast = useCallback((id: string) => {
+    clearToastTimer(id);
+  }, [clearToastTimer]);
+
+  const handleToastMouseEnter = useCallback((id: string) => {
+    updateInteractedToast(setHoveredToastIds, id, true);
+    pauseToast(id);
+  }, [pauseToast, updateInteractedToast]);
+
+  const handleToastMouseLeave = useCallback((id: string) => {
+    updateInteractedToast(setHoveredToastIds, id, false);
+  }, [updateInteractedToast]);
+
+  const handleToastFocus = useCallback((id: string) => {
+    updateInteractedToast(setFocusedToastIds, id, true);
+    pauseToast(id);
+  }, [pauseToast, updateInteractedToast]);
+
+  const handleToastBlur = useCallback((id: string) => {
+    updateInteractedToast(setFocusedToastIds, id, false);
+  }, [updateInteractedToast]);
+
+  const pausedToastIds = useMemo(() => {
+    const ids = new Set(hoveredToastIds);
+    focusedToastIds.forEach((id) => ids.add(id));
+    return ids;
+  }, [focusedToastIds, hoveredToastIds]);
+
+  const dismissToast = useCallback((id: string) => {
+    clearToastTimer(id);
+    setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== id));
+    updateInteractedToast(setFocusedToastIds, id, false);
+    updateInteractedToast(setHoveredToastIds, id, false);
+  }, [clearToastTimer, updateInteractedToast]);
 
   const createToast = useCallback(
     (variant: ToastVariant, toast: ToastInput) => {
@@ -169,10 +252,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     toasts.forEach((toast) => {
+      if (pausedToastIds.has(toast.id)) {
+        clearToastTimer(toast.id);
+        return;
+      }
+
       if (timerIdsRef.current[toast.id]) {
         return;
       }
 
+      // Toast auto-dismiss timers restart after interaction ends so keyboard and pointer users can finish reading.
       timerIdsRef.current[toast.id] = window.setTimeout(() => {
         dismissToast(toast.id);
       }, toast.duration ?? DEFAULT_DURATION);
@@ -182,13 +271,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       const toastStillVisible = toasts.some((toast) => toast.id === toastId);
 
       if (!toastStillVisible) {
-        window.clearTimeout(timerIdsRef.current[toastId]);
-        delete timerIdsRef.current[toastId];
+        clearToastTimer(toastId);
       }
     });
 
     return undefined;
-  }, [dismissToast, toasts]);
+  }, [clearToastTimer, dismissToast, pausedToastIds, toasts]);
 
   useEffect(() => {
     const timerIds = timerIdsRef.current;
@@ -213,7 +301,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <ToastAnnouncer toasts={toasts} />
-      <ToastViewport onDismiss={dismissToast} toasts={toasts} density={preferences.toastDensity} />
+      <ToastViewport
+        density={preferences.toastDensity}
+        onDismiss={dismissToast}
+        onBlurToast={handleToastBlur}
+        onFocusToast={handleToastFocus}
+        onMouseEnterToast={handleToastMouseEnter}
+        onMouseLeaveToast={handleToastMouseLeave}
+        toasts={toasts}
+      />
     </ToastContext.Provider>
   );
 }
