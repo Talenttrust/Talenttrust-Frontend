@@ -23,6 +23,10 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Features
+
+- Milestones page with typed delivery milestones, payout summaries, and an accessible status filter that announces result counts.
+
 ## Scripts
 
 | Script        | Description              |
