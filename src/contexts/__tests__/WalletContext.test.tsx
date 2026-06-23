@@ -132,12 +132,15 @@ describe('WalletContext', () => {
       const consoleError = jest.spyOn(console, 'error').mockImplementation();
 
       function ComponentWithoutProvider() {
+        const successContent = <div>Should not render</div>;
+        let content: React.ReactNode;
         try {
           useWallet();
-          return <div>Should not render</div>;
+          content = successContent;
         } catch (err) {
-          return <div data-testid="error-message">{(err as Error).message}</div>;
+          content = <div data-testid="error-message">{(err as Error).message}</div>;
         }
+        return <>{content}</>;
       }
 
       render(<ComponentWithoutProvider />);

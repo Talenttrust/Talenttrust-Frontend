@@ -39,6 +39,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating user preferences from localStorage on mount is a common pattern; this does not cascade because it only runs once
         setPreferences({ ...DEFAULT_PREFERENCES, ...JSON.parse(saved) });
       } catch (e) {
         console.error('Failed to parse preferences', e);
