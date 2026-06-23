@@ -3,7 +3,7 @@
 exports[`StatusBadge snapshot tests matches snapshot for Active status 1`] = `
 <span
   aria-label="Status: Active"
-  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-emerald-100 text-emerald-800 "
+  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-success-bg)] text-[var(--status-success-foreground)] "
   role="status"
 >
   Active
@@ -13,7 +13,7 @@ exports[`StatusBadge snapshot tests matches snapshot for Active status 1`] = `
 exports[`StatusBadge snapshot tests matches snapshot for Completed status 1`] = `
 <span
   aria-label="Status: Completed"
-  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-sky-100 text-sky-800 "
+  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-info-bg)] text-[var(--status-info-foreground)] "
   role="status"
 >
   Completed
@@ -23,7 +23,7 @@ exports[`StatusBadge snapshot tests matches snapshot for Completed status 1`] = 
 exports[`StatusBadge snapshot tests matches snapshot for Disputed status 1`] = `
 <span
   aria-label="Status: Disputed"
-  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-rose-100 text-rose-800 "
+  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-error-bg)] text-[var(--status-error-foreground)] "
   role="status"
 >
   Disputed
@@ -33,7 +33,7 @@ exports[`StatusBadge snapshot tests matches snapshot for Disputed status 1`] = `
 exports[`StatusBadge snapshot tests matches snapshot for Paid status 1`] = `
 <span
   aria-label="Status: Paid"
-  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-emerald-100 text-emerald-800 "
+  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-success-bg)] text-[var(--status-success-foreground)] "
   role="status"
 >
   Paid
@@ -43,7 +43,7 @@ exports[`StatusBadge snapshot tests matches snapshot for Paid status 1`] = `
 exports[`StatusBadge snapshot tests matches snapshot for Pending status 1`] = `
 <span
   aria-label="Status: Pending"
-  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-amber-100 text-amber-800 "
+  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-warning-bg)] text-[var(--status-warning-foreground)] "
   role="status"
 >
   Pending
@@ -53,7 +53,7 @@ exports[`StatusBadge snapshot tests matches snapshot for Pending status 1`] = `
 exports[`StatusBadge snapshot tests matches snapshot with additional className 1`] = `
 <span
   aria-label="Status: Active"
-  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-emerald-100 text-emerald-800 ml-2"
+  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-success-bg)] text-[var(--status-success-foreground)] ml-2"
   role="status"
 >
   Active

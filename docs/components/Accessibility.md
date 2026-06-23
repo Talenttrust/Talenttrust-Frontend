@@ -142,3 +142,121 @@ Colocated tests live in `src/components/__tests__/RouteAnnouncer.test.tsx` and c
 - **jest-axe** runs in a JSDOM environment, which does not fully simulate visual rendering. Color-contrast violations are still detected because axe checks computed styles from JSDOM's CSS support.
 - Dynamic changes (e.g. after a button click or data fetch) require a separate `testA11y` call after the state change — axe does not auto-observe mutations.
 - For full end-to-end a11y coverage, supplement these unit tests with manual screen-reader and keyboard-navigation checks.
+
+
+# Accessibility: Dark-theme color contrast audit
+
+**Issue:** a11y/theming-27 — Improve dark-theme color contrast across themed components
+**Scope:** `Talenttrust/Talenttrust-Frontend`
+**Standard:** WCAG 2.1 AA — 4.5:1 for normal text, 3:1 for large text (≥18pt regular or ≥14pt bold) and UI component boundaries.
+
+## Method
+
+Contrast ratios below were computed directly from the hex values defined in
+`src/app/globals.css`, using the standard WCAG relative-luminance formula
+(sRGB → linearized → `0.2126R + 0.7152G + 0.0722B`, then
+`(L_lighter + 0.05) / (L_darker + 0.05)`). This is the same formula used by
+browser dev tools and axe's `color-contrast` check.
+
+Note: `jest-axe` is included in the automated test suite
+(`src/components/__tests__/a11y.test.tsx`) to catch ARIA/role/live-region
+regressions, but **jsdom does not run a layout/paint engine**, so axe's
+`color-contrast` rule does not reliably evaluate colors resolved through
+compiled Tailwind classes in this test environment. The ratios in this
+document were verified independently and are the authoritative record for
+this audit, not the axe run.
+
+## Failures found (before fix)
+
+| Component | Element | Light mode | Dark mode | Status |
+|---|---|---|---|---|
+| `toast-provider.tsx` | Toast description (`text-slate-600` on `--surface`) | 7.24:1 ✅ | **2.36:1** ❌ | Fails AA (needs 4.5:1) |
+| `toast-provider.tsx` | Dismiss button icon (`text-slate-500` on `--surface`) | 4.55:1 ✅ (borderline) | **3.75:1** ❌ | Fails AA (needs 4.5:1) |
+| `toast-provider.tsx` | Dismiss button hover bg (`hover:bg-slate-100`, fixed) | n/a (light bg always) | Visually broken — bright patch on dark panel | Not a hard WCAG number, but a real regression |
+| `StatusBadge.tsx` | All 5 status pills (`bg-{color}-100 text-{color}-800`, fixed) | 6.37–6.78:1 ✅ | Unaffected by theme — same light pastel chip rendered inside a dark panel | Passes AA numerically, but visually inconsistent with the dark theme |
+
+## Root cause
+
+Both components used **fixed Tailwind utility classes** (`text-slate-600`,
+`bg-emerald-100`, etc.) instead of the **CSS variables** already defined in
+`globals.css` and toggled by `[data-theme]` via
+`src/lib/preferences.tsx`. Fixed classes don't change when the theme
+attribute flips, so colors tuned for a light surface get reused, unchanged,
+against a dark surface.
+
+## Fix
+
+Added two new sets of theme-aware tokens to `globals.css`:
+
+- **Status/badge tokens** (`--status-success-bg/-foreground`,
+  `--status-info-bg/-foreground`, `--status-error-bg/-foreground`,
+  `--status-warning-bg/-foreground`) — used by both `StatusBadge.tsx` and
+  the toast badges in `toast-provider.tsx`. Light-mode values are
+  byte-identical to the original Tailwind hex values, so light mode is
+  visually unchanged.
+- Reused the **existing** `--muted-foreground` token (already defined,
+  already passing AA in both modes) for the toast description text and the
+  dismiss button, instead of inventing a new token.
+
+### Verified ratios (after fix)
+
+| Token pair | Light mode | Dark mode |
+|---|---|---|
+| `--muted-foreground` on `--surface` (toast description, dismiss icon) | 4.55:1 ✅ | 6.96:1 ✅ |
+| `--status-success-foreground` on `--status-success-bg` | 6.78:1 ✅ | 5.98:1 ✅ |
+| `--status-info-foreground` on `--status-info-bg` | 6.59:1 ✅ | 5.67:1 ✅ |
+| `--status-error-foreground` on `--status-error-bg` | 6.68:1 ✅ | 5.30:1 ✅ |
+| `--status-warning-foreground` on `--status-warning-bg` | 6.37:1 ✅ | 6.29:1 ✅ |
+| Dismiss button hover: `--foreground` on `--accent` | 16.30:1 ✅ | 13.98:1 ✅ |
+
+All pairs clear AA with margin in both themes.
+
+### Badge-vs-panel visual separation (not a WCAG text rule, but checked anyway)
+
+Dark-mode badge backgrounds were also checked against `--surface`
+(`#0f172a`) to make sure the chip is visually distinguishable from the
+toast panel behind it, not just internally readable:
+
+| Badge background | Ratio vs `--surface` |
+|---|---|
+| `--status-success-bg` (`#14532d`) | 1.96:1 |
+| `--status-info-bg` (`#0c4a6e`) | 1.89:1 |
+| `--status-error-bg` (`#7f1d1d`) | 1.78:1 |
+| `--status-warning-bg` (`#78350f`) | 1.97:1 |
+
+An earlier draft of these dark badge backgrounds (`#052e1f`, `#3f0d16`) was
+rejected at this step — they measured ~1.1–1.2:1 against `--surface` and
+were effectively invisible as distinct chips, despite passing the internal
+text-contrast check. Flagging this because it's a failure mode that's easy
+to miss: a color pair can pass AA's text-contrast formula and still be a
+bad fix if the background blends into its container.
+
+## Known pre-existing issue (not introduced by this fix, noted for visibility)
+
+`--muted-foreground` in **light mode** (`#64748b`) measures **4.55:1**
+against `--surface` (`#f8fafc`) — it passes AA, but only with a 0.05
+margin. This isn't a regression from this PR (the variable already existed
+with this value), but it's worth flagging since the issue asked for an
+audit of both themes: this pairing has very little headroom and would fail
+AA outright if either value drifted even slightly in a future change.
+
+## Components reviewed but not changed
+
+- **`ToastDemo.tsx`** — uses fixed colors (`bg-slate-900 text-white`,
+  `bg-white text-rose-700`), but each pair is **self-contained** (fixed
+  background + fixed text, not a fixed text color against a *themed*
+  surface). Both pairs pass AA regardless of `data-theme`
+  (17.85:1 and 6.29:1 respectively). No change made — this is a styling
+  preference (the buttons don't visually adapt to theme), not a contrast
+  failure, and is out of scope for this issue.
+
+## Testing
+
+- `src/components/__tests__/a11y.test.tsx` renders toast panels (success
+  and error) and all five `StatusBadge` statuses in both
+  `data-theme='light'` and `data-theme='dark'`, asserting no `jest-axe`
+  violations (structural a11y: roles, labels, live regions).
+- Additional assertions confirm the fixed `slate-*`/pastel Tailwind classes
+  named in this issue are no longer present in the rendered output, and
+  that the new CSS-variable-based classes are, as a regression guard for
+  this specific fix.

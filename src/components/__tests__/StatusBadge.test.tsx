@@ -21,39 +21,45 @@ describe('StatusBadge', () => {
   });
 
   describe('styling', () => {
-    it('applies correct Tailwind classes for Active status', () => {
+    // a11y/theming-27: these assertions previously checked for fixed
+    // Tailwind pastel classes (e.g. 'bg-emerald-100'), which is exactly
+    // what broke dark-mode contrast -- the same literal classes were
+    // reused unchanged regardless of [data-theme]. StatusBadge now uses
+    // the --status-* CSS variables defined in globals.css, which carry
+    // an audited light/dark pair. See docs/components/Accessibility.md.
+    it('applies correct themed classes for Active status', () => {
       const { container } = render(<StatusBadge status="Active" />);
       const span = container.querySelector('span');
-      expect(span?.className).toContain('bg-emerald-100');
-      expect(span?.className).toContain('text-emerald-800');
+      expect(span?.className).toContain('bg-[var(--status-success-bg)]');
+      expect(span?.className).toContain('text-[var(--status-success-foreground)]');
     });
 
-    it('applies correct Tailwind classes for Completed status', () => {
+    it('applies correct themed classes for Completed status', () => {
       const { container } = render(<StatusBadge status="Completed" />);
       const span = container.querySelector('span');
-      expect(span?.className).toContain('bg-sky-100');
-      expect(span?.className).toContain('text-sky-800');
+      expect(span?.className).toContain('bg-[var(--status-info-bg)]');
+      expect(span?.className).toContain('text-[var(--status-info-foreground)]');
     });
 
-    it('applies correct Tailwind classes for Disputed status', () => {
+    it('applies correct themed classes for Disputed status', () => {
       const { container } = render(<StatusBadge status="Disputed" />);
       const span = container.querySelector('span');
-      expect(span?.className).toContain('bg-rose-100');
-      expect(span?.className).toContain('text-rose-800');
+      expect(span?.className).toContain('bg-[var(--status-error-bg)]');
+      expect(span?.className).toContain('text-[var(--status-error-foreground)]');
     });
 
-    it('applies correct Tailwind classes for Pending status', () => {
+    it('applies correct themed classes for Pending status', () => {
       const { container } = render(<StatusBadge status="Pending" />);
       const span = container.querySelector('span');
-      expect(span?.className).toContain('bg-amber-100');
-      expect(span?.className).toContain('text-amber-800');
+      expect(span?.className).toContain('bg-[var(--status-warning-bg)]');
+      expect(span?.className).toContain('text-[var(--status-warning-foreground)]');
     });
 
-    it('applies correct Tailwind classes for Paid status', () => {
+    it('applies correct themed classes for Paid status', () => {
       const { container } = render(<StatusBadge status="Paid" />);
       const span = container.querySelector('span');
-      expect(span?.className).toContain('bg-emerald-100');
-      expect(span?.className).toContain('text-emerald-800');
+      expect(span?.className).toContain('bg-[var(--status-success-bg)]');
+      expect(span?.className).toContain('text-[var(--status-success-foreground)]');
     });
 
     it('applies base badge styles consistently', () => {
@@ -66,6 +72,18 @@ describe('StatusBadge', () => {
       expect(span?.className).toContain('py-1');
       expect(span?.className).toContain('text-sm');
       expect(span?.className).toContain('font-semibold');
+    });
+
+    it('no longer uses fixed Tailwind pastel color classes (regression guard)', () => {
+      const statuses: StatusType[] = ['Active', 'Completed', 'Disputed', 'Pending', 'Paid'];
+
+      statuses.forEach((status) => {
+        const { container, unmount } = render(<StatusBadge status={status} />);
+        const span = container.querySelector('span');
+        expect(span?.className).not.toMatch(/bg-(emerald|sky|rose|amber)-100/);
+        expect(span?.className).not.toMatch(/text-(emerald|sky|rose|amber)-800/);
+        unmount();
+      });
     });
   });
 
@@ -80,13 +98,13 @@ describe('StatusBadge', () => {
     it('works with empty className prop', () => {
       const { container } = render(<StatusBadge status="Completed" className="" />);
       const span = container.querySelector('span');
-      expect(span?.className).toContain('bg-sky-100');
+      expect(span?.className).toContain('bg-[var(--status-info-bg)]');
     });
 
     it('defaults to empty string when className is not provided', () => {
       const { container } = render(<StatusBadge status="Completed" />);
       const span = container.querySelector('span');
-      expect(span?.className).toContain('bg-sky-100');
+      expect(span?.className).toContain('bg-[var(--status-info-bg)]');
     });
   });
 
