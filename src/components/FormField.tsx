@@ -36,11 +36,11 @@ export const FormField: React.FC<FormFieldProps> = ({
   const child = React.cloneElement(children, {
     id,
     'aria-describedby': describedBy || undefined,
-    'aria-invalid': !!error,
-    className: `${children.props.className || ''} ${
+    'aria-invalid': error ? 'true' : 'false',
+    className: `${(children.props as any).className || ''} ${
       error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''
     }`.trim(),
-  });
+  } as React.HTMLAttributes<HTMLElement>);
 
   return (
     <div className="mb-4 w-full">

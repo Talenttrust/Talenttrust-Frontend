@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { SettingsPanel } from '../SettingsPanel';
-import { PreferencesProvider } from '@/lib/preferences';
+import { PreferencesProvider, usePreferences } from '@/lib/preferences';
 
 const renderWithProvider = (ui: React.ReactElement) => {
   return render(
@@ -115,6 +116,19 @@ describe('SettingsPanel', () => {
       localStorage.getItem('talenttrust-user-preferences') || '{}'
     );
     expect(saved.quietMode).toBe(true);
+  });
+
+  it('persists toastDensity preference to localStorage when changed', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+
+    const densityGroup = screen.getByRole('radiogroup', { name: /toast density/i });
+    const compactButton = within(densityGroup).getByRole('radio', { name: /compact/i });
+    fireEvent.click(compactButton);
+
+    const saved = JSON.parse(
+      localStorage.getItem('talenttrust-user-preferences') || '{}'
+    );
+    expect(saved.toastDensity).toBe('compact');
   });
 
   it('restores preferences from localStorage on remount (simulated reload)', () => {
@@ -242,5 +256,74 @@ describe('SettingsPanel', () => {
     first.focus();
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
     expect(document.activeElement).toBe(focusable[focusable.length - 1]);
+  });
+
+  // --- Accessibility validation with jest-axe ---
+
+  it('passes accessibility audit with jest-axe when open', async () => {
+    const { container } = renderWithProvider(
+      <SettingsPanel isOpen={true} onClose={() => {}} />
+    );
+    
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it('passes accessibility audit with jest-axe when closed', async () => {
+    const { container } = renderWithProvider(
+      <SettingsPanel isOpen={false} onClose={() => {}} />
+    );
+    
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+
+
+  // --- Edge cases for focus management ---
+
+  it('does not call onClose when Escape is pressed while dialog is closed', () => {
+    const onClose = jest.fn();
+    renderWithProvider(<SettingsPanel isOpen={false} onClose={onClose} />);
+    
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('initial focus is not set when panel is not open', () => {
+    renderWithProvider(<SettingsPanel isOpen={false} onClose={() => {}} />);
+    
+    // Should not have any dialog content
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.activeElement).not.toBe(screen.queryByRole('button', { name: /close settings/i }));
+  });
+
+  // --- Verify all preference controls are properly labeled ---
+
+  it('all preference controls have proper ARIA labels and roles', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    
+    // Theme radiogroup
+    const themeGroup = screen.getByRole('radiogroup', { name: /theme/i });
+    expect(themeGroup).toBeInTheDocument();
+    
+    // Currency radiogroup
+    const currencyGroup = screen.getByRole('radiogroup', { name: /currency display/i });
+    expect(currencyGroup).toBeInTheDocument();
+    
+    // Toast density radiogroup
+    const densityGroup = screen.getByRole('radiogroup', { name: /toast density/i });
+    expect(densityGroup).toBeInTheDocument();
+    
+    // Quiet mode switch
+    const quietSwitch = screen.getByRole('switch', { name: /quiet mode/i });
+    expect(quietSwitch).toBeInTheDocument();
+    
+    // All theme radio buttons should be properly labeled
+    const themeButtons = within(themeGroup).getAllByRole('radio');
+    expect(themeButtons).toHaveLength(3);
+    expect(themeButtons[0]).toHaveAccessibleName('light');
+    expect(themeButtons[1]).toHaveAccessibleName('dark');
+    expect(themeButtons[2]).toHaveAccessibleName('system');
   });
 });
