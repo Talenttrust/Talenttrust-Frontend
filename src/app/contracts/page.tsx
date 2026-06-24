@@ -2,9 +2,10 @@
 
 import React from 'react';
 import EmptyState from '../../components/EmptyState';
+import type { Contract } from '@/types/domain';
 
 const ContractsPage: React.FC = () => {
-  const contracts: any[] = []; // Assume empty for now
+  const contracts: Contract[] = [];
 
   const handleCreateContract = () => {
     // TODO: Implement create contract logic

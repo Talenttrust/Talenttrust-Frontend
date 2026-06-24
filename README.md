@@ -165,3 +165,6 @@ run: npm audit --audit-level=high --production --ignore 1234567
 ## License
 
 MIT
+
+## Domain Types
+Centralized domain types (Contract, Milestone, Reputation) are defined and re-exported from src/types/domain.ts to ensure strict type safety across pages and components.
