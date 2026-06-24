@@ -309,3 +309,48 @@ AA outright if either value drifted even slightly in a future change.
   named in this issue are no longer present in the rendered output, and
   that the new CSS-variable-based classes are, as a regression guard for
   this specific fix.
+
+---
+
+## ReputationProfile – Tested Guarantees (issue #135)
+
+**Component:** `src/components/ReputationProfile.tsx`
+**Test file:** `src/components/ReputationProfile.test.tsx`
+
+### Rendering branches locked down
+
+| State | Props | Guaranteed outputs |
+|-------|-------|--------------------|
+| No reputation (undefined score) | `score` omitted | `"No reputation yet"` in score block; `"Pending"` in level block; `"Private by default"` pill; empty history message; **no** amber banner; **no** list items |
+| No reputation (null score) | `score={null}` | Same as undefined – `typeof null !== 'number'` so `hasReputation = false` |
+| Score = 0 (falsy-but-valid) | `score={0}` | `hasReputation = true`; renders `"0"`; renders level; shows amber partial banner (history empty); **no** `"No reputation yet"` |
+| Partial reputation | `score > 0`, `history=[]` | Amber `"Partial reputation data"` banner + explanation; `"Private by default"` pill; empty-history message; **no** list items |
+| Full reputation | `score > 0`, `history` non-empty | Each `ReputationEvent` rendered (type, summary, date); `"Visible"` pill; **no** amber banner; **no** empty-history message |
+| Single-char initial | `name="A"` or `name="alice"` | Avatar div shows `"A"` (uppercased first character) |
+| Default props | `score` provided, no `level`/`history` | `level` defaults to `"Community Member"`; `history` defaults to `[]` |
+
+### Aria contracts verified
+
+| Element | Attribute | Expected value |
+|---------|-----------|----------------|
+| `<section>` | `aria-labelledby` | `"profile-heading"` |
+| `<h2 id="profile-heading">` | `class` | contains `sr-only`; text = `"Reputation profile for {name}"` |
+| Score `<p>` | `aria-labelledby` | `"reputation-score-label"` |
+| Level `<p>` | `aria-labelledby` | `"reputation-level-label"` |
+| Score label `<p>` | `id` | `"reputation-score-label"` |
+| Level label `<p>` | `id` | `"reputation-level-label"` |
+| `<span>` before score number | `class` | `sr-only`; text = `"Reputation score "` |
+| `<span>` after score number | `class` | `sr-only`; text = `" out of 5"` |
+| `<span>` before level text | `class` | `sr-only`; text = `"Level "` |
+
+### jest-axe coverage
+
+`assertNoA11yViolations` from `src/test-utils/a11y.tsx` is called for all
+four distinct DOM states:
+
+- **Full history** (score + events) — primary axe audit required by issue #135
+- **No reputation** (no score)
+- **Partial reputation** (score, empty history)
+- **Null score**
+
+All states pass axe-core with zero violations.
