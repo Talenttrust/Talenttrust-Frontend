@@ -99,6 +99,14 @@ export function ReleaseButton() {
 }
 ```
 
+## Stellar address helpers
+
+The shared utility layer now includes lightweight Stellar address helpers in [src/lib/stellarAddress.ts](src/lib/stellarAddress.ts) for display and form use:
+
+- `isValidStellarAddress(value)` returns `true` only for a trimmed, uppercased value that looks like a Stellar public key: it starts with `G`, is exactly 56 characters long, and uses the base32 alphabet `A-Z` and `2-7`.
+- `normalizeStellarAddress(value)` trims whitespace and uppercases the value without throwing on invalid input.
+- The display truncation path uses these helpers so clearly malformed addresses are treated as ordinary strings rather than being shortened as if they were valid keys.
+
 ## Authentication form validation and accessibility
 
 The homepage contains an accessible, fully validated sign-in form:
