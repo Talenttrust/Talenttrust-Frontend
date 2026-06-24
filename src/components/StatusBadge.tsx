@@ -2,7 +2,8 @@
  * StatusBadge Component
  *
  * A reusable badge component that displays contract and milestone statuses
- * with consistent styling and color mapping.
+ * with an icon + label token, ensuring meaning is never conveyed by color alone.
+ * Meets WCAG 2.1 AA requirements.
  */
 
 export type StatusType = 'Active' | 'Completed' | 'Disputed' | 'Pending' | 'Paid';
@@ -16,17 +17,11 @@ export interface StatusBadgeProps {
 
 /**
  * Unified color and style map for all status types.
- * Ensures consistent visual representation across the application.
  *
  * a11y/theming-27: previously these were fixed Tailwind pastel pairs
  * (e.g. `bg-emerald-100 text-emerald-800`) which never changed with
- * `data-theme`. In dark mode the light pastel background sat directly on
- * the dark surface with no contrast issue for the text itself, but it
- * read as a jarring "light sticker" inconsistent with the themed UI, and
- * the equivalent pattern in toast-provider.tsx had outright AA failures.
- * Replaced with CSS variables defined in globals.css so both themes get
- * an audited, intentional pair. Light-mode variable values are identical
- * to the original Tailwind hex values, so the light theme is unchanged.
+ * `data-theme`. Replaced with CSS variables defined in globals.css so
+ * both themes get an audited, intentional pair.
  * Ratios recorded in docs/components/Accessibility.md.
  */
 const statusColorMap: Record<StatusType, string> = {
@@ -37,12 +32,19 @@ const statusColorMap: Record<StatusType, string> = {
   Paid: 'bg-[var(--status-success-bg)] text-[var(--status-success-foreground)]',
 };
 
+/** Non-color icon token paired with each status (aria-hidden; label provides text). */
+const statusIconMap: Record<StatusType, string> = {
+  Active:    '▶',
+  Completed: '✓',
+  Disputed:  '⚠',
+  Pending:   '⏳',
+  Paid:      '✔',
+};
+
 /**
- * StatusBadge component renders a styled badge pill for contract and milestone statuses.
- *
- * @param status - The status value to display (Active, Completed, Disputed, Pending, or Paid)
- * @param className - Optional additional CSS classes
- * @returns A styled badge element with appropriate color based on status
+ * StatusBadge renders a pill with an icon + label for each status.
+ * The icon is decorative (`aria-hidden`); meaning is also carried by the
+ * visible label and `aria-label`, so it is never color-only.
  *
  * @example
  * ```tsx
@@ -53,10 +55,11 @@ const statusColorMap: Record<StatusType, string> = {
 const StatusBadge = ({ status, className = '' }: StatusBadgeProps) => {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${statusColorMap[status]} ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ${statusColorMap[status]} ${className}`}
       role="status"
       aria-label={`Status: ${status}`}
     >
+      <span aria-hidden="true">{statusIconMap[status]}</span>
       {status}
     </span>
   );

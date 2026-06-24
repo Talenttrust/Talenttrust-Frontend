@@ -3,9 +3,14 @@
 exports[`StatusBadge snapshot tests matches snapshot for Active status 1`] = `
 <span
   aria-label="Status: Active"
-  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-success-bg)] text-[var(--status-success-foreground)] "
+  class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-success-bg)] text-[var(--status-success-foreground)] "
   role="status"
 >
+  <span
+    aria-hidden="true"
+  >
+    ▶
+  </span>
   Active
 </span>
 `;
@@ -13,9 +18,14 @@ exports[`StatusBadge snapshot tests matches snapshot for Active status 1`] = `
 exports[`StatusBadge snapshot tests matches snapshot for Completed status 1`] = `
 <span
   aria-label="Status: Completed"
-  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-info-bg)] text-[var(--status-info-foreground)] "
+  class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-info-bg)] text-[var(--status-info-foreground)] "
   role="status"
 >
+  <span
+    aria-hidden="true"
+  >
+    ✓
+  </span>
   Completed
 </span>
 `;
@@ -23,9 +33,14 @@ exports[`StatusBadge snapshot tests matches snapshot for Completed status 1`] = 
 exports[`StatusBadge snapshot tests matches snapshot for Disputed status 1`] = `
 <span
   aria-label="Status: Disputed"
-  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-error-bg)] text-[var(--status-error-foreground)] "
+  class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-error-bg)] text-[var(--status-error-foreground)] "
   role="status"
 >
+  <span
+    aria-hidden="true"
+  >
+    ⚠
+  </span>
   Disputed
 </span>
 `;
@@ -33,9 +48,14 @@ exports[`StatusBadge snapshot tests matches snapshot for Disputed status 1`] = `
 exports[`StatusBadge snapshot tests matches snapshot for Paid status 1`] = `
 <span
   aria-label="Status: Paid"
-  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-success-bg)] text-[var(--status-success-foreground)] "
+  class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-success-bg)] text-[var(--status-success-foreground)] "
   role="status"
 >
+  <span
+    aria-hidden="true"
+  >
+    ✔
+  </span>
   Paid
 </span>
 `;
@@ -43,9 +63,14 @@ exports[`StatusBadge snapshot tests matches snapshot for Paid status 1`] = `
 exports[`StatusBadge snapshot tests matches snapshot for Pending status 1`] = `
 <span
   aria-label="Status: Pending"
-  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-warning-bg)] text-[var(--status-warning-foreground)] "
+  class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-warning-bg)] text-[var(--status-warning-foreground)] "
   role="status"
 >
+  <span
+    aria-hidden="true"
+  >
+    ⏳
+  </span>
   Pending
 </span>
 `;
@@ -53,9 +78,14 @@ exports[`StatusBadge snapshot tests matches snapshot for Pending status 1`] = `
 exports[`StatusBadge snapshot tests matches snapshot with additional className 1`] = `
 <span
   aria-label="Status: Active"
-  class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-success-bg)] text-[var(--status-success-foreground)] ml-2"
+  class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold bg-[var(--status-success-bg)] text-[var(--status-success-foreground)] ml-2"
   role="status"
 >
+  <span
+    aria-hidden="true"
+  >
+    ▶
+  </span>
   Active
 </span>
 `;
