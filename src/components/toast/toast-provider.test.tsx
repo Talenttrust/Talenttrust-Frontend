@@ -196,6 +196,70 @@ describe('ToastProvider', () => {
     expect(uniqueIds.size).toBe(1);
   });
 
+  it('pauses auto-dismiss while a toast is hovered', async () => {
+    render(
+      <ToastProvider>
+        <ToastHarness />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /trigger success/i }));
+
+    act(() => {
+      jest.advanceTimersByTime(1500);
+    });
+
+    fireEvent.mouseEnter(screen.getByRole('status'));
+
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+
+    fireEvent.mouseLeave(screen.getByRole('status'));
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+  });
+
+  it('pauses auto-dismiss while a toast is focused', async () => {
+    render(
+      <ToastProvider>
+        <ToastHarness />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /trigger success/i }));
+
+    act(() => {
+      jest.advanceTimersByTime(1500);
+    });
+
+    fireEvent.focus(screen.getByRole('button', { name: /dismiss success notification/i }));
+
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+
+    fireEvent.blur(screen.getByRole('button', { name: /dismiss success notification/i }));
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+  });
+
   it('dismisses toast by returned id', async () => {
     let returnedId: string | null = null;
 

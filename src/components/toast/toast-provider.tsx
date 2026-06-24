@@ -71,13 +71,18 @@ function getToastStyles(variant: ToastVariant) {
   };
 }
 
+
 function ToastViewport({
   toasts,
   onDismiss,
+  onPauseTimer,
+  onResumeTimer,
   density,
 }: {
   toasts: ToastRecord[];
   onDismiss: (id: string) => void;
+  onPauseTimer: (id: string) => void;
+  onResumeTimer: (id: string) => void;
   density: 'relaxed' | 'compact';
 }) {
   return (
@@ -97,6 +102,10 @@ function ToastViewport({
           <div
             key={toast.id}
             className={`pointer-events-auto overflow-hidden rounded-2xl border ${styles.panel} shadow-lg`}
+            onBlur={() => onResumeTimer(toast.id)}
+            onFocus={() => onPauseTimer(toast.id)}
+            onMouseEnter={() => onPauseTimer(toast.id)}
+            onMouseLeave={() => onResumeTimer(toast.id)}
             role={toast.variant === 'error' ? 'alert' : 'status'}
           >
             <div className={`h-1.5 w-full ${styles.accent}`} />
@@ -154,13 +163,113 @@ function ToastAnnouncer({ toasts }: { toasts: ToastRecord[] }) {
   );
 }
 
+type ToastTimerState = {
+  expiresAt: number | null;
+  pauseCount: number;
+  remainingMs: number;
+  timeoutId: number | null;
+};
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastRecord[]>([]);
-  const timerIdsRef = useRef<Record<string, number>>({});
+  const toastTimersRef = useRef<Record<string, ToastTimerState>>({});
 
   const dismissToast = useCallback((id: string) => {
     setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== id));
   }, []);
+
+  /**
+   * Starts (or restarts) the auto-dismiss timeout for a toast.
+   * Stores the expiry timestamp so remaining time can be recovered when pausing.
+   */
+  const scheduleToastDismiss = useCallback(
+    (id: string, durationMs: number) => {
+      const existingTimer = toastTimersRef.current[id];
+      const timer: ToastTimerState = existingTimer ?? {
+        expiresAt: null,
+        pauseCount: 0,
+        remainingMs: durationMs,
+        timeoutId: null,
+      };
+
+      if (timer.timeoutId !== null) {
+        window.clearTimeout(timer.timeoutId);
+      }
+
+      timer.remainingMs = durationMs;
+      timer.expiresAt = Date.now() + durationMs;
+      timer.timeoutId = window.setTimeout(() => {
+        dismissToast(id);
+      }, durationMs);
+
+      toastTimersRef.current[id] = timer;
+    },
+    [dismissToast],
+  );
+
+  /**
+   * Clears a toast's auto-dismiss timeout and removes its timer state.
+   * Called when a toast is dismissed or unmounted.
+   */
+  const clearToastTimer = useCallback((id: string) => {
+    const timer = toastTimersRef.current[id];
+
+    if (!timer) {
+      return;
+    }
+
+    if (timer.timeoutId !== null) {
+      window.clearTimeout(timer.timeoutId);
+    }
+
+    delete toastTimersRef.current[id];
+  }, []);
+
+  /**
+   * Pauses the auto-dismiss timer while a toast is hovered or focused.
+   * Uses a pause counter so overlapping hover and focus keep the timer
+   * paused until both interactions end.
+   */
+  const pauseToastTimer = useCallback((id: string) => {
+    const timer = toastTimersRef.current[id];
+
+    if (!timer) {
+      return;
+    }
+
+    timer.pauseCount += 1;
+
+    if (timer.pauseCount === 1 && timer.timeoutId !== null) {
+      window.clearTimeout(timer.timeoutId);
+      timer.timeoutId = null;
+
+      if (timer.expiresAt !== null) {
+        timer.remainingMs = Math.max(0, timer.expiresAt - Date.now());
+        timer.expiresAt = null;
+      }
+    }
+  }, []);
+
+  /**
+   * Resumes the auto-dismiss timer after hover or focus ends.
+   * Only restarts the timeout once every pause source has cleared.
+   */
+  const resumeToastTimer = useCallback(
+    (id: string) => {
+      const timer = toastTimersRef.current[id];
+
+      if (!timer || timer.pauseCount === 0) {
+        return;
+      }
+
+      timer.pauseCount -= 1;
+
+      if (timer.pauseCount === 0 && timer.timeoutId === null) {
+        scheduleToastDismiss(id, timer.remainingMs);
+      }
+    },
+    [scheduleToastDismiss],
+  );
 
   const createToast = useCallback(
     (variant: ToastVariant, toast: ToastInput) => {
@@ -201,32 +310,33 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     toasts.forEach((toast) => {
-      if (timerIdsRef.current[toast.id]) {
+      if (toastTimersRef.current[toast.id]) {
         return;
       }
 
-      timerIdsRef.current[toast.id] = window.setTimeout(() => {
-        dismissToast(toast.id);
-      }, toast.duration ?? DEFAULT_DURATION);
+      scheduleToastDismiss(toast.id, toast.duration ?? DEFAULT_DURATION);
     });
 
-    Object.keys(timerIdsRef.current).forEach((toastId) => {
+    Object.keys(toastTimersRef.current).forEach((toastId) => {
       const toastStillVisible = toasts.some((toast) => toast.id === toastId);
 
       if (!toastStillVisible) {
-        window.clearTimeout(timerIdsRef.current[toastId]);
-        delete timerIdsRef.current[toastId];
+        clearToastTimer(toastId);
       }
     });
 
     return undefined;
-  }, [dismissToast, toasts]);
+  }, [clearToastTimer, scheduleToastDismiss, toasts]);
 
   useEffect(() => {
-    const timerIds = timerIdsRef.current;
+    const timers = toastTimersRef.current;
     return () => {
-      Object.values(timerIds).forEach((timerId) => {
-        window.clearTimeout(timerId);
+      Object.keys(timers).forEach((toastId) => {
+        const timer = timers[toastId];
+
+        if (timer.timeoutId !== null) {
+          window.clearTimeout(timer.timeoutId);
+        }
       });
     };
   }, []);
@@ -245,7 +355,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <ToastAnnouncer toasts={toasts} />
-      <ToastViewport onDismiss={dismissToast} toasts={toasts} density={preferences.toastDensity} />
+      <ToastViewport
+        density={preferences.toastDensity}
+        onDismiss={dismissToast}
+        onPauseTimer={pauseToastTimer}
+        onResumeTimer={resumeToastTimer}
+        toasts={toasts}
+      />
     </ToastContext.Provider>
   );
 }
