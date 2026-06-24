@@ -2,7 +2,6 @@ const js = require('@eslint/js');
 const globals = require('globals');
 const nextPlugin = require('eslint-config-next');
 const tsParser = require('@typescript-eslint/parser');
-const tsPlugin = require('@typescript-eslint/eslint-plugin');
 
 module.exports = [
   // Ignore stray files that should never be linted
