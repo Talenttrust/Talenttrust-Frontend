@@ -28,12 +28,12 @@ describe('Home', () => {
     expect(screen.getByText(/Decentralized Freelancer Escrow Protocol/i)).toBeInTheDocument();
   });
 
-  it('has exactly one main landmark (from layout, not nested in page)', () => {
+  it('has no nested main landmark in page component (layout provides the single main)', () => {
     const { container } = renderWithProviders(<Home />);
-    const mains = container.querySelectorAll('main');
-    expect(mains.length).toBe(1);
-    // The single main should have id="main-content" from layout
-    expect(mains[0]).toHaveAttribute('id', 'main-content');
+    // The Home component itself should not render a <main> element
+    // The layout provides the single <main id="main-content"> landmark
+    const pageContent = container.querySelector('div'); // The root div of Home component
+    expect(pageContent?.querySelector('main')).not.toBeInTheDocument();
   });
 
   it('has no h1 in the page component (layout header provides the page title)', () => {
