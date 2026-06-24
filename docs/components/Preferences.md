@@ -99,3 +99,59 @@ Run tests:
 ```bash
 npm test -- --testPathPattern=preferences --coverage
 ```
+
+---
+
+## ThemeToggle
+
+`src/components/ThemeToggle.tsx`
+
+One-click header button that toggles between `light` and `dark` themes. Uses the same `updatePreference('theme', ...)` call as `SettingsPanel`, so the two stay in sync.
+
+### Behaviour
+
+| Current theme | Button action | Result |
+|---|---|---|
+| `'light'` | click | sets `'dark'` |
+| `'dark'` | click | sets `'light'` |
+| `'system'` | click | sets `'dark'` (gives the user an explicit state) |
+
+`'system'` remains available via **Settings → Appearance → system**.
+
+### SSR safety
+
+The component renders `null` until its `useEffect` fires (mounted guard), preventing hydration mismatch. No flash of incorrect icon occurs because the `PreferencesProvider` also waits for `isHydrated`.
+
+### Accessibility
+
+- `aria-label` reflects the *next* action: `"Switch to dark theme"` / `"Switch to light theme"`.
+- `aria-pressed` reflects the *current* dark state (`true` when dark, `false` otherwise).
+- Inherits project focus-ring via `focus-visible:ring-2 focus-visible:ring-[var(--primary)]`.
+
+### Usage
+
+Mount once in the app header (already done in `src/app/layout.tsx`):
+
+```tsx
+import { ThemeToggle } from '@/components/ThemeToggle';
+
+<div className="flex items-center gap-2">
+  <ThemeToggle />
+  <WalletConnectButton />
+</div>
+```
+
+### Testing
+
+File: `src/components/__tests__/ThemeToggle.test.tsx`
+
+| Test | Description |
+|---|---|
+| SSR guard | button present after mount |
+| Light label/icon | moon icon, aria-label "Switch to dark theme", aria-pressed false |
+| Dark label/icon | sun icon, aria-label "Switch to light theme", aria-pressed true |
+| light → dark | click updates preference to dark |
+| dark → light | click updates preference to light |
+| system → dark | first click from system sets dark |
+| aria-pressed | reflects dark state after toggle |
+| localStorage | toggled value persisted |

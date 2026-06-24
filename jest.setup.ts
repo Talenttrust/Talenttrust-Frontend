@@ -1,4 +1,20 @@
 import React from 'react';
+import '@testing-library/jest-dom';
+
+// Mock matchMedia (not implemented in jsdom)
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
 
 // Mock next/link to a plain <a> to avoid intersection/prefetch behavior
 jest.mock('next/link', () => {

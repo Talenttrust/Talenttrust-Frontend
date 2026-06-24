@@ -24,6 +24,7 @@ import { WalletProvider } from '@/contexts/WalletContext';
 import { WalletConnectButton } from '@/components/WalletConnectButton';
 import RouteAnnouncer from '@/components/RouteAnnouncer';
 import Navbar from '@/components/Navbar';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function RootLayout({
   children,
@@ -58,7 +59,10 @@ export default function RootLayout({
                     </span>
                   </div>
                   <Navbar />
-                  <WalletConnectButton />
+                  <div className="flex items-center gap-2">
+                    <ThemeToggle />
+                    <WalletConnectButton />
+                  </div>
                 </header>
                 <main className="flex-1 p-6" tabIndex={-1} id="main-content">
                   {children}
