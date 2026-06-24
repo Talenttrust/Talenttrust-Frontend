@@ -35,6 +35,7 @@ All a11y regression tests are colocated in `src/components/__tests__/a11y.test.t
 | `ContractSummary` | Active + multiple parties, Disputed, Completed with single milestone |
 | `ReputationProfile` | No reputation, full score + history, partial (score without history), null score |
 | `EmptyState` | Text-only, with illustration variant, with primary action, with both actions |
+| `FormField` | Default state, errored state, with helper text, required marker |
 
 ## Running
 
@@ -131,11 +132,59 @@ Colocated tests live in `src/components/__tests__/RouteAnnouncer.test.tsx` and c
 | Multiple navigations | Correct announcement after several route changes |
 | Absent `<main>` | Component does not throw when no `<main>` exists |
 
+## ErrorSummary — form validation focus management
+
+[`ErrorSummary`](../../src/components/ErrorSummary.tsx) is rendered at the top of the sign-in form when validation fails. It is the primary accessibility hook for communicating form errors to assistive-technology users.
+
+### Behaviour
+
+- **`role="alert"`** — the container uses an ARIA live region role so screen readers announce the error summary immediately when it appears in the DOM.
+- **`tabIndex={-1}` + programmatic focus** — a `useEffect` calls `ref.current.focus()` whenever `errors.length` transitions from 0 to a positive value, or when the error list changes. This moves keyboard focus to the summary so users do not need to navigate back to find the errors.
+- **Anchor links** — each list item renders an `<a href="#fieldId">` pointing to the associated input. Activating the link moves focus directly to the invalid field.
+- **Renders nothing when empty** — when `errors` is an empty array the component returns `null`, producing no DOM output.
+
+### Test file
+
+Tests live in `src/components/__tests__/ErrorSummary.test.tsx` and cover:
+
+| Test | What is verified |
+|------|-----------------|
+| Empty render | `null` returned; no DOM output |
+| Alert region | `role="alert"` present and `tabIndex={-1}` set |
+| Anchor links | Each error produces an `<a href="#fieldId">` with the message text |
+| Focus on mount | `document.activeElement` is the summary after errors transition from empty |
+| Re-focus on update | Focus returns to summary when the error list changes |
+| Duplicate `fieldId`s | Two entries with the same `fieldId` render without React key warnings |
+| Single error | Edge-case with one error renders correctly |
+| axe audit (with errors) | No WCAG violations when the summary is visible |
+| axe audit (empty) | No WCAG violations when the summary is absent |
+
 ## Adding a new component
 
 1. Render every distinct state of the component (empty, populated, error, loading, etc.).
 2. Call `await testA11y(<Component ... />)` for each state.
 3. If the component depends on a context provider, wrap it in the provider before passing to `testA11y`.
+
+## Single landmark rule (WCAG 2.4.1 Bypass Blocks)
+
+Per WCAG guidelines, a page should have exactly one `<main>` landmark to avoid confusing screen reader users with duplicate navigation targets. The root layout (`src/app/layout.tsx`) provides the single `<main id="main-content">` landmark, so page components must not render nested `<main>` elements.
+
+### Home page landmark fix (issue #148)
+
+The home sign-in form (`src/app/page.tsx`) previously had two accessibility issues:
+1. **Nested `<main>` landmark** - The page rendered its own `<main>` element while the layout already provided one, creating duplicate landmarks
+2. **Duplicate `<h1>` heading** - The page rendered an `<h1>` "TalentTrust" while the layout header already displayed the same text, breaking the heading hierarchy
+
+**Fix applied:**
+- Removed the nested `<main>` from `src/app/page.tsx` and replaced it with a `<div>` wrapper
+- Changed the page heading from `<h1>` to `<h2>` since the layout header provides the page title
+- Added a comment explaining the single-landmark rule for future maintainers
+
+**Test coverage:**
+- Added tests in `src/app/page.test.tsx` to verify exactly one `<main>` landmark exists
+- Added tests to verify no `<h1>` exists in the page component
+- Added comprehensive jest-axe coverage for empty, errored, and valid form states
+- Verified ErrorSummary focus and error anchor targeting work correctly
 
 ## Caveats
 
@@ -260,3 +309,48 @@ AA outright if either value drifted even slightly in a future change.
   named in this issue are no longer present in the rendered output, and
   that the new CSS-variable-based classes are, as a regression guard for
   this specific fix.
+
+---
+
+## ReputationProfile – Tested Guarantees (issue #135)
+
+**Component:** `src/components/ReputationProfile.tsx`
+**Test file:** `src/components/ReputationProfile.test.tsx`
+
+### Rendering branches locked down
+
+| State | Props | Guaranteed outputs |
+|-------|-------|--------------------|
+| No reputation (undefined score) | `score` omitted | `"No reputation yet"` in score block; `"Pending"` in level block; `"Private by default"` pill; empty history message; **no** amber banner; **no** list items |
+| No reputation (null score) | `score={null}` | Same as undefined – `typeof null !== 'number'` so `hasReputation = false` |
+| Score = 0 (falsy-but-valid) | `score={0}` | `hasReputation = true`; renders `"0"`; renders level; shows amber partial banner (history empty); **no** `"No reputation yet"` |
+| Partial reputation | `score > 0`, `history=[]` | Amber `"Partial reputation data"` banner + explanation; `"Private by default"` pill; empty-history message; **no** list items |
+| Full reputation | `score > 0`, `history` non-empty | Each `ReputationEvent` rendered (type, summary, date); `"Visible"` pill; **no** amber banner; **no** empty-history message |
+| Single-char initial | `name="A"` or `name="alice"` | Avatar div shows `"A"` (uppercased first character) |
+| Default props | `score` provided, no `level`/`history` | `level` defaults to `"Community Member"`; `history` defaults to `[]` |
+
+### Aria contracts verified
+
+| Element | Attribute | Expected value |
+|---------|-----------|----------------|
+| `<section>` | `aria-labelledby` | `"profile-heading"` |
+| `<h2 id="profile-heading">` | `class` | contains `sr-only`; text = `"Reputation profile for {name}"` |
+| Score `<p>` | `aria-labelledby` | `"reputation-score-label"` |
+| Level `<p>` | `aria-labelledby` | `"reputation-level-label"` |
+| Score label `<p>` | `id` | `"reputation-score-label"` |
+| Level label `<p>` | `id` | `"reputation-level-label"` |
+| `<span>` before score number | `class` | `sr-only`; text = `"Reputation score "` |
+| `<span>` after score number | `class` | `sr-only`; text = `" out of 5"` |
+| `<span>` before level text | `class` | `sr-only`; text = `"Level "` |
+
+### jest-axe coverage
+
+`assertNoA11yViolations` from `src/test-utils/a11y.tsx` is called for all
+four distinct DOM states:
+
+- **Full history** (score + events) — primary axe audit required by issue #135
+- **No reputation** (no score)
+- **Partial reputation** (score, empty history)
+- **Null score**
+
+All states pass axe-core with zero violations.

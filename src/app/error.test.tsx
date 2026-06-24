@@ -1,9 +1,16 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import GlobalError from './error';
+import { setErrorReporter } from '../lib/errorReporter';
 
 // Suppress React error boundary noise in test output
-beforeEach(() => jest.spyOn(console, 'error').mockImplementation(() => {}));
-afterEach(() => jest.restoreAllMocks());
+beforeEach(() => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  setErrorReporter(null);
+});
+afterEach(() => {
+  jest.restoreAllMocks();
+  setErrorReporter(null);
+});
 
 const testError = Object.assign(new Error('Something broke'), { digest: undefined });
 const mockReset = jest.fn();
@@ -38,5 +45,15 @@ describe('Error page', () => {
     render(<GlobalError error={testError} reset={mockReset} />);
     expect(screen.queryByText(/something broke/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/digest/i)).not.toBeInTheDocument();
+  });
+
+  it('invokes the pluggable error reporter when rendered', () => {
+    const mockReporter = jest.fn();
+    setErrorReporter(mockReporter);
+    
+    render(<GlobalError error={testError} reset={mockReset} />);
+    
+    expect(mockReporter).toHaveBeenCalledTimes(1);
+    expect(mockReporter).toHaveBeenCalledWith(testError, 'Error Boundary');
   });
 });

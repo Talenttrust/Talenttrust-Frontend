@@ -1,7 +1,9 @@
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import ContractSummary from '@/components/ContractSummary';
 import MilestonesList, { Milestone } from '@/components/MilestonesList';
 import ActionPanel from '@/components/ActionPanel';
+import { isValidContractId } from '@/lib/validateContractId';
 
 const sampleMilestones: Milestone[] = [
   {
@@ -36,6 +38,11 @@ interface ContractDetailPageProps {
 
 const ContractDetailPage = async ({ params }: ContractDetailPageProps) => {
   const { id } = await params;
+
+  if (!isValidContractId(id)) {
+    notFound();
+  }
+
   const status = 'Active' as const;
 
   const handleSubmitMilestone = () => {

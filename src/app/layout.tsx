@@ -5,6 +5,17 @@ import { ToastProvider } from '@/components/toast/toast-provider';
 export const metadata: Metadata = {
   title: 'TalentTrust - Safe Freelance Payments',
   description: 'Safe, secure payments that protect both freelancers and clients throughout your project.',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+  },
 };
 
 import { PreferencesProvider } from '@/lib/preferences';
@@ -13,12 +24,18 @@ import { WalletProvider } from '@/contexts/WalletContext';
 import { WalletConnectButton } from '@/components/WalletConnectButton';
 import RouteAnnouncer from '@/components/RouteAnnouncer';
 import Navbar from '@/components/Navbar';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Keep tests from rendering <html> / <body> into the testing DOM
+  if (process.env.NODE_ENV === 'test') {
+    return <>{children}</>;
+  }
+
   return (
     <html lang="en">
       <body>
@@ -42,7 +59,10 @@ export default function RootLayout({
                     </span>
                   </div>
                   <Navbar />
-                  <WalletConnectButton />
+                  <div className="flex items-center gap-2">
+                    <ThemeToggle />
+                    <WalletConnectButton />
+                  </div>
                 </header>
                 <main className="flex-1 p-6" tabIndex={-1} id="main-content">
                   {children}

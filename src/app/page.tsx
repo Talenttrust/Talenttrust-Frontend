@@ -28,11 +28,15 @@ export default function Home() {
   const getError = (fieldId: string) => errors.find((e) => e.fieldId === fieldId)?.message;
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#eff6ff_100%)] px-6 py-20">
+    // NOTE: No <main> landmark here - the root layout (src/app/layout.tsx) already provides
+    // the single <main id="main-content"> landmark. Per WCAG, a page should have exactly one
+    // main landmark to avoid confusing screen reader users with duplicate navigation targets.
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#eff6ff_100%)] px-6 py-20">
       <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl flex-col items-center justify-center rounded-[2rem] border border-white/70 bg-white/80 p-10 text-center shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
-        <h1 className="mb-4 text-3xl font-bold text-center text-slate-900 sm:text-5xl">
+        <h2 className="mb-4 text-3xl font-bold text-center text-slate-900 sm:text-5xl">
           TalentTrust
-        </h1>
+        </h2>
+
         <p className="max-w-xl text-center text-base text-slate-600 sm:text-lg">
           Decentralized Freelancer Escrow Protocol on Stellar
         </p>
@@ -85,7 +89,7 @@ export default function Home() {
 
         <ToastDemo />
       </div>
-    </main>
+    </div>
   );
 }
 

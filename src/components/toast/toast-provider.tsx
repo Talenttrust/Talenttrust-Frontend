@@ -170,6 +170,40 @@ type ToastTimerState = {
   timeoutId: number | null;
 };
 
+/**
+ * Provides toast notification context to the component tree.
+ *
+ * Must be mounted inside `<PreferencesProvider>` because it reads
+ * `quietMode` and `toastDensity` from user preferences.
+ *
+ * Renders two companion elements:
+ * - **ToastViewport** – fixed top-right column stacking visible toasts.
+ * - **ToastAnnouncer** – two screen-reader-only live regions (`polite` for
+ *   success, `assertive` for error) that announce the latest toast of each
+ *   variant.
+ *
+ * @param children - React children that will have access to `useToast`.
+ *
+ * @example
+ * ```tsx
+ * <PreferencesProvider>
+ *   <ToastProvider>
+ *     <App />
+ *   </ToastProvider>
+ * </PreferencesProvider>
+ * ```
+ *
+ * ## Quiet mode
+ *
+ * When `preferences.quietMode` is `true`, `showSuccess()` returns the string
+ * `'suppressed'` and does **not** create a toast. `showError()` is unaffected.
+ *
+ * ## Density
+ *
+ * `preferences.toastDensity` controls the vertical gap between stacked toasts:
+ * - `'relaxed'` (default) → `gap-3` (12px)
+ * - `'compact'` → `gap-1.5` (6px)
+ */
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastRecord[]>([]);
   const toastTimersRef = useRef<Record<string, ToastTimerState>>({});
@@ -366,6 +400,43 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Returns the toast context, granting access to `toasts`, `showSuccess`,
+ * `showError`, and `dismissToast`.
+ *
+ * Must be called from a component rendered inside `<ToastProvider>`.
+ *
+ * @returns `{ toasts, showSuccess, showError, dismissToast }`
+ *
+ * @throws `Error` if called outside a `<ToastProvider>`.
+ *
+ * @example
+ * ```tsx
+ * function SubmitButton() {
+ *   const { showSuccess, showError } = useToast();
+ *
+ *   return (
+ *     <button onClick={() => showSuccess({ title: 'Saved' })}>
+ *       Submit
+ *     </button>
+ *   );
+ * }
+ * ```
+ *
+ * ## Return values
+ *
+ * | Method | Normal | Quiet mode (`quietMode: true`) |
+ * |---|---|---|
+ * | `showSuccess(toast)` | Unique toast ID | `'suppressed'` (no toast shown) |
+ * | `showError(toast)` | Unique toast ID | Unique toast ID (always shown) |
+ *
+ * ## Accessibility
+ *
+ * - Error toasts render with `role="alert"` (immediate announcement).
+ * - Success toasts render with `role="status"` (announced when idle).
+ * - A `<div aria-live="polite">` announces the latest success toast.
+ * - A `<div aria-live="assertive">` announces the latest error toast.
+ */
 export function useToast() {
   const context = useContext(ToastContext);
 

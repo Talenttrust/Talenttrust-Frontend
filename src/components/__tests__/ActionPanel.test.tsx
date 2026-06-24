@@ -22,11 +22,16 @@ describe('ActionPanel', () => {
     expect(screen.getByRole('button', { name: /Dispute/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Submit milestone/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Release funds/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Dispute/i }));
-
     expect(onSubmitMilestone).toHaveBeenCalledTimes(1);
+
+    // Release Funds opens a confirmation dialog — confirm it
+    fireEvent.click(screen.getByRole('button', { name: /Release funds/i }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Release Funds/i }));
     expect(onReleaseFunds).toHaveBeenCalledTimes(1);
+
+    // Dispute opens a confirmation dialog — confirm it
+    fireEvent.click(screen.getByRole('button', { name: /Dispute/i }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Dispute/i }));
     expect(onDispute).toHaveBeenCalledTimes(1);
   });
 
@@ -81,7 +86,10 @@ describe('ActionPanel', () => {
     );
 
     fireEvent.click(releaseFunds);
+
+    // Dispute button opens a confirmation dialog — confirm it
     fireEvent.click(dispute);
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Dispute/i }));
 
     expect(onDispute).toHaveBeenCalledTimes(1);
   });

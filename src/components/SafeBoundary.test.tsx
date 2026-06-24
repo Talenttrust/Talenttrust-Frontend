@@ -1,9 +1,16 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import SafeBoundary from './SafeBoundary';
+import { setErrorReporter } from '../lib/errorReporter';
 
 // Suppress React error boundary console noise
-beforeEach(() => jest.spyOn(console, 'error').mockImplementation(() => {}));
-afterEach(() => jest.restoreAllMocks());
+beforeEach(() => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  setErrorReporter(null);
+});
+afterEach(() => {
+  jest.restoreAllMocks();
+  setErrorReporter(null);
+});
 
 const Bomb = ({ shouldThrow }: { shouldThrow: boolean }) => {
   if (shouldThrow) throw new Error('Test explosion');
@@ -78,6 +85,20 @@ describe('SafeBoundary', () => {
       </SafeBoundary>
     );
     // componentDidCatch fires with the error — check it was called
-    expect(spy).toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledWith('[SafeBoundary]', expect.any(Error));
+  });
+
+  it('invokes the pluggable error reporter when a child throws', () => {
+    const mockReporter = jest.fn();
+    setErrorReporter(mockReporter);
+
+    render(
+      <SafeBoundary>
+        <Bomb shouldThrow={true} />
+      </SafeBoundary>
+    );
+
+    expect(mockReporter).toHaveBeenCalledTimes(1);
+    expect(mockReporter).toHaveBeenCalledWith(expect.any(Error), 'SafeBoundary');
   });
 });

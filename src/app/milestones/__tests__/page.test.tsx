@@ -23,7 +23,7 @@ describe('MilestonesPage', () => {
     // With sample data the page shows the list heading, not the empty-state.
     // Verify it renders without throwing.
     expect(screen.getByRole('main')).toBeInTheDocument();
-    expect(screen.getByText('Milestones')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Milestones' })).toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------

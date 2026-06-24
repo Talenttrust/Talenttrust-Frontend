@@ -3,6 +3,7 @@ import { axe } from 'jest-axe';
 import Home from './page';
 import { ToastProvider } from '@/components/toast/toast-provider';
 import { PreferencesProvider } from '@/lib/preferences';
+import { testA11y } from '@/test-utils/a11y';
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(
@@ -15,9 +16,11 @@ const renderWithProviders = (ui: React.ReactElement) => {
 };
 
 describe('Home', () => {
-  it('renders TalentTrust heading', () => {
+  it('renders TalentTrust heading as h2 (not h1, since layout provides header)', () => {
     renderWithProviders(<Home />);
-    expect(screen.getByRole('heading', { name: /TalentTrust/i })).toBeInTheDocument();
+    const heading = screen.getByRole('heading', { name: /TalentTrust/i });
+    expect(heading).toBeInTheDocument();
+    expect(heading.tagName).toBe('H2');
   });
 
   it('renders description paragraph', () => {
@@ -25,10 +28,21 @@ describe('Home', () => {
     expect(screen.getByText(/Decentralized Freelancer Escrow Protocol/i)).toBeInTheDocument();
   });
 
-  it('has proper semantic structure', () => {
+  it('has no nested main landmark in page component (layout provides the single main)', () => {
     const { container } = renderWithProviders(<Home />);
-    expect(container.querySelector('main')).toBeInTheDocument();
-    expect(container.querySelector('h1')).toBeInTheDocument();
+    // The Home component itself should not render a <main> element
+    // The layout provides the single <main id="main-content"> landmark
+    const pageContent = container.querySelector('div'); // The root div of Home component
+    expect(pageContent?.querySelector('main')).not.toBeInTheDocument();
+  });
+
+  it('has no h1 in the page component (layout header provides the page title)', () => {
+    const { container } = renderWithProviders(<Home />);
+    // The page component should not render an h1
+    const pageContent = container.querySelector('div'); // The root div of Home component
+    expect(pageContent?.querySelector('h1')).not.toBeInTheDocument();
+    // It should have an h2 instead
+    expect(pageContent?.querySelector('h2')).toBeInTheDocument();
   });
 
   it('displays validation errors on empty submission', () => {
@@ -73,8 +87,31 @@ describe('Home', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Form submitted successfully!');
   });
 
-  it('has no accessibility violations on render', async () => {
+  it('has no accessibility violations on render (empty state)', async () => {
     const { container } = renderWithProviders(<Home />);
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it('has no accessibility violations when errors are displayed', async () => {
+    const { container } = renderWithProviders(<Home />);
+    
+    // Submit form empty to trigger errors
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
+    
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it('has no accessibility violations with valid form data', async () => {
+    const { container } = renderWithProviders(<Home />);
+
+    const emailInput = screen.getByLabelText(/Email/i);
+    const passwordInput = screen.getByLabelText(/Password/i);
+
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
@@ -90,6 +127,30 @@ describe('Home', () => {
     
     // The ErrorSummary element should have received focus via ref
     expect(errorSummary).toHaveFocus();
+  });
+
+  it('error summary anchors correctly target form field ids', () => {
+    renderWithProviders(<Home />);
+    
+    // Submit form empty to trigger errors
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
+
+    const errorSummary = screen.getByRole('alert', { name: /There is a problem/i });
+    const errorLinks = errorSummary.querySelectorAll('a');
+    
+    // Should have links for email and password errors
+    expect(errorLinks.length).toBeGreaterThan(0);
+    
+    // Check that links point to correct field ids
+    errorLinks.forEach(link => {
+      const href = link.getAttribute('href');
+      expect(href).toMatch(/^#(email|password)$/);
+      
+      // Verify the target element exists
+      const fieldId = href?.substring(1); // Remove the #
+      const targetElement = document.getElementById(fieldId || '');
+      expect(targetElement).toBeInTheDocument();
+    });
   });
 
   it('has inputs that are properly labelled and described by error elements when errors occur', () => {
@@ -120,6 +181,26 @@ describe('Home', () => {
       (el) => el.id === 'password-error'
     );
     expect(passwordError).toBeInTheDocument();
+  });
+
+  it('uses testA11y helper for empty state', async () => {
+    await testA11y(
+      <PreferencesProvider>
+        <ToastProvider>
+          <Home />
+        </ToastProvider>
+      </PreferencesProvider>
+    );
+  });
+
+  it('uses testA11y helper for error state', async () => {
+    const view = renderWithProviders(<Home />);
+    
+    // Submit form empty to trigger errors
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
+    
+    const results = await axe(view.container);
+    expect(results).toHaveNoViolations();
   });
 });
 
