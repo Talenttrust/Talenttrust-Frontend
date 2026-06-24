@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { reportError } from '../lib/errorReporter';
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -10,9 +11,7 @@ interface ErrorProps {
 
 export default function GlobalError({ error, reset }: ErrorProps) {
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('[Error Boundary]', error);
-    }
+    reportError(error, 'Error Boundary');
   }, [error]);
 
   return (
