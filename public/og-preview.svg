@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">TalentTrust social preview</title>
+  <desc id="desc">A branded social preview for TalentTrust showing safe freelance payments.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="55%" stop-color="#1d4ed8" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#93c5fd" stop-opacity="0.45" />
+      <stop offset="100%" stop-color="#93c5fd" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect width="1200" height="630" fill="url(#glow)" />
+  <circle cx="1020" cy="120" r="160" fill="#ffffff" fill-opacity="0.08" />
+  <circle cx="180" cy="540" r="220" fill="#ffffff" fill-opacity="0.06" />
+  <rect x="84" y="80" width="145" height="145" rx="28" fill="#ffffff" fill-opacity="0.14" />
+  <text x="156" y="176" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" text-anchor="middle">TT</text>
+  <text x="84" y="330" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700">TalentTrust</text>
+  <text x="84" y="396" fill="#dbeafe" font-family="Arial, Helvetica, sans-serif" font-size="36" font-weight="400">Safe, secure payments for freelancers and clients</text>
+  <text x="84" y="460" fill="#e0f2fe" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="400">Clear milestones. Protected releases. Better trust.</text>
+  <g transform="translate(790 150)">
+    <rect x="0" y="0" width="326" height="256" rx="32" fill="#ffffff" fill-opacity="0.14" stroke="#bfdbfe" stroke-opacity="0.35" />
+    <rect x="36" y="40" width="254" height="24" rx="12" fill="#dbeafe" fill-opacity="0.85" />
+    <rect x="36" y="84" width="192" height="24" rx="12" fill="#dbeafe" fill-opacity="0.6" />
+    <rect x="36" y="136" width="128" height="56" rx="18" fill="#ffffff" fill-opacity="0.9" />
+    <rect x="178" y="136" width="112" height="56" rx="18" fill="#93c5fd" fill-opacity="0.95" />
+    <rect x="36" y="212" width="254" height="16" rx="8" fill="#e0f2fe" fill-opacity="0.6" />
+  </g>
+</svg>

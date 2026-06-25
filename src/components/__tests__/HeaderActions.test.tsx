@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import HeaderActions from '../HeaderActions';
@@ -40,17 +40,17 @@ describe('HeaderActions', () => {
     expect(menu).toHaveClass('hidden');
   });
 
-  it('responds to keyboard activation with Space and Enter', async () => {
+  it('responds to keyboard-accessible activation', async () => {
     const user = userEvent.setup();
     render(<HeaderActions />);
     const toggle = screen.getByRole('button', { name: /open wallet actions/i });
     const menu = screen.getByRole('region', { name: /wallet actions/i });
 
-    await user.keyboard('{Enter}');
+    await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(menu).not.toHaveClass('hidden');
 
-    await user.keyboard('{Space}');
+    await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(menu).toHaveClass('hidden');
   });

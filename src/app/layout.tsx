@@ -2,9 +2,16 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ToastProvider } from '@/components/toast/toast-provider';
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const metadataBase = new URL(siteUrl);
+// Social preview image used by Open Graph and Twitter cards lives in public/.
+const socialPreviewImage = '/og-preview.svg';
+
 export const metadata: Metadata = {
   title: 'TalentTrust - Safe Freelance Payments',
   description: 'Safe, secure payments that protect both freelancers and clients throughout your project.',
+  metadataBase,
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
@@ -15,6 +22,27 @@ export const metadata: Metadata = {
     apple: [
       { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
     ],
+  },
+  openGraph: {
+    title: 'TalentTrust - Safe Freelance Payments',
+    description: 'Safe, secure payments that protect both freelancers and clients throughout your project.',
+    type: 'website',
+    siteName: 'TalentTrust',
+    url: siteUrl,
+    images: [
+      {
+        url: socialPreviewImage,
+        width: 1200,
+        height: 630,
+        alt: 'TalentTrust social preview showing safe freelance payments',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'TalentTrust - Safe Freelance Payments',
+    description: 'Safe, secure payments that protect both freelancers and clients throughout your project.',
+    images: [socialPreviewImage],
   },
 };
 

@@ -40,6 +40,9 @@ const cspHeader = [
 
 const nextConfig = {
   reactStrictMode: true,
+  turbopack: {
+    root: __dirname,
+  },
 
   async headers() {
     return [
