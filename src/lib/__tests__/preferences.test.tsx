@@ -7,10 +7,16 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
   <PreferencesProvider>{children}</PreferencesProvider>
 );
 
+beforeEach(() => {
+  localStorage.clear();
+  resetCache();
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 describe('PreferencesProvider', () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
 
   it('provides default preferences', () => {
     const { result } = renderHook(() => usePreferences(), { wrapper });

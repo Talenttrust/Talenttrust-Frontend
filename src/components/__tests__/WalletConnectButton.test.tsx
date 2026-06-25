@@ -465,50 +465,66 @@ describe('WalletConnectButton', () => {
   it('swaps the copy icon to a checkmark and reverts after 2 seconds using fake timers', async () => {
     jest.useFakeTimers();
 
-    Object.assign(navigator, {
-      clipboard: {
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
         writeText: jest.fn().mockImplementation(() => Promise.resolve()),
       },
+      configurable: true,
+      writable: true,
     });
 
-    mockUseWallet.mockReturnValue({ ...defaultMockState, address: '0x123' });
-    render(<WalletConnectButton />);
+    try {
+      mockUseWallet.mockReturnValue({ ...defaultMockState, address: '0x123' });
+      render(<WalletConnectButton />);
 
-    const copyBtn = screen.getByRole('button', { name: /copy address to clipboard/i });
-    const copyIconPathBefore = copyBtn.querySelector('path')?.getAttribute('d');
+      const copyBtn = screen.getByRole('button', { name: /copy address to clipboard/i });
+      const copyIconPathBefore = copyBtn.querySelector('path')?.getAttribute('d');
 
-    await act(async () => {
-      fireEvent.click(copyBtn);
-    });
+      await act(async () => {
+        fireEvent.click(copyBtn);
+      });
 
-    const copyIconPathAfterClick = copyBtn.querySelector('path')?.getAttribute('d');
-    expect(copyIconPathAfterClick).not.toEqual(copyIconPathBefore);
+      const copyIconPathAfterClick = copyBtn.querySelector('path')?.getAttribute('d');
+      expect(copyIconPathAfterClick).not.toEqual(copyIconPathBefore);
 
-    await act(async () => {
-      jest.advanceTimersByTime(1999);
-    });
-    expect(copyBtn.querySelector('path')?.getAttribute('d')).toEqual(copyIconPathAfterClick);
+      await act(async () => {
+        jest.advanceTimersByTime(1999);
+      });
+      expect(copyBtn.querySelector('path')?.getAttribute('d')).toEqual(copyIconPathAfterClick);
 
-    await act(async () => {
-      jest.advanceTimersByTime(1);
-    });
-    expect(copyBtn.querySelector('path')?.getAttribute('d')).toEqual(copyIconPathBefore);
-
-    jest.useRealTimers();
+      await act(async () => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(copyBtn.querySelector('path')?.getAttribute('d')).toEqual(copyIconPathBefore);
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: originalClipboard,
+        configurable: true,
+        writable: true,
+      });
+      jest.useFakeTimers();
+    }
   });
 
   it('has no accessibility violations in the connected state', async () => {
+    jest.useRealTimers();
     mockUseWallet.mockReturnValue({ ...defaultMockState, address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F' });
     await testA11y(<WalletConnectButton />);
+    jest.useFakeTimers();
   });
 
   it('has no accessibility violations in the disconnected state', async () => {
+    jest.useRealTimers();
     mockUseWallet.mockReturnValue(defaultMockState);
     await testA11y(<WalletConnectButton />);
+    jest.useFakeTimers();
   });
 
   it('has no accessibility violations in the error state', async () => {
+    jest.useRealTimers();
     mockUseWallet.mockReturnValue({ ...defaultMockState, error: 'Failed to connect' });
     await testA11y(<WalletConnectButton />);
+    jest.useFakeTimers();
   });
 });
