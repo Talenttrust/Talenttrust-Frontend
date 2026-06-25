@@ -36,6 +36,7 @@ All a11y regression tests are colocated in `src/components/__tests__/a11y.test.t
 | `ReputationProfile` | No reputation, full score + history, partial (score without history), null score |
 | `EmptyState` | Text-only, with illustration variant, with primary action, with both actions |
 | `FormField` | Default state, errored state, with helper text, required marker |
+| `GlobalError` | Critical root error, interactive reset action, Go Home and Support links |
 
 ## Running
 
@@ -191,6 +192,14 @@ The home sign-in form (`src/app/page.tsx`) previously had two accessibility issu
 - **jest-axe** runs in a JSDOM environment, which does not fully simulate visual rendering. Color-contrast violations are still detected because axe checks computed styles from JSDOM's CSS support.
 - Dynamic changes (e.g. after a button click or data fetch) require a separate `testA11y` call after the state change — axe does not auto-observe mutations.
 - For full end-to-end a11y coverage, supplement these unit tests with manual screen-reader and keyboard-navigation checks.
+
+## Global Error Fallback Landmark & Title Rule (issue #20)
+
+Per WCAG guidelines, every page (including error fallback layouts) must have a descriptive `<title>` element and all visible content must reside inside an appropriate landmark (such as `<main>`). 
+
+- **Title elements**: The global error fallback `src/app/global-error.tsx` renders its own `<html>`, `<head>`, and `<body>` layout, and therefore must include a `<title>` tag inside the `<head>` (e.g., `<title>Critical Error - TalentTrust</title>`) to satisfy `document-title` audits.
+- **Landmark wrapping**: The page content inside the `<body>` must be wrapped in a `<main>` landmark element rather than a standard `<div>` wrapper to ensure compatibility with screen readers and satisfy the `region` landmark rule.
+- **Test coverage**: Colocated unit tests in `src/app/global-error.test.tsx` use the `testA11y` helper to verify `jest-axe` compliance for the rendered root fallback layout.
 
 
 # Accessibility: Dark-theme color contrast audit

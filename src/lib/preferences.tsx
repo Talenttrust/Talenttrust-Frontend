@@ -1,6 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { getItem, setItem } from './safeStorage';
+
 
 export type Theme = 'light' | 'dark' | 'system';
 export type AmountFormat = 'usd' | 'ngn' | 'compact';
@@ -36,7 +38,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
   // Load from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = getItem(STORAGE_KEY);
     if (saved) {
       try {
         setPreferences({ ...DEFAULT_PREFERENCES, ...JSON.parse(saved) });
@@ -50,7 +52,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   // Save to localStorage when preferences change
   useEffect(() => {
     if (isHydrated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+      setItem(STORAGE_KEY, JSON.stringify(preferences));
     }
   }, [preferences, isHydrated]);
 

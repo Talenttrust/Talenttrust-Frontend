@@ -3,6 +3,8 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { ThemeToggle } from '../ThemeToggle';
 import { PreferencesProvider, usePreferences } from '@/lib/preferences';
+import { resetCache } from '@/lib/safeStorage';
+
 
 // Helper: render inside the provider
 const renderToggle = () =>
@@ -33,6 +35,7 @@ const renderWithState = () =>
 describe('ThemeToggle', () => {
   beforeEach(() => {
     localStorage.clear();
+    resetCache();
   });
 
   it('renders null on the server (before mount)', () => {

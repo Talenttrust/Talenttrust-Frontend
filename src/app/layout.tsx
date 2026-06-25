@@ -21,10 +21,9 @@ export const metadata: Metadata = {
 import { PreferencesProvider } from '@/lib/preferences';
 import { SettingsTrigger } from '@/components/settings/SettingsTrigger';
 import { WalletProvider } from '@/contexts/WalletContext';
-import { WalletConnectButton } from '@/components/WalletConnectButton';
 import RouteAnnouncer from '@/components/RouteAnnouncer';
 import Navbar from '@/components/Navbar';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import HeaderActions from '@/components/HeaderActions';
 
 export default function RootLayout({
   children,
@@ -54,10 +53,7 @@ export default function RootLayout({
                     </span>
                   </div>
                   <Navbar />
-                  <div className="flex items-center gap-2">
-                    <ThemeToggle />
-                    <WalletConnectButton />
-                  </div>
+                  <HeaderActions />
                 </header>
                 <main className="flex-1 p-6" tabIndex={-1} id="main-content">
                   {children}

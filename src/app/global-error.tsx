@@ -16,8 +16,11 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
 
   return (
     <html lang="en">
+      <head>
+        <title>Critical Error - TalentTrust</title>
+      </head>
       <body className="min-h-screen flex flex-col items-center justify-center p-8 bg-gray-50 font-sans">
-        <div className="max-w-md w-full text-center space-y-6">
+        <main className="max-w-md w-full text-center space-y-6">
           <div className="text-6xl">🚨</div>
           <h1 className="text-2xl font-bold text-gray-900">Critical Error</h1>
           <p className="text-gray-600">
@@ -43,7 +46,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               Contact Support
             </a>
           </div>
-        </div>
+        </main>
       </body>
     </html>
   );

@@ -464,30 +464,47 @@ describe('WalletConnectButton', () => {
 
   it('swaps the copy icon to a checkmark and reverts after 2 seconds using fake timers', async () => {
     jest.useFakeTimers();
-    mockClipboard();
 
-    mockUseWallet.mockReturnValue({ ...defaultMockState, address: '0x123' });
-    render(<WalletConnectButton />);
-
-    const copyBtn = screen.getByRole('button', { name: /copy address to clipboard/i });
-    const copyIconPathBefore = copyBtn.querySelector('path')?.getAttribute('d');
-
-    await act(async () => {
-      fireEvent.click(copyBtn);
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: jest.fn().mockImplementation(() => Promise.resolve()),
+      },
+      configurable: true,
+      writable: true,
     });
 
-    const copyIconPathAfterClick = copyBtn.querySelector('path')?.getAttribute('d');
-    expect(copyIconPathAfterClick).not.toEqual(copyIconPathBefore);
+    try {
+      mockUseWallet.mockReturnValue({ ...defaultMockState, address: '0x123' });
+      render(<WalletConnectButton />);
 
-    await act(async () => {
-      jest.advanceTimersByTime(1999);
-    });
-    expect(copyBtn.querySelector('path')?.getAttribute('d')).toEqual(copyIconPathAfterClick);
+      const copyBtn = screen.getByRole('button', { name: /copy address to clipboard/i });
+      const copyIconPathBefore = copyBtn.querySelector('path')?.getAttribute('d');
 
-    await act(async () => {
-      jest.advanceTimersByTime(1);
-    });
-    expect(copyBtn.querySelector('path')?.getAttribute('d')).toEqual(copyIconPathBefore);
+      await act(async () => {
+        fireEvent.click(copyBtn);
+      });
+
+      const copyIconPathAfterClick = copyBtn.querySelector('path')?.getAttribute('d');
+      expect(copyIconPathAfterClick).not.toEqual(copyIconPathBefore);
+
+      await act(async () => {
+        jest.advanceTimersByTime(1999);
+      });
+      expect(copyBtn.querySelector('path')?.getAttribute('d')).toEqual(copyIconPathAfterClick);
+
+      await act(async () => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(copyBtn.querySelector('path')?.getAttribute('d')).toEqual(copyIconPathBefore);
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: originalClipboard,
+        configurable: true,
+        writable: true,
+      });
+      jest.useFakeTimers();
+    }
   });
 
   it('has no accessibility violations in the connected state', async () => {

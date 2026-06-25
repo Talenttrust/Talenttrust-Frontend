@@ -16,7 +16,7 @@
  *   objects it receives or returns.
  */
 
-import type { Contract } from '@/components/ContractSummary';
+import type { Contract } from '@/types/domain';
 import type { Milestone } from '@/components/MilestonesList';
 
 // ---------------------------------------------------------------------------
