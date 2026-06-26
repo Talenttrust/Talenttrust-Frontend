@@ -8,6 +8,30 @@ export type Theme = 'light' | 'dark' | 'system';
 export type AmountFormat = 'usd' | 'ngn' | 'compact';
 export type ToastDensity = 'relaxed' | 'compact';
 
+/**
+ * Safely format a number as currency, falling back to USD if the provided currency code is invalid.
+ */
+function safeCurrencyFormat(
+  amount: number,
+  currency: string,
+  options: Intl.NumberFormatOptions = {}
+): string {
+  const defaultCurrency = 'USD';
+  try {
+    return new Intl.NumberFormat(options.locale || 'en-US', {
+      ...options,
+      style: 'currency',
+      currency,
+    }).format(amount);
+  } catch (e) {
+    return new Intl.NumberFormat(options.locale || 'en-US', {
+      ...options,
+      style: 'currency',
+      currency: defaultCurrency,
+    }).format(amount);
+  }
+}
+
 export interface UserPreferences {
   theme: Theme;
   amountFormat: AmountFormat;
@@ -99,17 +123,15 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     const locale = amountFormat === 'ngn' ? 'en-NG' : 'en-US';
 
     if (amountFormat === 'compact') {
-      return new Intl.NumberFormat('en-US', {
+      return safeCurrencyFormat(amount, activeCurrency, {
+        locale: 'en-US',
         notation: 'compact',
-        style: 'currency',
-        currency: activeCurrency,
-      }).format(amount);
+      });
     }
 
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: activeCurrency,
-    }).format(amount);
+    return safeCurrencyFormat(amount, activeCurrency, {
+      locale,
+    });
   };
 
   return (
@@ -127,7 +149,7 @@ export function usePreferences() {
       preferences: DEFAULT_PREFERENCES,
       updatePreference: () => {},
       formatAmount: (amount: number, currency: string = 'USD') => 
-        new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount),
+        safeCurrencyFormat(amount, currency, { locale: 'en-US' }),
     };
   }
   return context;

@@ -232,3 +232,36 @@ describe('usePreferences outside provider', () => {
   });
 });
 
+describe('formatAmount invalid currency codes', () => {
+  it('does not throw with invalid currency codes in default (usd) format', () => {
+    const { result } = renderHook(() => usePreferences(), { wrapper });
+    expect(() => result.current.formatAmount(100, 'INVALIDCURRENCY')).not.toThrow();
+    expect(() => result.current.formatAmount(100, '123')).not.toThrow();
+    expect(() => result.current.formatAmount(100, '')).not.toThrow();
+  });
+
+  it('falls back to USD with invalid currency codes in default format', () => {
+    const { result } = renderHook(() => usePreferences(), { wrapper });
+    const formatted = result.current.formatAmount(100, 'INVALID');
+    expect(formatted).toContain('$');
+    expect(formatted).toContain('100');
+  });
+
+  it('does not throw with invalid currency codes in ngn format', () => {
+    const { result } = renderHook(() => usePreferences(), { wrapper });
+    act(() => { result.current.updatePreference('amountFormat', 'ngn'); });
+    expect(() => result.current.formatAmount(100, 'INVALID')).not.toThrow();
+  });
+
+  it('does not throw with invalid currency codes in compact format', () => {
+    const { result } = renderHook(() => usePreferences(), { wrapper });
+    act(() => { result.current.updatePreference('amountFormat', 'compact'); });
+    expect(() => result.current.formatAmount(1000, 'INVALID')).not.toThrow();
+  });
+
+  it('does not throw with invalid currency codes outside provider', () => {
+    const { result } = renderHook(() => usePreferences());
+    expect(() => result.current.formatAmount(100, 'INVALID')).not.toThrow();
+  });
+});
+
