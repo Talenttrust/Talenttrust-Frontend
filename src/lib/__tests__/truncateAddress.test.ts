@@ -14,6 +14,23 @@ describe('truncateAddress', () => {
     expect(truncateAddress('')).toBe('');
   });
 
+  it('keeps values at or below the default truncation boundary unchanged', () => {
+    const boundaryValue = '1234567890123';
+    const belowBoundaryValue = '123456789012';
+
+    expect(truncateAddress(boundaryValue)).toBe(boundaryValue);
+    expect(truncateAddress(belowBoundaryValue)).toBe(belowBoundaryValue);
+  });
+
+  it('truncates values above the default truncation boundary', () => {
+    expect(truncateAddress('12345678901234')).toBe('123456...1234');
+  });
+
+  it('respects custom prefix and suffix lengths around their boundary', () => {
+    expect(truncateAddress('abcdefghijkl', 3, 2)).toBe('abc...kl');
+    expect(truncateAddress('abcdefgh', 3, 2)).toBe('abcdefgh');
+  });
+
   it('keeps the existing truncation behavior for non-Stellar values', () => {
     expect(truncateAddress('not-a-valid-stellar-address')).toBe('not-a-...ress');
   });
