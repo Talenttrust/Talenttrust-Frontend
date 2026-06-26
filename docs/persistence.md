@@ -102,6 +102,14 @@ All functions are **synchronous** and have **no React dependencies**, making the
 
 ---
 
+## UI Data Sources
+
+The Milestones page at `src/app/milestones/page.tsx` now renders from `listMilestones()` in `src/lib/repository.ts` after the client mounts. This keeps the page aligned with persisted user-created milestones while avoiding hydration mismatches during prerendering.
+
+When the repository returns no milestones, the page falls back to its existing `SAMPLE_MILESTONES` seed data so the default demo experience remains intact.
+
+---
+
 ## Clearing Stored Data
 
 To wipe all persisted data (e.g. for testing or a "reset" feature):

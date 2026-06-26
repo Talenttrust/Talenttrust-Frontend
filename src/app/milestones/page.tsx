@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import MilestonesList from '../../components/MilestonesList';
 import MilestoneFilter, { type MilestoneStatusFilter } from '../../components/milestones/MilestoneFilter';
+import { listMilestones } from '@/lib/repository';
 import type { Milestone } from '@/types/domain';
 
 const SAMPLE_MILESTONES: Milestone[] = [
@@ -49,13 +50,33 @@ const SAMPLE_MILESTONES: Milestone[] = [
   },
 ];
 
+/**
+ * Loads milestones from the persisted repository after the client mounts.
+ *
+ * Reading `localStorage` only on the client avoids hydration mismatches during
+ * Next.js prerendering. When no milestones have been saved yet, the page keeps
+ * the existing sample-data experience as a fallback.
+ *
+ * @returns Persisted milestones when available, otherwise `SAMPLE_MILESTONES`.
+ */
+function loadMilestonesFromRepository(): Milestone[] {
+  const persistedMilestones = listMilestones();
+
+  return persistedMilestones.length > 0 ? persistedMilestones : SAMPLE_MILESTONES;
+}
+
 const MilestonesPage: React.FC = () => {
+  const [milestones, setMilestones] = useState<Milestone[]>(SAMPLE_MILESTONES);
   const [statusFilter, setStatusFilter] = useState<MilestoneStatusFilter>('All');
 
+  useEffect(() => {
+    setMilestones(loadMilestonesFromRepository());
+  }, []);
+
   const filtered = useMemo(() => {
-    if (statusFilter === 'All') return SAMPLE_MILESTONES;
-    return SAMPLE_MILESTONES.filter((m) => m.status === statusFilter);
-  }, [statusFilter]);
+    if (statusFilter === 'All') return milestones;
+    return milestones.filter((milestone) => milestone.status === statusFilter);
+  }, [milestones, statusFilter]);
 
   const handleAddMilestone = () => {
     console.log('Add milestone');
@@ -65,7 +86,7 @@ const MilestonesPage: React.FC = () => {
     <main className="min-h-screen p-8">
       <h1 className="text-2xl font-bold mb-6">Milestones</h1>
 
-      {SAMPLE_MILESTONES.length === 0 ? (
+      {milestones.length === 0 ? (
         <EmptyState
           illustration="milestones"
           title="No milestones tracked"
