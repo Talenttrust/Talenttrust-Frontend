@@ -5,6 +5,13 @@ import { render, act, screen } from '@testing-library/react';
 import { ToastProvider } from '@/components/toast/toast-provider';
 // Ensure we get the real implementation of WalletContext, bypassing any prior mocks
 const { WalletProvider, useWallet } = jest.requireActual('@/contexts/WalletContext');
+import { resetCache } from '@/lib/safeStorage';
+
+jest.mock('@stellar/freighter-api', () => ({
+  requestAccess: jest.fn(),
+}));
+const { requestAccess } = require('@stellar/freighter-api');
+const mockRequestAccess = requestAccess as jest.MockedFunction<typeof requestAccess>;
 
 jest.mock('@/lib/safeStorage', () => ({
   safeStorage: {
@@ -12,6 +19,7 @@ jest.mock('@/lib/safeStorage', () => ({
     setItem: jest.fn(),
     removeItem: jest.fn(),
   },
+  resetCache: jest.fn(),
 }));
 
 const MockComponent = () => {
