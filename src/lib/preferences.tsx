@@ -23,7 +23,7 @@ function safeCurrencyFormat(
       style: 'currency',
       currency,
     }).format(amount);
-  } catch (e) {
+  } catch (_e) {
     return new Intl.NumberFormat(options.locale || 'en-US', {
       ...options,
       style: 'currency',
