@@ -43,7 +43,7 @@ The project is built on Next.js App Router. The UI layer shares components, whil
 |-------|-------------|--------|
 | `/` | Landing page / Home | Placeholder (contains a login form demo and toast demo) |
 | `/contracts` | Contracts list | Placeholder handler (uses local storage stub) |
-| `/contracts/[id]` | Contract details | Placeholder (sample milestones and stubbed action handlers) |
+| `/contracts/[id]` | Contract details | Implemented — `ContractSummary`, `ContractProgress`, `MilestonesList`, and `ActionPanel` mounted from resolved `ContractData`; loading skeletons and error states fully wired |
 | `/milestones` | Milestones list | Implemented (filterable status list) |
 | `/reputation` | User reputation | Placeholder (empty state) |
 

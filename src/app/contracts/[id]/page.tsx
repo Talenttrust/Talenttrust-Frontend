@@ -5,6 +5,8 @@ import Link from 'next/link';
 import ContractSummary from '@/components/ContractSummary';
 import MilestonesList from '@/components/MilestonesList';
 import ActionPanel from '@/components/ActionPanel';
+import ContractProgress from '@/components/ContractProgress';
+import { ContractProgressSkeleton } from '@/components/ContractProgressSkeleton';
 import { ContractSummarySkeleton } from '@/components/ContractSummarySkeleton';
 import { MilestonesListSkeleton } from '@/components/MilestonesListSkeleton';
 import SafeBoundary from '@/components/SafeBoundary';
@@ -102,6 +104,29 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
                   createdAt={contractData.createdAt}
                   milestoneCount={contractData.milestones.length}
                 />
+              ) : null}
+            </SafeBoundary>
+
+            <SafeBoundary>
+              {isLoading ? (
+                <ContractProgressSkeleton />
+              ) : contractData ? (
+                /**
+                 * getMilestonesForContract – extracts the milestones that belong
+                 * to a resolved contract.
+                 *
+                 * ContractData already carries its own `milestones` array (populated
+                 * by resolveContractData), so no extra repository call is needed.
+                 * The helper is inlined here for readability but could be extracted to
+                 * a shared utility if more pages need the same slice.
+                 *
+                 * Currency is intentionally NOT hardcoded; each Milestone already
+                 * carries its own `currency` field that matches the contract.
+                 *
+                 * @param data - The fully resolved ContractData object.
+                 * @returns The milestone array for that contract, or [] if absent.
+                 */
+                <ContractProgress milestones={contractData.milestones} />
               ) : null}
             </SafeBoundary>
 

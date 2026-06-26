@@ -79,15 +79,36 @@ The two fund cards use a `sm:grid-cols-2` responsive grid. On narrow screens the
 
 ## Integration
 
-`ContractProgress` is rendered in `src/app/contracts/[id]/page.tsx` inside the left column, between `ContractSummary` and `MilestonesList`:
+`ContractProgress` is rendered in `src/app/contracts/[id]/page.tsx` inside the left column, between `ContractSummary` and `MilestonesList`. Milestones are sourced directly from the resolved `ContractData` object returned by `resolveContractData` — no additional repository call is needed.
 
 ```tsx
-<div className="space-y-6">
-  <ContractSummary ... />
-  <ContractProgress milestones={sampleMilestones} />
-  <MilestonesList milestones={sampleMilestones} />
-</div>
+// src/app/contracts/[id]/page.tsx (simplified)
+<SafeBoundary>
+  {isLoading ? (
+    <ContractProgressSkeleton />
+  ) : contractData ? (
+    /**
+     * getMilestonesForContract – extracts the milestones that belong
+     * to a resolved contract.
+     *
+     * ContractData already carries its own `milestones` array (populated
+     * by resolveContractData), so no extra repository call is needed.
+     * Currency is intentionally NOT hardcoded; each Milestone already
+     * carries its own `currency` field that matches the contract.
+     *
+     * @param data - The fully resolved ContractData object.
+     * @returns The milestone array for that contract, or [] if absent.
+     */
+    <ContractProgress milestones={contractData.milestones} />
+  ) : null}
+</SafeBoundary>
 ```
+
+Key design points:
+- **Loading state**: `ContractProgressSkeleton` is shown while `isLoading` is true. It mirrors the visual shape of `ContractProgress` and carries `aria-busy="true"` / `aria-label="Loading escrow progress"` for screen readers.
+- **Currency**: Never hardcoded in the page. Each `Milestone` carries its own `currency` field; `ContractProgress` derives the display currency from `milestones[0].currency`.
+- **Empty milestones**: An empty `milestones: []` renders a zero-state panel (0 / 0, 0%) without errors.
+- **Error state**: If `resolveContractData` rejects, `contractData` stays `null` and the component is not mounted — the `ActionPanel` receives the `errorMessage` prop instead.
 
 The surrounding two-column responsive grid (`lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]`) is unchanged.
 
