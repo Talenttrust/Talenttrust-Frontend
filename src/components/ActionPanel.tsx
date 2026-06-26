@@ -4,24 +4,55 @@ import React, { useState, useRef } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
 import { ConfirmDialog } from './ConfirmDialog';
 
+/**
+ * Defines the per-action screen-reader-only disabled reasons.
+ * When a reason is provided for an action, the corresponding button is disabled,
+ * and the reason text is rendered into a visually hidden `span` that is linked
+ * to the button via `aria-describedby` (e.g., `id="action-panel-submitMilestone-reason"`).
+ */
 export type ActionPanelDisabledReasons = {
+  /** Screen-reader description for why "Submit Milestone" is disabled. */
   submitMilestone?: string;
+  /** Screen-reader description for why "Release Funds" is disabled. */
   releaseFunds?: string;
+  /** Screen-reader description for why "Dispute" is disabled. */
   dispute?: string;
+  /** Screen-reader description for why "View Summary" is disabled. */
   viewSummary?: string;
 };
 
+/**
+ * Props for the ActionPanel component.
+ */
 export type ActionPanelProps = {
+  /** 
+   * Current lifecycle status of the contract.
+   * This drives which actions are visible and their order (mapped via `getActionButtons`).
+   */
   status: 'Active' | 'Completed' | 'Disputed' | 'Pending';
+  /** Callback triggered when the user initiates a milestone submission. */
   onSubmitMilestone?: () => void;
+  /** Callback triggered when the user initiates a dispute. */
   onDispute?: () => void;
+  /** Callback triggered when the user releases funds to the freelancer. */
   onReleaseFunds?: () => void;
+  /** Callback triggered to view the summary of a completed contract. */
   onViewSummary?: () => void;
-  /** Disable every action button and announce a loading reason to AT users. */
+  /** 
+   * Disables every visible action button globally and maps their `aria-describedby` 
+   * to a shared loading reason (`action-panel-loading-reason`). Use this while 
+   * fetching contract or wallet state. 
+   */
   isLoading?: boolean;
-  /** Render a role="alert" region above the actions when something went wrong. */
+  /** 
+   * Render a `role="alert"` region above the actions to announce transient 
+   * errors (like network failures) to assistive technologies. 
+   */
   errorMessage?: string;
-  /** Per-action accessible reason for why a button is currently disabled. */
+  /** 
+   * Per-action accessible reason for why a specific button is disabled. 
+   * This is useful for wallet-gating, unmet conditions, or missing permissions.
+   */
   disabledReasons?: ActionPanelDisabledReasons;
 };
 
