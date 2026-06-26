@@ -1,17 +1,23 @@
 // src/app/__tests__/csp.test.ts
-import { headers as getHeaders } from "../../../../next.config";
+
 
 describe('Content Security Policy', () => {
   const originalEnv = process.env.NODE_ENV;
 
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
   afterAll(() => {
-    process.env.NODE_ENV = originalEnv;
+    (process.env as any).NODE_ENV = originalEnv;
   });
 
   test('development includes unsafe-eval and unsafe-inline', async () => {
-    process.env.NODE_ENV = 'development';
-    // Re-import to pick up new env
-    const result = await (await import('../../../../next.config')).default.headers();
+    (process.env as any).NODE_ENV = 'development';
+    // Re-require after resetModules so the module re-evaluates with the new env
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const nextConfig = require('../../../next.config');
+    const result = await nextConfig.headers();
     const cspHeader = result[0].headers.find((h: any) => h.key === 'Content-Security-Policy');
     expect(cspHeader).toBeDefined();
     const value: string = cspHeader.value;
@@ -20,8 +26,10 @@ describe('Content Security Policy', () => {
   });
 
   test('production omits unsafe-eval and unsafe-inline', async () => {
-    process.env.NODE_ENV = 'production';
-    const result = await (await import('../../../../next.config')).default.headers();
+    (process.env as any).NODE_ENV = 'production';
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const nextConfig = require('../../../next.config');
+    const result = await nextConfig.headers();
     const cspHeader = result[0].headers.find((h: any) => h.key === 'Content-Security-Policy');
     expect(cspHeader).toBeDefined();
     const value: string = cspHeader.value;

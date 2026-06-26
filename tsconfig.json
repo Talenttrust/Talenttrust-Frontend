@@ -27,10 +27,7 @@
         "./src/*"
       ]
     },
-    "types": [
-      "jest",
-      "@testing-library/jest-dom"
-    ]
+    "types": []
   },
   "include": [
     "next-env.d.ts",
@@ -45,5 +42,8 @@
     "jest.setup.js",
     "**/*.test.ts",
     "**/*.test.tsx"
+  ],
+  "references": [
+    { "path": "./tsconfig.test.json" }
   ]
 }
