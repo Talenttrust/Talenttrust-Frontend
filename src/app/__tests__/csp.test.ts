@@ -1,6 +1,4 @@
 // src/app/__tests__/csp.test.ts
-
-
 describe('Content Security Policy', () => {
   const originalEnv = process.env.NODE_ENV;
 
@@ -8,27 +6,27 @@ describe('Content Security Policy', () => {
     process.env.NODE_ENV = originalEnv;
   });
 
-  const loadHeaders = async () => {
-    jest.resetModules();
-    return require('../../../next.config').headers();
-  };
+  async function getCspValue(): Promise<string> {
+    const { headers } = require('../../../next.config');
+    const result = await headers();
+    const cspHeader = result[0].headers.find(
+      (h: { key: string; value: string }) => h.key === 'Content-Security-Policy',
+    );
+    return cspHeader!.value;
+  }
 
   test('development includes unsafe-eval and unsafe-inline', async () => {
     process.env.NODE_ENV = 'development';
-    const result = await loadHeaders();
-    const cspHeader = result[0].headers.find((h: any) => h.key === 'Content-Security-Policy');
-    expect(cspHeader).toBeDefined();
-    const value: string = cspHeader.value;
+    jest.resetModules();
+    const value = await getCspValue();
     expect(value).toContain("script-src 'self' 'unsafe-eval'");
     expect(value).toContain("style-src 'self' 'unsafe-inline'");
   });
 
   test('production omits unsafe-eval and unsafe-inline', async () => {
     process.env.NODE_ENV = 'production';
-    const result = await loadHeaders();
-    const cspHeader = result[0].headers.find((h: any) => h.key === 'Content-Security-Policy');
-    expect(cspHeader).toBeDefined();
-    const value: string = cspHeader.value;
+    jest.resetModules();
+    const value = await getCspValue();
     expect(value).toContain("script-src 'self'");
     expect(value).not.toContain("unsafe-eval");
     expect(value).toContain("style-src 'self'");

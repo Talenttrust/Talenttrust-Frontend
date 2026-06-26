@@ -65,7 +65,7 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 // Global mock for WalletContext so components using useWallet work without a provider
 jest.mock('@/contexts/WalletContext', () => ({
   useWallet: jest.fn().mockReturnValue({
-    address: '0x123',
+    address: 'GBDGTR4S5O3K7I6E7K5QH3Y2W6Z4JFQ2X3C5V7M8N9P0Q1R2S3T4U5V6W7X',
     isConnecting: false,
     error: null,
     connect: jest.fn(),

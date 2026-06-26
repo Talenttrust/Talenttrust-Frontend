@@ -2,6 +2,10 @@
 
 import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/components/toast/toast-provider';
+import { requestAccess } from '@stellar/freighter-api';
+import { getItem, setItem, removeItem } from '@/lib/safeStorage';
+
+const STORAGE_KEY = 'talenttrust-wallet-address';
 
 export type WalletContextType = {
   address: string | null;
@@ -13,19 +17,27 @@ export type WalletContextType = {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
+export const FREIGHTER_NOT_INSTALLED = 'Freighter wallet is not installed. Please install the Freighter browser extension.';
+export const USER_REJECTED = 'User rejected the connection request.';
+
 /**
  * WalletProvider provides the global wallet connection state.
- * 
- * It includes an optional inactivity timeout that automatically disconnects
+ *
+ * Integrates with the Freighter Stellar wallet extension via @stellar/freighter-api.
+ * On mount, rehydrates the connected address from localStorage. The connect()
+ * method checks for Freighter availability, requests access, and surfaces
+ * distinct error messages for "not installed" and "user rejected" cases.
+ *
+ * Includes an optional inactivity timeout that automatically disconnects
  * the wallet after a period of user inactivity.
- * 
- * @param idleTimeout - Inactivity duration in milliseconds before auto-disconnect. 
+ *
+ * @param idleTimeout - Inactivity duration in milliseconds before auto-disconnect.
  *                      Set to 0 or undefined to disable.
  */
-export function WalletProvider({ 
+export function WalletProvider({
   children,
   idleTimeout = 0
-}: { 
+}: {
   children: ReactNode;
   idleTimeout?: number;
 }) {
@@ -33,11 +45,20 @@ export function WalletProvider({
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { showSuccess } = useToast();
-  
+
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Rehydrate saved address from localStorage on mount
+  useEffect(() => {
+    const saved = getItem(STORAGE_KEY);
+    if (saved) {
+      setAddress(saved);
+    }
+  }, []);
 
   const disconnect = useCallback(() => {
     setAddress(null);
+    removeItem(STORAGE_KEY);
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -51,7 +72,7 @@ export function WalletProvider({
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
-    
+
     if (address && idleTimeout > 0) {
       timerRef.current = setTimeout(() => {
         disconnect();
@@ -65,25 +86,20 @@ export function WalletProvider({
 
   // Handle idle auto-disconnect logic
   useEffect(() => {
-    // Only run on client and when an address is connected with a valid timeout
     if (typeof window === 'undefined' || !address || idleTimeout <= 0) {
       return;
     }
 
     const events = ['pointermove', 'keydown', 'visibilitychange', 'mousedown', 'touchstart'];
-    
+
     const handleActivity = () => {
       resetTimer();
     };
 
-    // Add activity listeners
     events.forEach(event => window.addEventListener(event, handleActivity, { passive: true }));
-    
-    // Start initial timer
     resetTimer();
 
     return () => {
-      // Cleanup listeners and timer
       events.forEach(event => window.removeEventListener(event, handleActivity));
       if (timerRef.current) {
         clearTimeout(timerRef.current);
@@ -91,16 +107,49 @@ export function WalletProvider({
     };
   }, [address, idleTimeout, resetTimer]);
 
+  /**
+   * Connects to the Freighter Stellar wallet.
+   *
+   * 1. Guards against server-side rendering.
+   * 2. Checks for Freighter extension availability via window.freighter.
+   * 3. Calls requestAccess() to prompt the user for approval.
+   * 4. Maps results to distinct error strings or sets the Stellar public key.
+   * 5. Persists the address in localStorage on success.
+   */
   const connect = useCallback(async () => {
     setIsConnecting(true);
     setError(null);
     try {
-      // Mocking wallet connection delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      // Mocked address
-      setAddress('0x71C7656EC7ab88b098defB751B7401B5f6d8976F');
-    } catch (_err) {
-      setError('Failed to connect wallet');
+      if (typeof window === 'undefined') {
+        throw new Error('FREIGHTER_NOT_INSTALLED');
+      }
+
+      if (!window.freighter) {
+        throw new Error('FREIGHTER_NOT_INSTALLED');
+      }
+
+      const result = await requestAccess();
+
+      if (result.error) {
+        throw new Error('USER_REJECTED');
+      }
+
+      if (!result.address) {
+        throw new Error('USER_REJECTED');
+      }
+
+      setAddress(result.address);
+      setItem(STORAGE_KEY, result.address);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to connect wallet';
+
+      if (message === 'FREIGHTER_NOT_INSTALLED') {
+        setError(FREIGHTER_NOT_INSTALLED);
+      } else if (message === 'USER_REJECTED') {
+        setError(USER_REJECTED);
+      } else {
+        setError(message);
+      }
     } finally {
       setIsConnecting(false);
     }
@@ -113,6 +162,16 @@ export function WalletProvider({
   );
 }
 
+/**
+ * Hook to access the wallet connection context.
+ *
+ * Must be used within a WalletProvider. Returns the current wallet state
+ * including the connected Stellar public key, connection status, error
+ * messages, and connect/disconnect actions.
+ *
+ * @returns {WalletContextType} The wallet context value.
+ * @throws {Error} If used outside of WalletProvider.
+ */
 export function useWallet() {
   const context = useContext(WalletContext);
   if (context === undefined) {

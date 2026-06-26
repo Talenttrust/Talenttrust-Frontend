@@ -88,6 +88,38 @@ Example:
 </WalletProvider>
 ```
 
+## Wallet integration
+
+The app connects to the **Freighter** Stellar wallet extension via [`@stellar/freighter-api`](https://github.com/stellar/freighter).
+
+### Setup
+
+1. Install the [Freighter browser extension](https://freighter.app) for Chrome or Firefox.
+2. Create or import a Stellar wallet in Freighter.
+3. The app detects Freighter automatically — no API keys or configuration required.
+
+### How it works
+
+- `WalletProvider` (in `src/contexts/WalletContext.tsx`) manages the connection lifecycle.
+- `connect()` checks for Freighter availability (`window.freighter`), calls `requestAccess()` to prompt the user, and persists the `G...` public key in `localStorage`.
+- On page refresh, the address is rehydrated from `localStorage` using the same pattern as `PreferencesProvider` (`src/lib/safeStorage.ts`).
+- `disconnect()` clears the address from state and removes it from storage.
+- The `useWallet()` hook exposes `{ address, isConnecting, error, connect, disconnect }`.
+
+### Error messages
+
+| Condition | Message |
+|-----------|---------|
+| Freighter not installed | `Freighter wallet is not installed. Please install the Freighter browser extension.` |
+| User rejected the prompt | `User rejected the connection request.` |
+| Unexpected failure | Propagated from the underlying error |
+
+### Security
+
+- Only the Stellar public key (`G...`) is persisted in `localStorage` — no private keys, seeds, or personal information.
+- The public key is never logged to the console or sent to external services.
+- All `window` / wallet access is guarded for SSR (Next.js App Router).
+
 ## Crawling and sitemap
 
 To ensure the app provides first-class support for search engine crawlers using Next.js metadata routes.

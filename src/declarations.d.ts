@@ -1,3 +1,7 @@
+interface Window {
+  freighter?: boolean;
+}
+
 declare module 'jest-axe' {
   export interface JestAxeOptions {
     [key: string]: unknown;
