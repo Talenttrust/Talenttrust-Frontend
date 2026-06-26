@@ -8,10 +8,14 @@ describe('Content Security Policy', () => {
     process.env.NODE_ENV = originalEnv;
   });
 
+  const loadHeaders = async () => {
+    jest.resetModules();
+    return require('../../../next.config').headers();
+  };
+
   test('development includes unsafe-eval and unsafe-inline', async () => {
     process.env.NODE_ENV = 'development';
-    // Re-import to pick up new env
-    const result = await (await import('../../../../next.config')).default.headers();
+    const result = await loadHeaders();
     const cspHeader = result[0].headers.find((h: any) => h.key === 'Content-Security-Policy');
     expect(cspHeader).toBeDefined();
     const value: string = cspHeader.value;
@@ -21,7 +25,7 @@ describe('Content Security Policy', () => {
 
   test('production omits unsafe-eval and unsafe-inline', async () => {
     process.env.NODE_ENV = 'production';
-    const result = await (await import('../../../../next.config')).default.headers();
+    const result = await loadHeaders();
     const cspHeader = result[0].headers.find((h: any) => h.key === 'Content-Security-Policy');
     expect(cspHeader).toBeDefined();
     const value: string = cspHeader.value;
