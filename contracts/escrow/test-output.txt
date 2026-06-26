@@ -1,0 +1,41 @@
+$ cargo test -- --show-output
+
+   Compiling talenttrust-escrow v0.1.0
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.57s
+     Running unittests src\lib.rs (target\debug\deps\talenttrust_escrow-657897c17085465a.exe)
+
+running 14 tests
+test test::reputation::all_1_star_returns_10_000 ... ok
+test test::reputation::barely_overflowing_total_returns_none ... ok
+test test::reputation::fractional_average_truncates_correctly ... ok
+test test::reputation::large_completed_contracts_returns_correct_score ... ok
+test test::reputation::max_non_overflowing_total_returns_some ... ok
+test test::reputation::mixed_5_and_4_returns_45_000 ... ok
+test test::reputation::mixed_all_stars_returns_30_000 ... ok
+test test::reputation::nonzero_total_zero_contracts_returns_none ... ok
+test test::reputation::overflow_checked_mul_returns_none ... ok
+test test::reputation::perfect_across_many_contracts ... ok
+test test::reputation::single_1_star_returns_10_000 ... ok
+test test::reputation::single_5_star_returns_50_000 ... ok
+test test::reputation::very_large_volume_correct_average ... ok
+test test::reputation::zero_contracts_returns_none ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests talenttrust_escrow
+
+running 1 test
+test src\lib.rs - reputation_score_bp (line 75) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+──────────────────────────────────────────────────────────────────────
+$ cargo llvm-cov (coverage report)
+──────────────────────────────────────────────────────────────────────
+
+Filename                      Regions    Missed Regions     Cover   Functions  Missed Functions  Executed       Lines      Missed Lines     Cover    Branches   Missed Branches     Cover
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lib.rs                             14                 0   100.00%           1                 0   100.00%           8                 0   100.00%           0                 0         -
+test\reputation.rs                110                 0   100.00%          14                 0   100.00%         102                 0   100.00%           0                 0         -
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+TOTAL                             124                 0   100.00%          15                 0   100.00%         110                 0   100.00%           0                 0         -

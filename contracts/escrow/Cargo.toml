@@ -1,0 +1,9 @@
+[package]
+name = "talenttrust-escrow"
+version = "0.1.0"
+edition = "2021"
+description = "TalentTrust escrow contract – reputation scoring in basis points"
+license = "MIT"
+
+[lib]
+crate-type = ["lib"]
