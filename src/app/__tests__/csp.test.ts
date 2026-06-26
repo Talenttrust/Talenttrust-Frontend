@@ -1,5 +1,5 @@
 // src/app/__tests__/csp.test.ts
-
+import { headers as _getHeaders } from "../../../../next.config";
 
 describe('Content Security Policy', () => {
   const originalEnv = process.env.NODE_ENV;

@@ -70,6 +70,7 @@ The app includes a global accessible toast system for transient feedback:
 - Use `useToast()` in client components to trigger `showSuccess(...)` and `showError(...)`.
 - Success messages announce through a polite `aria-live` region.
 - Error messages announce through an assertive `aria-live` region.
+- **Viewport overflow protection**: at most **4 toasts** are visible at once (`MAX_VISIBLE_TOASTS = 4`). When a new toast would exceed this cap, the oldest visible toast is evicted and its auto-dismiss timer is cancelled before the new toast is appended. The live-region announcer always reflects the newest toast.
 
 ## Session safety
 

@@ -36,6 +36,15 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 const DEFAULT_DURATION = 5000;
 
 /**
+ * Maximum number of toasts that may be visible at the same time.
+ * When a new toast would exceed this cap the oldest visible toast is
+ * evicted (its auto-dismiss timer is cancelled) before the new one is
+ * appended.  This prevents a burst of wallet/payout events from stacking
+ * toasts past the bottom of the viewport and burying the dismiss buttons.
+ */
+const MAX_VISIBLE_TOASTS = 4;
+
+/**
  * Generates a unique toast ID without mutating refs during render.
  * Uses crypto.randomUUID() when available, with a timestamp-based fallback.
  * This ensures collision-free IDs even under React StrictMode double-invocation.
@@ -310,19 +319,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       const id = generateToastId();
       const duration = toast.duration ?? DEFAULT_DURATION;
 
-      setToasts((currentToasts) => [
-        ...currentToasts,
-        {
-          ...toast,
-          duration,
-          id,
-          variant,
-        },
-      ]);
+      setToasts((currentToasts) => {
+        const next = [...currentToasts, { ...toast, duration, id, variant }];
+        if (next.length <= MAX_VISIBLE_TOASTS) {
+          return next;
+        }
+        // Evict the oldest toast and cancel its timer.
+        const [evicted, ...remaining] = next;
+        clearToastTimer(evicted.id);
+        return remaining;
+      });
 
       return id;
     },
-    [],
+    [clearToastTimer],
   );
 
   const { preferences } = usePreferences();
@@ -369,7 +379,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         const timer = timers[toastId];
 
         if (timer.timeoutId !== null) {
-          window.clearTimeout(timer.timeoutId);
+          clearTimeout(timer.timeoutId);
         }
       });
     };

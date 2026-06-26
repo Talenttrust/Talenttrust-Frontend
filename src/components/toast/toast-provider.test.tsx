@@ -486,3 +486,209 @@ describe('default duration', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 });
+
+describe('maxVisible cap (MAX_VISIBLE_TOASTS = 4)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.clearAllTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  /** Renders a harness that exposes a button to add N success toasts */
+  function MultiToastHarness({ count }: { count: number }) {
+    const { showSuccess } = useToast();
+    return (
+      <button
+        onClick={() => {
+          for (let i = 1; i <= count; i++) {
+            showSuccess({ title: `Toast ${i}`, duration: 10000 });
+          }
+        }}
+        type="button"
+      >
+        Add {count} toasts
+      </button>
+    );
+  }
+
+  it('shows all toasts when under the cap', () => {
+    render(
+      <ToastProvider>
+        <MultiToastHarness count={3} />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /add 3 toasts/i }));
+
+    expect(screen.getAllByRole('status')).toHaveLength(3);
+  });
+
+  it('shows exactly MAX_VISIBLE_TOASTS toasts when exactly at cap', () => {
+    render(
+      <ToastProvider>
+        <MultiToastHarness count={4} />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /add 4 toasts/i }));
+
+    expect(screen.getAllByRole('status')).toHaveLength(4);
+  });
+
+  it('evicts the oldest toast when over cap, keeping only MAX_VISIBLE_TOASTS', () => {
+    render(
+      <ToastProvider>
+        <MultiToastHarness count={5} />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /add 5 toasts/i }));
+
+    const visible = screen.getAllByRole('status');
+    expect(visible).toHaveLength(4);
+    // "Toast 1" is the oldest and must have been evicted
+    expect(screen.queryByRole('status', { name: /Toast 1/i })).not.toBeInTheDocument();
+    expect(screen.queryAllByText('Toast 1', { selector: 'p' })).toHaveLength(0);
+    // The four newest remain
+    expect(screen.getAllByText('Toast 2', { selector: 'p' })).toHaveLength(1);
+    expect(screen.getAllByText('Toast 5', { selector: 'p' })).toHaveLength(1);
+  });
+
+  it('always keeps the newest toast after multiple over-cap additions', () => {
+    render(
+      <ToastProvider>
+        <MultiToastHarness count={6} />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /add 6 toasts/i }));
+
+    expect(screen.getAllByRole('status')).toHaveLength(4);
+    expect(screen.queryAllByText('Toast 1', { selector: 'p' })).toHaveLength(0);
+    expect(screen.queryAllByText('Toast 2', { selector: 'p' })).toHaveLength(0);
+    expect(screen.getAllByText('Toast 6', { selector: 'p' })).toHaveLength(1);
+  });
+
+  it('clears the evicted toast timer so it cannot auto-dismiss after eviction', async () => {
+    // Add 4 toasts first (at cap), wait for their timers to be scheduled, then
+    // add a 5th to trigger eviction of toast 1. Toast 1's timer must be cancelled.
+    function SequentialHarness() {
+      const { showSuccess } = useToast();
+      return (
+        <>
+          <button
+            onClick={() => {
+              for (let i = 1; i <= 4; i++) {
+                showSuccess({ title: `SeqToast ${i}`, duration: 5000 });
+              }
+            }}
+            type="button"
+          >
+            Add 4
+          </button>
+          <button
+            onClick={() => showSuccess({ title: 'SeqToast 5', duration: 5000 })}
+            type="button"
+          >
+            Add 5th
+          </button>
+        </>
+      );
+    }
+
+    render(
+      <ToastProvider>
+        <SequentialHarness />
+      </ToastProvider>,
+    );
+
+    // Add 4 toasts, timers get scheduled in the effect
+    fireEvent.click(screen.getByRole('button', { name: /add 4/i }));
+    // Verify all 4 visible
+    expect(screen.getAllByRole('status')).toHaveLength(4);
+
+    const clearTimeoutSpy = jest.spyOn(window, 'clearTimeout');
+
+    // Add 5th — evicts SeqToast 1
+    fireEvent.click(screen.getByRole('button', { name: /add 5th/i }));
+
+    // clearTimeout must have been called for the evicted toast's timer
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+
+    // Only 4 remain and SeqToast 5 is present
+    expect(screen.getAllByRole('status')).toHaveLength(4);
+    expect(screen.queryAllByText('SeqToast 1', { selector: 'p' })).toHaveLength(0);
+    expect(screen.getAllByText('SeqToast 5', { selector: 'p' })).toHaveLength(1);
+
+    clearTimeoutSpy.mockRestore();
+  });
+
+  it('announces the newest toast in the live region after eviction', () => {
+    render(
+      <ToastProvider>
+        <MultiToastHarness count={5} />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /add 5 toasts/i }));
+
+    // The polite announcer should contain the newest toast text
+    const politeRegion = document.querySelector('[aria-live="polite"]');
+    expect(politeRegion).toHaveTextContent('Toast 5');
+  });
+
+  it('does not affect pause-on-hover after eviction', async () => {
+    function SingleEvictHarness() {
+      const { showSuccess } = useToast();
+      return (
+        <>
+          <button
+            onClick={() => {
+              for (let i = 1; i <= 5; i++) {
+                showSuccess({ title: `T${i}`, duration: 2000 });
+              }
+            }}
+            type="button"
+          >
+            Add 5
+          </button>
+        </>
+      );
+    }
+
+    render(
+      <ToastProvider>
+        <SingleEvictHarness />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /add 5/i }));
+
+    // 4 toasts remain; find T5 by its paragraph text, then navigate to the status role
+    const t5Para = screen.getAllByText('T5', { selector: 'p' })[0];
+    const t5 = t5Para.closest('[role="status"]')!;
+    fireEvent.mouseEnter(t5);
+
+    act(() => {
+      jest.advanceTimersByTime(2500); // past its original 2000ms duration
+    });
+
+    // T5 should still be visible because it's hovered
+    expect(t5).toBeInTheDocument();
+
+    fireEvent.mouseLeave(t5);
+
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryAllByText('T5', { selector: 'p' })).toHaveLength(0);
+    });
+  });
+});
