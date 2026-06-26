@@ -81,6 +81,18 @@ export default function ReputationProfile({
         )}
       </div>
 
+      {/**
+       * Reputation history section.
+       *
+       * Semantic notes:
+       * - Uses `<ol>` (ordered list) because reputation history is inherently
+       *   chronological — the order of events is meaningful.
+       * - Each event date is wrapped in a `<time>` element whose `dateTime`
+       *   attribute carries a machine-readable ISO-8601 value, improving
+       *   assistive-technology support and SEO date parsing.
+       * - When the date string is not a valid ISO date the `dateTime` attribute
+       *   is omitted, keeping the markup valid.
+       */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
@@ -102,19 +114,29 @@ export default function ReputationProfile({
             </p>
           </div>
         ) : (
-          <ul className="space-y-4">
-            {history.map((event) => (
-              <li key={event.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">{event.type}</p>
-                    <p className="mt-1 text-base font-semibold text-slate-950">{event.summary}</p>
+          <ol className="space-y-4">
+            {history.map((event) => {
+              // Determine whether the date string is a parseable ISO date.
+              // If it is, expose the ISO value via dateTime for machine readability.
+              const isValidDate = event.date && !Number.isNaN(Date.parse(event.date));
+              return (
+                <li key={event.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-500">{event.type}</p>
+                      <p className="mt-1 text-base font-semibold text-slate-950">{event.summary}</p>
+                    </div>
+                    <time
+                      className="text-sm text-slate-500"
+                      {...(isValidDate ? { dateTime: event.date } : {})}
+                    >
+                      {event.date}
+                    </time>
                   </div>
-                  <p className="text-sm text-slate-500">{event.date}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              );
+            })}
+          </ol>
         )}
       </div>
     </section>

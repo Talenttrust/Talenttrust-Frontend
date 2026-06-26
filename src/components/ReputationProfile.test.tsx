@@ -8,6 +8,15 @@
  *   4. Partial reputation  – score present, history empty  (amber banner)
  *   5. Full reputation     – score present, history non-empty (events rendered)
  *   6. Single-char initial – name.slice(0,1).toUpperCase() avatar edge case
+ *   7. Accessible labelling & sr-only structure
+ *   8. Default prop values
+ *   9. Accessibility – jest-axe audit (issue #135 req.)
+ *  10. Semantic ordered list & <time> element (issue #246)
+ *       – history renders as <ol> not <ul>
+ *       – each date is wrapped in a <time> element
+ *       – valid ISO dates get a machine-readable dateTime attribute
+ *       – non-parseable date strings omit the dateTime attribute
+ *       – empty history shows no list at all
  *
  * Accessibility assertions follow the aria-labelledby contracts expressed in
  * the component source and are verified via jest-axe for the full-history
@@ -406,6 +415,157 @@ describe('ReputationProfile – jest-axe audit', () => {
   it('null score state has no axe violations', async () => {
     const { container } = render(
       <ReputationProfile name="Legacy User" score={null} history={[]} />
+    );
+    await assertNoA11yViolations(container);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 10. Semantic ordered list & <time> element (issue #246)
+// ---------------------------------------------------------------------------
+
+describe('ReputationProfile – ordered list semantics (issue #246)', () => {
+  /**
+   * Scenario: History renders as <ol>, not <ul>.
+   * Reputation history is inherently chronological, so the list must be
+   * ordered to convey sequential meaning to assistive technologies.
+   */
+  it('renders the history as an ordered list (<ol>) when events are present', () => {
+    const { container } = renderProfile({
+      name: 'Ordered List User',
+      score: 80,
+      history: HISTORY_EVENTS,
+    });
+    const ol = container.querySelector('ol');
+    expect(ol).not.toBeNull();
+    // There must be no <ul> for the history items
+    const ul = container.querySelector('ul');
+    expect(ul).toBeNull();
+  });
+
+  /**
+   * Scenario: Each event date is rendered inside a <time> element.
+   * The <time> element communicates a machine-readable date to browsers,
+   * search engines, and assistive technologies.
+   */
+  it('wraps each event date in a <time> element', () => {
+    const { container } = renderProfile({
+      name: 'Time Element User',
+      score: 80,
+      history: HISTORY_EVENTS,
+    });
+    const timeEls = container.querySelectorAll('time');
+    expect(timeEls).toHaveLength(HISTORY_EVENTS.length);
+  });
+
+  /**
+   * Scenario: Valid ISO date strings get a machine-readable dateTime attribute.
+   * The dateTime attribute value must equal the raw date string.
+   */
+  it('sets dateTime attribute equal to the ISO date string for valid dates', () => {
+    const { container } = renderProfile({
+      name: 'DateTime Attr User',
+      score: 80,
+      history: HISTORY_EVENTS,
+    });
+    const timeEls = container.querySelectorAll('time');
+    HISTORY_EVENTS.forEach((ev, idx) => {
+      expect(timeEls[idx].getAttribute('dateTime')).toBe(ev.date);
+    });
+  });
+
+  /**
+   * Scenario: A non-parseable date string omits the dateTime attribute.
+   * Emitting an invalid dateTime value would produce invalid HTML, so
+   * the attribute should be absent when the date cannot be parsed.
+   */
+  it('omits dateTime attribute when event.date is not a parseable date', () => {
+    const invalidDateEvent: ReputationEvent = {
+      id: 'ev-bad',
+      type: 'Unknown',
+      summary: 'Event with unparseable date',
+      date: 'not-a-date',
+    };
+    const { container } = renderProfile({
+      name: 'Invalid Date User',
+      score: 80,
+      history: [invalidDateEvent],
+    });
+    const timeEl = container.querySelector('time');
+    expect(timeEl).not.toBeNull();
+    // The visible text should still be shown
+    expect(timeEl?.textContent).toBe('not-a-date');
+    // But dateTime attribute must NOT be set
+    expect(timeEl?.hasAttribute('dateTime')).toBe(false);
+  });
+
+  /**
+   * Scenario: The <time> element contains the human-readable date text.
+   * The text content of each <time> must match the event.date string.
+   */
+  it('renders each event date as the text content of its <time> element', () => {
+    const { container } = renderProfile({
+      name: 'Time Text User',
+      score: 80,
+      history: HISTORY_EVENTS,
+    });
+    const timeEls = container.querySelectorAll('time');
+    HISTORY_EVENTS.forEach((ev, idx) => {
+      expect(timeEls[idx].textContent).toBe(ev.date);
+    });
+  });
+
+  /**
+   * Scenario: Empty history shows no list at all — no <ol>, no <ul>.
+   * When history is empty, the empty-state message is shown instead.
+   */
+  it('renders no ordered list when history is empty', () => {
+    const { container } = renderProfile({
+      name: 'Empty History User',
+      history: [],
+    });
+    expect(container.querySelector('ol')).toBeNull();
+    expect(container.querySelector('ul')).toBeNull();
+    expect(
+      screen.getByText(/No reputation history available yet\./i)
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * Scenario: "Private by default" pill appears when history is empty.
+   * This preserves the existing presentation for the empty-history path.
+   */
+  it('shows "Private by default" pill when history is empty', () => {
+    renderProfile({ name: 'Private User', history: [] });
+    expect(screen.getByText(/Private by default/i)).toBeInTheDocument();
+  });
+
+  /**
+   * Scenario: List items inside <ol> are still individually selectable.
+   * Confirms that the <li> children carry the correct implicit role.
+   */
+  it('renders a list item role for each event inside the ordered list', () => {
+    renderProfile({
+      name: 'Listitem Role User',
+      score: 80,
+      history: HISTORY_EVENTS,
+    });
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(HISTORY_EVENTS.length);
+  });
+
+  /**
+   * Scenario: axe accessibility audit passes with the new <ol> + <time> structure.
+   * This confirms no new a11y violations are introduced by the semantic change.
+   */
+  it('full-history state with <ol> and <time> has no axe violations', async () => {
+    const { container } = render(
+      <ReputationProfile
+        name="A11y Ol Time User"
+        score={90}
+        level="Expert"
+        history={HISTORY_EVENTS}
+      />
     );
     await assertNoA11yViolations(container);
   });
