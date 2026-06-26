@@ -104,6 +104,25 @@ The root layout exports typed Next.js metadata in [`src/app/layout.tsx`](src/app
 - **Preview image**: the static social card lives at [`public/og-preview.svg`](public/og-preview.svg) and is referenced with a relative path so Next.js can resolve it correctly from `metadataBase`.
 - **Copy guidance**: keep future preview copy aligned with [`docs/COPYWRITING_GUIDE.md`](docs/COPYWRITING_GUIDE.md) and avoid absolute guarantees or technical jargon.
 
+## Environment variables
+
+This app uses Next.js environment variables. Public variables must be prefixed with `NEXT_PUBLIC_` and are exposed to browser JavaScript. Secrets must never be stored in `NEXT_PUBLIC_` variables.
+
+- `NEXT_PUBLIC_SITE_URL` (required in production)
+  - Used by `src/app/layout.tsx`, `src/app/robots.ts`, and `src/app/sitemap.ts`.
+  - Provides the canonical site URL for `metadataBase`, Open Graph/Twitter previews, generated `robots.txt`, and `sitemap.xml` entries.
+  - If unset, the app falls back to `http://localhost:3000` for local development.
+
+- `NEXT_PUBLIC_WALLET_RPC_URL` (reserved)
+  - Reserved for future wallet integration and RPC provider configuration.
+  - Do not store private keys or secrets here; this is only for public JSON-RPC endpoints.
+
+- `NEXT_PUBLIC_WALLET_CONNECT_RELAY` (reserved)
+  - Reserved for future WalletConnect relay support.
+  - Example relay URL: `wss://relay.walletconnect.com`.
+
+The repo includes a sample file at [`.env.example`](.env.example) with the current public config and reserved future variables.
+
 ## PWA / Web Manifest
 
 The app exposes a [Web App Manifest](https://developer.mozilla.org/en-US/docs/Web/Manifest) at `/manifest.webmanifest` via `src/app/manifest.ts`, enabling users to install TalentTrust on their device home screen with proper branding.
@@ -117,39 +136,6 @@ The app exposes a [Web App Manifest](https://developer.mozilla.org/en-US/docs/We
   > **Note**: The PNG files are blue-square placeholders generated for development. A designer should replace them with branded raster icons before production deployment.
 
 The manifest is automatically linked via the root layout metadata (`src/app/layout.tsx`), which also declares the favicon and Apple touch icon.
-
-### Environment variable
-
-Set `NEXT_PUBLIC_SITE_URL` in `.env` or your deployment environment to point to your production domain. Falls back to `http://localhost:3000` when not set.
-
-Example:
-
-```bash
-# .env.local
-NEXT_PUBLIC_SITE_URL=https://talenttrust.app
-```
-
-Example:
-
-```tsx
-'use client';
-
-import { useToast } from '@/components/toast/toast-provider';
-
-export function ReleaseButton() {
-  const { showSuccess, showError } = useToast();
-
-  async function handleRelease() {
-    try {
-      showSuccess({ title: 'Milestone released' });
-    } catch {
-      showError({ title: 'Wallet not connected' });
-    }
-  }
-
-  return <button onClick={handleRelease}>Release milestone</button>;
-}
-```
 
 ## Stellar address helpers
 
