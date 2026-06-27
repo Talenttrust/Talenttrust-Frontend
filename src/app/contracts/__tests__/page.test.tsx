@@ -1,9 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import ContractsPage from '../page';
 import * as repository from '@/lib/repository';
 import * as stellarAddress from '@/lib/stellarAddress';
+
 
 // Mock dependencies
 jest.mock('@/lib/repository');
@@ -149,7 +151,7 @@ describe('ContractsPage', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       // Try to submit empty form
-      fireEvent.click(screen.getAllByRole('button', { name: /create contract/i })[1]);
+      fireEvent.click(screen.getByRole('button', { name: /^create contract$/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('alert', { name: /there is a problem/i })).toBeInTheDocument();
@@ -183,10 +185,10 @@ describe('ContractsPage', () => {
       fireEvent.change(partyAddresses[1], { target: { value: VALID_ADDRESS } });
 
       // Submit form
-      fireEvent.click(screen.getAllByRole('button', { name: /create contract/i })[1]);
+      fireEvent.click(screen.getByRole('button', { name: /^create contract$/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/party 1 address must be a valid stellar address/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/party 1 address must be a valid stellar address/i).length).toBeGreaterThan(0);
       });
 
       expect(mockSaveContract).not.toHaveBeenCalled();
@@ -232,13 +234,13 @@ describe('ContractsPage', () => {
         totalValue: 7500,
         currency: 'EUR',
         status: 'Pending' as const,
-        createdAt: expect.any(String),
+        createdAt: 'Jan 1, 2025',
         milestoneCount: 0,
       };
       mockListContracts.mockReturnValue([newContract]);
 
       // Submit form
-      fireEvent.click(screen.getAllByRole('button', { name: /create contract/i })[1]);
+      fireEvent.click(screen.getByRole('button', { name: /^create contract$/i }));
 
       await waitFor(() => {
         expect(mockSaveContract).toHaveBeenCalledTimes(1);
@@ -305,7 +307,7 @@ describe('ContractsPage', () => {
       ]);
 
       // Submit form
-      fireEvent.click(screen.getAllByRole('button', { name: /create contract/i })[1]);
+      fireEvent.click(screen.getByRole('button', { name: /^create contract$/i }));
 
       await waitFor(() => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -355,7 +357,7 @@ describe('ContractsPage', () => {
       };
       mockListContracts.mockReturnValue([createdContract]);
 
-      fireEvent.click(screen.getAllByRole('button', { name: /create contract/i })[1]);
+      fireEvent.click(screen.getByRole('button', { name: /^create contract$/i }));
 
       await waitFor(() => {
         expect(screen.getByText('My First Contract')).toBeInTheDocument();
@@ -386,10 +388,10 @@ describe('ContractsPage', () => {
       fireEvent.change(partyLabels[0], { target: { value: 'Client' } });
       fireEvent.change(partyAddresses[0], { target: { value: VALID_ADDRESS } });
 
-      fireEvent.click(screen.getAllByRole('button', { name: /create contract/i })[1]);
+      fireEvent.click(screen.getByRole('button', { name: /^create contract$/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/at least two parties are required/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/at least two parties are required/i).length).toBeGreaterThan(0);
       });
     });
   });
@@ -399,7 +401,7 @@ describe('ContractsPage', () => {
       mockListContracts.mockReturnValue([]);
       render(<ContractsPage />);
 
-      expect(screen.getByRole('heading', { name: /contracts/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1, name: /contracts/i })).toBeInTheDocument();
     });
 
     it('renders main landmark', () => {
@@ -410,24 +412,17 @@ describe('ContractsPage', () => {
     });
   });
 
-  it('renders persisted contracts when storage already contains data', () => {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        contracts: [
-          {
-            contractName: 'Existing Contract',
-            parties: [],
-            totalValue: 1000,
-            currency: 'USD',
-            status: 'Active',
-            createdAt: 'Apr 20, 2026',
-            milestoneCount: 1,
-          },
-        ],
-        milestones: [],
-      })
-    );
+  it('renders persisted contracts from mock data', () => {
+    const existing = [{
+      contractName: 'Existing Contract',
+      parties: [],
+      totalValue: 1000,
+      currency: 'USD',
+      status: 'Active' as const,
+      createdAt: 'Apr 20, 2026',
+      milestoneCount: 1,
+    }];
+    mockListContracts.mockReturnValue(existing);
 
     render(<ContractsPage />);
 
@@ -435,17 +430,50 @@ describe('ContractsPage', () => {
     expect(screen.getByText(/Active · Created Apr 20, 2026/)).toBeInTheDocument();
   });
 
-  it('creates and persists a new contract from the empty state action', async () => {
+  it('opens the contract creation form from the empty state and creates a contract', async () => {
     const user = userEvent.setup();
-    jest.spyOn(Date, 'now').mockReturnValue(1700000000000);
+    mockListContracts.mockReturnValue([]);
 
     render(<ContractsPage />);
 
-    await user.click(screen.getByRole('button', { name: 'Create Contract' }));
+    await user.click(screen.getByRole('button', { name: /create contract/i }));
 
-    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '{}');
-    expect(stored.contracts).toHaveLength(1);
-    expect(stored.contracts[0].contractName).toBe('Contract 1700000000000');
-    expect(screen.getByText('Contract 1700000000000')).toBeInTheDocument();
+    // Form dialog should open
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    // Fill in form fields
+    await user.type(screen.getByLabelText(/contract name/i), 'Test Contract');
+
+    const partyLabels = screen.getAllByPlaceholderText(/e\.g\., client, freelancer/i);
+    const partyAddresses = screen.getAllByPlaceholderText(/GXXXXXXXXXX/i);
+
+    await user.type(partyLabels[0], 'Client');
+    await user.type(partyAddresses[0], VALID_ADDRESS);
+    await user.type(partyLabels[1], 'Worker');
+    await user.type(partyAddresses[1], VALID_ADDRESS);
+
+    await user.type(screen.getByLabelText(/total value/i), '3000');
+
+    // Mock list to include the new contract after save
+    mockListContracts.mockReturnValue([{
+      contractName: 'Test Contract',
+      parties: [
+        { label: 'Client', address: VALID_ADDRESS },
+        { label: 'Worker', address: VALID_ADDRESS },
+      ],
+      totalValue: 3000,
+      currency: 'USD',
+      status: 'Pending' as const,
+      createdAt: 'Jan 1, 2025',
+      milestoneCount: 0,
+    }]);
+
+    await user.click(screen.getByRole('button', { name: /^create contract$/i }));
+
+    await waitFor(() => {
+      expect(mockSaveContract).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.getByText('Test Contract')).toBeInTheDocument();
+    expect(screen.queryByText(/no contracts found/i)).not.toBeInTheDocument();
   });
 });

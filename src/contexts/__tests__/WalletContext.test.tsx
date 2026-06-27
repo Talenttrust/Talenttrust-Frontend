@@ -3,6 +3,7 @@
 import React from 'react';
 import { render, act, screen } from '@testing-library/react';
 import { ToastProvider } from '@/components/toast/toast-provider';
+import { resetCache } from '@/lib/safeStorage';
 // Ensure we get the real implementation of WalletContext, bypassing any prior mocks
 const { WalletProvider, useWallet } = jest.requireActual('@/contexts/WalletContext');
 
@@ -12,6 +13,11 @@ jest.mock('@/lib/safeStorage', () => ({
     setItem: jest.fn(),
     removeItem: jest.fn(),
   },
+  resetCache: jest.fn(),
+}));
+
+jest.mock('@stellar/freighter-api', () => ({
+  requestAccess: jest.fn(),
 }));
 
 const MockComponent = () => {
@@ -27,6 +33,7 @@ const MockComponent = () => {
 
 describe('WalletContext persistence', () => {
   const { safeStorage } = require('@/lib/safeStorage');
+  const { requestAccess: mockRequestAccess } = require('@stellar/freighter-api');
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -34,6 +41,7 @@ describe('WalletContext persistence', () => {
     resetCache();
     localStorage.clear();
     mockRequestAccess.mockReset();
+    mockRequestAccess.mockResolvedValue({ address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F' });
     Object.defineProperty(window, 'freighter', {
       value: true,
       writable: true,

@@ -23,7 +23,7 @@ function safeCurrencyFormat(
       style: 'currency',
       currency,
     }).format(amount);
-  } catch (e) {
+  } catch {
     return new Intl.NumberFormat(options.locale || 'en-US', {
       ...options,
       style: 'currency',
@@ -66,8 +66,8 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     if (saved) {
       try {
         setPreferences({ ...DEFAULT_PREFERENCES, ...JSON.parse(saved) });
-      } catch (e) {
-        console.error('Failed to parse preferences', e);
+  } catch (_e) {
+        console.error('Failed to parse preferences', _e);
       }
     }
     setIsHydrated(true);

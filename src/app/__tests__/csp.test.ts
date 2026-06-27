@@ -18,7 +18,7 @@ function getHeaderMap(headers: HeaderEntry[]) {
 describe("Content Security Policy", () => {
   const originalEnv = process.env.NODE_ENV;
 
-  async function loadHeaders() {
+  async function _loadHeaders() {
     jest.resetModules();
     return (await import('../../../next.config')).default.headers();
   }
@@ -28,7 +28,7 @@ describe("Content Security Policy", () => {
     jest.resetModules();
   });
 
-  async function loadNextConfig() {
+  async function _loadNextConfig() {
     jest.resetModules();
     const nextConfigModule = await import('../../../next.config');
     return nextConfigModule.default as { headers: () => Promise<unknown[]> };
