@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/components/toast/toast-provider';
-import { safeStorage } from '@/lib/safeStorage';
+import { getItem, setItem, removeItem } from '@/lib/safeStorage';
+import { requestAccess } from '@stellar/freighter-api';
 
 export type WalletContextType = {
   address: string | null;
@@ -49,10 +50,17 @@ export function WalletProvider({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const STORAGE_KEY = 'wallet_connected_address';
 
+  // Rehydrate saved address from localStorage on mount
+  useEffect(() => {
+    const saved = getItem(STORAGE_KEY);
+    if (saved) {
+      setAddress(saved);
+    }
+  }, []);
 
   const disconnect = useCallback(() => {
     setAddress(null);
-    safeStorage.removeItem(STORAGE_KEY);
+    removeItem(STORAGE_KEY);
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -78,7 +86,7 @@ export function WalletProvider({
   // Rehydrate address from storage on mount (client only)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const stored = safeStorage.getItem(STORAGE_KEY);
+    const stored = getItem(STORAGE_KEY);
     if (stored) {
       setAddress(stored);
     }
@@ -120,8 +128,7 @@ export function WalletProvider({
         throw new Error('FREIGHTER_NOT_INSTALLED');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (window.freighter as any).requestAccess();
+      const result = await requestAccess();
 
       if (result.error) {
         throw new Error('USER_REJECTED');
@@ -132,7 +139,7 @@ export function WalletProvider({
       }
 
       setAddress(result.address);
-      safeStorage.setItem(STORAGE_KEY, result.address);
+      setItem(STORAGE_KEY, result.address);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to connect wallet';
 
