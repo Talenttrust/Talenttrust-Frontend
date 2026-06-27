@@ -26,7 +26,7 @@ jest.mock('@/lib/repository', () => ({
 // ---------------------------------------------------------------------------
 
 /** A valid Stellar public key for use in tests. */
-const VALID_ADDRESS = 'GABC' + 'A'.repeat(52); // 56 chars, starts with G, base32
+const VALID_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
 
 const onSuccess = jest.fn();
 const onCancel = jest.fn();
