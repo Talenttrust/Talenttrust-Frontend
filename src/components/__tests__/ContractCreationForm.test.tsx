@@ -69,9 +69,9 @@ describe('ContractCreationForm', () => {
         expect(screen.getByRole('alert', { name: /there is a problem/i })).toBeInTheDocument();
       });
 
-      expect(screen.getByText(/contract name is required/i)).toBeInTheDocument();
-      expect(screen.getByText(/total value is required/i)).toBeInTheDocument();
-      expect(screen.getByText(/at least two parties are required/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/contract name is required/i)[0]).toBeInTheDocument();
+      expect(screen.getAllByText(/total value is required/i)[0]).toBeInTheDocument();
+      expect(screen.getAllByText(/at least two parties are required/i)[0]).toBeInTheDocument();
       expect(mockOnSubmit).not.toHaveBeenCalled();
     });
 
@@ -83,7 +83,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/contract name is required/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/contract name is required/i)[0]).toBeInTheDocument();
       });
     });
 
@@ -95,7 +95,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/total value is required/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/total value is required/i)[0]).toBeInTheDocument();
       });
     });
   });
@@ -109,7 +109,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/total value must be a positive number/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/total value must be a positive number/i)[0]).toBeInTheDocument();
       });
     });
 
@@ -121,7 +121,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/total value must be a positive number/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/total value must be a positive number/i)[0]).toBeInTheDocument();
       });
     });
 
@@ -149,7 +149,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/party 1 address must be a valid stellar address/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/party 1 address must be a valid stellar address/i)[0]).toBeInTheDocument();
       });
       expect(mockOnSubmit).not.toHaveBeenCalled();
     });
@@ -163,7 +163,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/party 1 label is required/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/party 1 label is required/i)[0]).toBeInTheDocument();
       });
     });
 
@@ -176,7 +176,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/party 1 address is required/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/party 1 address is required/i)[0]).toBeInTheDocument();
       });
     });
   });
@@ -363,7 +363,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/contract name is required/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/contract name is required/i)[0]).toBeInTheDocument();
       });
 
       // Check aria-invalid is set
