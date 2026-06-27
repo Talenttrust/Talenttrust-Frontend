@@ -11,13 +11,14 @@
  * - **SSR-safe** — guards every storage access with a `typeof window` check so
  *   Next.js server-side builds never throw.
  * - **Resilient** — all reads are wrapped in try/catch; corrupt or missing data
- *   falls back to `[]` with a console warning rather than crashing.
+ *   falls back to `[]` with a report via the central error reporter rather than crashing.
  * - **Non-mutating** — callers own their data; this module never mutates the
  *   objects it receives or returns.
  */
 
 import type { Contract } from '@/types/domain';
 import type { Milestone } from '@/components/MilestonesList';
+import { reportError } from './errorReporter';
 
 // ---------------------------------------------------------------------------
 // Storage key & data shape
@@ -48,6 +49,9 @@ function isBrowser(): boolean {
 /**
  * Reads and parses the full persisted data object from localStorage.
  *
+ * On failure the error is forwarded to the central `reportError` reporter
+ * before falling back to the empty state.
+ *
  * @returns The parsed `AppData` object, or `EMPTY_DATA` on any failure
  *          (missing key, unparseable JSON, unexpected shape).
  */
@@ -65,16 +69,16 @@ function readStore(): AppData {
       milestones: Array.isArray(parsed.milestones) ? parsed.milestones : [],
     };
   } catch (err) {
-    console.warn(
-      '[repository] Failed to read from localStorage. Falling back to empty state.',
-      err,
-    );
+    reportError(err, '[repository] Failed to read from localStorage. Falling back to empty state.');
     return { ...EMPTY_DATA };
   }
 }
 
 /**
  * Serialises and writes the full data object back to localStorage.
+ *
+ * On failure the error is forwarded to the central `reportError` reporter.
+ * The call is a no-op in SSR contexts (no `window`).
  *
  * @param data - The complete `AppData` object to persist.
  */
@@ -84,7 +88,7 @@ function writeStore(data: AppData): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (err) {
-    console.warn('[repository] Failed to write to localStorage.', err);
+    reportError(err, '[repository] Failed to write to localStorage.');
   }
 }
 
@@ -97,7 +101,7 @@ function writeStore(data: AppData): void {
  *
  * Reads from localStorage and returns the stored array. If localStorage is
  * unavailable (SSR) or the stored value is corrupt, returns an empty array
- * `[]` and logs a console warning — it never throws.
+ * `[]` and reports the failure via the central error reporter — it never throws.
  *
  * @returns A new array of `Contract` objects (may be empty).
  *
@@ -147,7 +151,7 @@ export function saveContract(contract: Contract): void {
  *
  * Reads from localStorage and returns the stored array. If localStorage is
  * unavailable (SSR) or the stored value is corrupt, returns an empty array
- * `[]` and logs a console warning — it never throws.
+ * `[]` and reports the failure via the central error reporter — it never throws.
  *
  * @returns A new array of `Milestone` objects (may be empty).
  *

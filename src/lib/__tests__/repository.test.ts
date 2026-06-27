@@ -9,7 +9,7 @@
  * 4. SSR context isolation — functions return [] safely when window is absent.
  * 5. Empty-store defaults — first read on a fresh store returns [].
  * 6. Multiple writes — each save is additive, not a full replacement.
- * 7. writeStore failure — localStorage.setItem throws; warn logged, no crash.
+ * 7. writeStore failure — localStorage.setItem throws; error reported, no crash.
  */
 
 import {
@@ -19,6 +19,7 @@ import {
   saveMilestone,
   STORAGE_KEY,
 } from '../repository';
+import { setErrorReporter } from '../errorReporter';
 import type { Contract } from '@/components/ContractSummary';
 import type { Milestone } from '@/components/MilestonesList';
 
@@ -207,24 +208,32 @@ describe('data isolation', () => {
 // ===========================================================================
 
 describe('corrupt data handling', () => {
+  let mockReporter: jest.Mock;
+
+  beforeEach(() => {
+    mockReporter = jest.fn();
+    setErrorReporter(mockReporter);
+  });
+
+  afterEach(() => {
+    setErrorReporter(null);
+  });
+
   it('returns [] for contracts when localStorage contains invalid JSON', () => {
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
     seedRaw('%%%not-json%%%');
     expect(listContracts()).toEqual([]);
   });
 
   it('returns [] for milestones when localStorage contains invalid JSON', () => {
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
     seedRaw('%%%not-json%%%');
     expect(listMilestones()).toEqual([]);
   });
 
-  it('logs a console.warn (not error) on parse failure', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  it('calls the error reporter on parse failure', () => {
     seedRaw('{invalid}');
     listContracts();
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0][0]).toMatch(/\[repository\]/);
+    expect(mockReporter).toHaveBeenCalledTimes(1);
+    expect(mockReporter.mock.calls[0][1]).toMatch(/\[repository\]/);
   });
 
   it('returns [] when stored value is a JSON string (not an object)', () => {
@@ -266,12 +275,21 @@ describe('corrupt data handling', () => {
   });
 
   it('does not throw even when localStorage.getItem throws', () => {
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.spyOn(window.localStorage, 'getItem').mockImplementation(() => {
       throw new Error('storage quota exceeded');
     });
     expect(() => listContracts()).not.toThrow();
     expect(listContracts()).toEqual([]);
+  });
+
+  it('reports the error via the central reporter when getItem throws', () => {
+    jest.spyOn(window.localStorage, 'getItem').mockImplementation(() => {
+      throw new Error('storage quota exceeded');
+    });
+    listContracts();
+    expect(mockReporter).toHaveBeenCalledTimes(1);
+    expect(mockReporter.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(mockReporter.mock.calls[0][1]).toMatch(/\[repository\]/);
   });
 });
 
@@ -338,21 +356,30 @@ describe('SSR context isolation', () => {
 // ===========================================================================
 
 describe('write failure resilience', () => {
+  let mockReporter: jest.Mock;
+
+  beforeEach(() => {
+    mockReporter = jest.fn();
+    setErrorReporter(mockReporter);
+  });
+
+  afterEach(() => {
+    setErrorReporter(null);
+  });
+
   it('does not throw when localStorage.setItem throws', () => {
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
       throw new DOMException('QuotaExceededError');
     });
     expect(() => saveContract(contractA)).not.toThrow();
   });
 
-  it('logs a console.warn when setItem throws', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  it('calls the error reporter when setItem throws', () => {
     jest.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
       throw new DOMException('QuotaExceededError');
     });
     saveContract(contractA);
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0][0]).toMatch(/\[repository\]/);
+    expect(mockReporter).toHaveBeenCalledTimes(1);
+    expect(mockReporter.mock.calls[0][1]).toMatch(/\[repository\]/);
   });
 });
