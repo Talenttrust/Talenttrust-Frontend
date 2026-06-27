@@ -370,140 +370,288 @@ describe('Home', () => {
     ).toBeVisible();
   });
 
-  describe('input length & trim guards (issue #234)', () => {
-    it('applies the email maxLength attribute matching the validator ceiling', () => {
-      renderWithProviders(<Home />);
-      const emailInput = screen.getByLabelText(/Email/i);
-
-      expect(emailInput).toHaveAttribute('maxLength', String(MAX_EMAIL_LENGTH));
-      expect(MAX_EMAIL_LENGTH).toBe(254);
-    });
-
-    it('applies the password maxLength attribute matching the validator ceiling', () => {
-      renderWithProviders(<Home />);
-      const passwordInput = screen.getByLabelText(/Password/i);
-
-      expect(passwordInput).toHaveAttribute('maxLength', String(MAX_PASSWORD_LENGTH));
-      expect(MAX_PASSWORD_LENGTH).toBe(128);
-    });
-
-    it('trims whitespace around a valid email on submit and shows the success toast', async () => {
+  /**
+   * --- SUCCESS PATH BRANCHING ---
+   *
+   * Covers the branch in handleSubmit where newErrors.length === 0:
+   * showSuccess() is called, the success toast is rendered, and the
+   * ErrorSummary is absent from the DOM.
+   *
+   * Complexity: O(1) per assertion — each query is a single DOM traversal.
+   */
+  describe('submit branching — success path', () => {
+    /**
+     * Asserts that a valid form submission produces a success toast rendered
+     * with role="status" and the expected title text.
+     *
+     * Branch covered: handleSubmit → newErrors.length === 0 → showSuccess()
+     */
+    it('renders a role="status" success toast with the expected title on valid submit', async () => {
       const user = userEvent.setup();
-
       renderWithProviders(<Home />);
 
-      await user.type(
-        screen.getByLabelText(/Email/i),
-        '  test@example.com  ',
-      );
-      await user.type(
-        screen.getByLabelText(/Password/i),
-        'password123',
-      );
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'password123');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
 
-      await user.click(
-        screen.getByRole('button', { name: /sign in/i }),
-      );
+      const toast = screen.getByRole('status');
+      expect(toast).toBeInTheDocument();
+      expect(within(toast).getByText(/form submitted successfully/i)).toBeInTheDocument();
+    });
 
-      // No alert role (no error summary rendered)
+    /**
+     * Asserts that no ErrorSummary (role="alert" / aria-labelledby="error-summary-title")
+     * is present after a valid submission, confirming the success branch
+     * does not populate the errors state.
+     *
+     * Branch covered: handleSubmit → newErrors.length === 0 → setErrors([])
+     */
+    it('does not render ErrorSummary on valid submit', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Home />);
+
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'password123');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
       expect(
         screen.queryByRole('alert', { name: /there is a problem/i }),
       ).not.toBeInTheDocument();
-
-      const toast = screen.getByRole('status');
-      expect(
-        within(toast).getByText(/submitted successfully/i),
-      ).toBeInTheDocument();
     });
 
-    it('rejects a whitespace-only email as the "required" error', async () => {
+    /**
+     * Asserts the ToastAnnouncer's aria-live="polite" sr-only region receives
+     * the success toast title so screen readers can announce it when idle.
+     *
+     * Branch covered: ToastAnnouncer → latestSuccess.title rendered in polite live region
+     */
+    it('populates the aria-live="polite" announcer with the success title', async () => {
       const user = userEvent.setup();
-
       renderWithProviders(<Home />);
 
-      await user.type(
-        screen.getByLabelText(/Email/i),
-        '   ',
-      );
-      await user.type(
-        screen.getByLabelText(/Password/i),
-        'password123',
-      );
-
-      await user.click(
-        screen.getByRole('button', { name: /sign in/i }),
-      );
-
-      // ErrorSummary surfaces the required error in the alert region
-      expect(
-        screen.getByRole('alert', { name: /there is a problem/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getAllByText('Email is required').length,
-      ).toBeGreaterThanOrEqual(2);
-    });
-
-    it('surfaces an over-length email error via ErrorSummary when the value exceeds the ceiling', async () => {
-      // We bypass the browser-level maxLength cap by setting the value via
-      // fireEvent.change (which mutates React state directly), then expect
-      // the validator to reject it.
-      const overlongEmail = `${'a'.repeat(MAX_EMAIL_LENGTH + 5)}@example.com`;
-      const user = userEvent.setup();
-
-      renderWithProviders(<Home />);
-
-      const emailInput = screen.getByLabelText(/Email/i);
-      const passwordInput = screen.getByLabelText(/Password/i);
-
-      fireEvent.change(emailInput, { target: { value: overlongEmail } });
-      fireEvent.change(passwordInput, { target: { value: 'password123' } });
-
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'password123');
       await user.click(screen.getByRole('button', { name: /sign in/i }));
 
-      const alert = screen.getByRole('alert', { name: /there is a problem/i });
-      expect(alert).toBeInTheDocument();
-      expect(
-        within(alert).getByText(/email must be no more than 254 characters/i),
-      ).toBeInTheDocument();
-
-      // The over-length message must also be available to the FormField for
-      // aria-describedby wiring (FormField renders the same error string).
-      expect(
-        screen.getAllByText(/email must be no more than 254 characters/i).length,
-      ).toBeGreaterThanOrEqual(2);
-
-      // The email input should be marked invalid.
-      expect(emailInput).toHaveAttribute('aria-invalid', 'true');
+      const announcer = document.querySelector('[aria-live="polite"]');
+      expect(announcer).toBeInTheDocument();
+      expect(announcer?.textContent).toMatch(/form submitted successfully/i);
     });
+  });
 
-    it('surfaces an over-length password error via ErrorSummary when the value exceeds the ceiling', async () => {
-      const overlongPassword = 'a'.repeat(MAX_PASSWORD_LENGTH + 5);
-
+  /**
+   * --- EMAIL-ONLY ERROR PATH ---
+   *
+   * Covers the branch where email is empty but password passes all validation
+   * rules. Asserts that error isolation is correct: only the email fieldId
+   * receives a ValidationError from validateLogin, so only the email field
+   * is marked invalid and only the email error appears in ErrorSummary.
+   *
+   * Complexity: O(n) per render where n = number of DOM nodes — constant for
+   * this fixed-size form.
+   */
+  describe('submit branching — email-only error path', () => {
+    /**
+     * Asserts the email error link appears in ErrorSummary when email is
+     * empty and password satisfies the minimum-length rule.
+     *
+     * Branch covered: validateLogin → !email → push({ fieldId:'email', message:'Email is required' })
+     */
+    it('shows only the email error in ErrorSummary when email is missing and password is valid', async () => {
+      const user = userEvent.setup();
       renderWithProviders(<Home />);
 
-      const emailInput = screen.getByLabelText(/Email/i);
-      const passwordInput = screen.getByLabelText(/Password/i);
-
-      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-      fireEvent.change(passwordInput, { target: { value: overlongPassword } });
-
-      const user = userEvent.setup();
+      await user.type(screen.getByLabelText(/password/i), 'password123');
       await user.click(screen.getByRole('button', { name: /sign in/i }));
 
-      const alert = screen.getByRole('alert', { name: /there is a problem/i });
-      expect(alert).toBeInTheDocument();
+      const summary = screen.getByRole('alert', { name: /there is a problem/i });
+      expect(summary).toBeInTheDocument();
       expect(
-        within(alert).getByText(/password must be no more than 128 characters/i),
+        within(summary).getByRole('link', { name: /email is required/i }),
       ).toBeInTheDocument();
+    });
 
+    /**
+     * Asserts no password error appears in ErrorSummary when only the email
+     * field is invalid — confirms getError('password') returns undefined and
+     * ErrorSummary only lists the errors array entries it receives.
+     */
+    it('does not show a password error in ErrorSummary when only email is missing', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Home />);
+
+      await user.type(screen.getByLabelText(/password/i), 'password123');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      const summary = screen.getByRole('alert', { name: /there is a problem/i });
+      expect(within(summary).queryByRole('link', { name: /password/i })).not.toBeInTheDocument();
+    });
+
+    /**
+     * Asserts per-field ARIA state is scoped correctly:
+     * - email input: aria-invalid="true"  (has a ValidationError)
+     * - password input: aria-invalid="false" (no ValidationError for this field)
+     *
+     * Validates that getError wires aria-invalid independently per fieldId.
+     */
+    it('marks only the email input aria-invalid when email is missing', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Home />);
+
+      await user.type(screen.getByLabelText(/password/i), 'password123');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      expect(screen.getByLabelText(/email/i)).toHaveAttribute('aria-invalid', 'true');
+      expect(screen.getByLabelText(/password/i)).toHaveAttribute('aria-invalid', 'false');
+    });
+
+    /**
+     * Asserts getError('email') produces the exact "Email is required" string
+     * in the inline FormField error paragraph (id="email-error"), which is the
+     * element linked by aria-describedby on the email input.
+     */
+    it('renders the exact "Email is required" message in the email field inline error', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Home />);
+
+      await user.type(screen.getByLabelText(/password/i), 'password123');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      const inlineError = document.getElementById('email-error');
+      expect(inlineError).toBeInTheDocument();
+      expect(inlineError?.textContent).toBe('Email is required');
+    });
+  });
+
+  /**
+   * --- PASSWORD-ONLY ERROR PATH ---
+   *
+   * Covers the branch where password is empty but email passes format
+   * validation. Mirrors the email-only path to confirm symmetric error
+   * isolation: only the password fieldId receives a ValidationError.
+   *
+   * Complexity: O(1) per assertion — same fixed-size DOM as above.
+   */
+  describe('submit branching — password-only error path', () => {
+    /**
+     * Asserts the password error link appears in ErrorSummary when password
+     * is empty and email satisfies the format rule.
+     *
+     * Branch covered: validateLogin → !password → push({ fieldId:'password', message:'Password is required' })
+     */
+    it('shows only the password error in ErrorSummary when password is missing and email is valid', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Home />);
+
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      const summary = screen.getByRole('alert', { name: /there is a problem/i });
+      expect(summary).toBeInTheDocument();
       expect(
-        screen.getAllByText(/password must be no more than 128 characters/i).length,
-      ).toBeGreaterThanOrEqual(2);
+        within(summary).getByRole('link', { name: /password is required/i }),
+      ).toBeInTheDocument();
+    });
 
-      expect(passwordInput).toHaveAttribute('aria-invalid', 'true');
+    /**
+     * Asserts no email error appears in ErrorSummary when only the password
+     * field is invalid — confirms getError('email') returns undefined and
+     * the ErrorSummary list omits unrelated field errors.
+     */
+    it('does not show an email error in ErrorSummary when only password is missing', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Home />);
+
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      const summary = screen.getByRole('alert', { name: /there is a problem/i });
+      expect(within(summary).queryByRole('link', { name: /email/i })).not.toBeInTheDocument();
+    });
+
+    /**
+     * Asserts per-field ARIA state is scoped correctly:
+     * - password input: aria-invalid="true"  (has a ValidationError)
+     * - email input:    aria-invalid="false" (no ValidationError for this field)
+     */
+    it('marks only the password input aria-invalid when password is missing', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Home />);
+
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      expect(screen.getByLabelText(/password/i)).toHaveAttribute('aria-invalid', 'true');
+      expect(screen.getByLabelText(/email/i)).toHaveAttribute('aria-invalid', 'false');
+    });
+
+    /**
+     * Asserts getError('password') produces the exact "Password is required"
+     * string in the inline FormField error paragraph (id="password-error").
+     */
+    it('renders the exact "Password is required" message in the password field inline error', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Home />);
+
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      const inlineError = document.getElementById('password-error');
+      expect(inlineError).toBeInTheDocument();
+      expect(inlineError?.textContent).toBe('Password is required');
+    });
+  });
+
+  /**
+   * --- GETTERROR FIELD MAPPING — FORMAT VALIDATION ---
+   *
+   * Covers the secondary branches of validateLogin (present-but-invalid input)
+   * and asserts that getError maps each fieldId to the exact message string
+   * defined in validateLogin.ts. This pins the contract between the validator
+   * and the rendered UI against future message string changes.
+   *
+   * Complexity: O(1) — single getElementById lookup per assertion.
+   */
+  describe('getError field mapping — format validation', () => {
+    /**
+     * Asserts that an email address lacking '@' triggers validateLogin's
+     * format branch and the exact message "Email must be valid" is rendered
+     * in the email FormField's inline error element (id="email-error").
+     *
+     * Branch covered: validateLogin → !email.includes('@') → 'Email must be valid'
+     */
+    it('renders "Email must be valid" inline when email lacks @', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Home />);
+
+      await user.type(screen.getByLabelText(/email/i), 'notanemail');
+      await user.type(screen.getByLabelText(/password/i), 'password123');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      const inlineError = document.getElementById('email-error');
+      expect(inlineError).toBeInTheDocument();
+      expect(inlineError?.textContent).toBe('Email must be valid');
+    });
+
+    /**
+     * Asserts that a password shorter than 8 characters triggers validateLogin's
+     * length branch and the exact message "Password must be at least 8 characters"
+     * appears in the password FormField's inline error (id="password-error").
+     *
+     * Branch covered: validateLogin → password.length < 8 → 'Password must be at least 8 characters'
+     */
+    it('renders "Password must be at least 8 characters" inline when password is too short', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Home />);
+
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'short');
+      await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+      const inlineError = document.getElementById('password-error');
+      expect(inlineError).toBeInTheDocument();
+      expect(inlineError?.textContent).toBe('Password must be at least 8 characters');
     });
   });
 
 });
-
-

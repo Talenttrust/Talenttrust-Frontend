@@ -8,9 +8,8 @@ export type Theme = 'light' | 'dark' | 'system';
 export type AmountFormat = 'usd' | 'ngn' | 'compact';
 export type ToastDensity = 'relaxed' | 'compact';
 
-interface FormatOptions {
+interface SafeCurrencyFormatOptions extends Intl.NumberFormatOptions {
   locale?: string;
-  notation?: 'compact' | 'standard' | 'scientific' | 'engineering';
 }
 
 /**
@@ -23,9 +22,9 @@ type CurrencyFormatOptions = Intl.NumberFormatOptions & {
 function safeCurrencyFormat(
   amount: number,
   currency: string,
-  options: FormatOptions = {}
+  options: SafeCurrencyFormatOptions = {}
 ): string {
-  const { locale, notation } = options;
+  const { locale, ...formatOptions } = options;
   const defaultCurrency = 'USD';
   const formatOptions: Intl.NumberFormatOptions = {
     style: 'currency',
@@ -35,10 +34,15 @@ function safeCurrencyFormat(
     formatOptions.notation = notation;
   }
   try {
-    return new Intl.NumberFormat(locale || 'en-US', formatOptions).format(amount);
-  } catch {
     return new Intl.NumberFormat(locale || 'en-US', {
       ...formatOptions,
+      style: 'currency',
+      currency,
+    }).format(amount);
+  } catch (_e) {
+    return new Intl.NumberFormat(locale || 'en-US', {
+      ...formatOptions,
+      style: 'currency',
       currency: defaultCurrency,
     }).format(amount);
   }
