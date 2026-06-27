@@ -3,15 +3,18 @@
   "compilerOptions": {
     "composite": true,
     "noEmit": false,
+    "emitDeclarationOnly": true,
+    "outDir": "./dist-test",
     "types": ["jest", "@testing-library/jest-dom"]
   },
   "include": [
-    "**/*.test.ts",
-    "**/*.test.tsx",
+    "**/*.ts",
+    "**/*.tsx",
     "jest.setup.ts",
     "jest.setup.js"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "next.config.js"
   ]
 }
