@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import ContractSummary from '@/components/ContractSummary';
 import MilestonesList from '@/components/MilestonesList';
 import ActionPanel from '@/components/ActionPanel';
@@ -177,7 +178,13 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
       <div className="mx-auto max-w-screen-2xl space-y-6">
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div>
-            <p className="text-sm text-slate-500">Contract details</p>
+            <Breadcrumbs
+              items={[
+                { label: 'Dashboard', href: '/' },
+                { label: 'Contracts', href: '/contracts' },
+                { label: `Contract #${id}` },
+              ]}
+            />
             <h1 className="mt-2 text-3xl font-semibold text-slate-900">Contract #{id}</h1>
           </div>
           <Link
