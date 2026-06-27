@@ -347,12 +347,19 @@ describe('ReputationProfile – accessible labelling', () => {
     expect(srOnlySpan).toBeDefined();
   });
 
-  it('sr-only span announces " out of 5" after the numeric score', () => {
-    renderProfile({ name: 'SR Out User', score: 77, history: [] });
-    const outOf5 = screen.getAllByText(/out of 5/i);
-    const srOnlySpan = outOf5.find((el) => el.classList.contains('sr-only'));
-    expect(srOnlySpan).toBeDefined();
-  });
+it('sr-only span announces "out of {maxScore}" after the numeric score', () => {
+     renderProfile({ name: 'SR Out User', score: 77, maxScore: 10, history: [] });
+     const outOf10 = screen.getAllByText(/out of 10/i);
+     const srOnlySpan = outOf10.find((el) => el.classList.contains('sr-only'));
+     expect(srOnlySpan).toBeDefined();
+   });
+
+   it('sr-only span announces "out of 5" (default) after the numeric score', () => {
+     renderProfile({ name: 'SR Out Default User', score: 77, history: [] });
+     const outOf5 = screen.getAllByText(/out of 5/i);
+     const srOnlySpan = outOf5.find((el) => el.classList.contains('sr-only'));
+     expect(srOnlySpan).toBeDefined();
+   });
 
   it('sr-only span announces "Level " before the level text when score exists', () => {
     renderProfile({ name: 'SR Level User', score: 77, level: 'Expert', history: [] });
@@ -554,19 +561,105 @@ describe('ReputationProfile – ordered list semantics (issue #246)', () => {
     expect(items).toHaveLength(HISTORY_EVENTS.length);
   });
 
-  /**
-   * Scenario: axe accessibility audit passes with the new <ol> + <time> structure.
-   * This confirms no new a11y violations are introduced by the semantic change.
-   */
-  it('full-history state with <ol> and <time> has no axe violations', async () => {
-    const { container } = render(
-      <ReputationProfile
-        name="A11y Ol Time User"
-        score={90}
-        level="Expert"
-        history={HISTORY_EVENTS}
-      />
-    );
-    await assertNoA11yViolations(container);
-  });
-});
+/**
+    * Scenario: axe accessibility audit passes with the new <ol> + <time> structure.
+    * This confirms no new a11y violations are introduced by the semantic change.
+    */
+   it('full-history state with <ol> and <time> has no axe violations', async () => {
+     const { container } = render(
+       <ReputationProfile
+         name="A11y Ol Time User"
+         score={90}
+         level="Expert"
+         history={HISTORY_EVENTS}
+       />
+     );
+     await assertNoA11yViolations(container);
+   });
+ });
+
+// ---------------------------------------------------------------------------
+// 11. Meter semantics for reputation score (issue #245)
+// ---------------------------------------------------------------------------
+
+describe('ReputationProfile – reputation score meter (issue #245)', () => {
+   it('renders a meter role when score is present', () => {
+     renderProfile({ name: 'Meter User', score: 88, history: HISTORY_EVENTS });
+     const meter = screen.getByRole('meter');
+     expect(meter).toBeInTheDocument();
+   });
+
+   it('meter has aria-valuenow set to the score value', () => {
+     renderProfile({ name: 'Meter Value User', score: 75, history: HISTORY_EVENTS });
+     const meter = screen.getByRole('meter');
+     expect(meter).toHaveAttribute('aria-valuenow', '75');
+   });
+
+   it('meter has aria-valuemin set to 0', () => {
+     renderProfile({ name: 'Meter Min User', score: 50, history: HISTORY_EVENTS });
+     const meter = screen.getByRole('meter');
+     expect(meter).toHaveAttribute('aria-valuemin', '0');
+   });
+
+   it('meter has aria-valuemax set to maxScore prop (default 5)', () => {
+     renderProfile({ name: 'Meter Max Default User', score: 4, history: HISTORY_EVENTS });
+     const meter = screen.getByRole('meter');
+     expect(meter).toHaveAttribute('aria-valuemax', '5');
+   });
+
+   it('meter has aria-valuemax set to custom maxScore when provided', () => {
+     renderProfile({ name: 'Meter Max Custom User', score: 42, maxScore: 100, history: HISTORY_EVENTS });
+     const meter = screen.getByRole('meter');
+     expect(meter).toHaveAttribute('aria-valuemax', '100');
+   });
+
+   it('does NOT render a meter role when score is absent', () => {
+     renderProfile({ name: 'No Meter User', history: [] });
+     expect(screen.queryByRole('meter')).not.toBeInTheDocument();
+   });
+
+   it('does NOT render a meter role when score is null', () => {
+     renderProfile({ name: 'No Meter Null User', score: null, history: [] });
+     expect(screen.queryByRole('meter')).not.toBeInTheDocument();
+   });
+
+   it('meter renders at min value (score 0)', () => {
+     renderProfile({ name: 'Meter Min Value User', score: 0, maxScore: 5, history: HISTORY_EVENTS });
+     const meter = screen.getByRole('meter');
+     expect(meter).toHaveAttribute('aria-valuenow', '0');
+     expect(meter).toHaveAttribute('aria-valuemin', '0');
+     expect(meter).toHaveAttribute('aria-valuemax', '5');
+   });
+
+   it('meter renders at max value (score equals maxScore)', () => {
+     renderProfile({ name: 'Meter Max Value User', score: 5, maxScore: 5, history: HISTORY_EVENTS });
+     const meter = screen.getByRole('meter');
+     expect(meter).toHaveAttribute('aria-valuenow', '5');
+     expect(meter).toHaveAttribute('aria-valuemax', '5');
+   });
+
+   it('meter has an accessible name via aria-labelledby', () => {
+     renderProfile({ name: 'Meter A11y User', score: 88, history: HISTORY_EVENTS });
+     const meter = screen.getByRole('meter');
+     expect(meter).toHaveAttribute('aria-labelledby', 'reputation-score-label');
+   });
+
+   it('meter axe audit passes for score-present state', async () => {
+     const { container } = render(
+       <ReputationProfile
+         name="Meter A11y Verified User"
+         score={88}
+         level="Trusted Contributor"
+         history={HISTORY_EVENTS}
+       />
+     );
+     await assertNoA11yViolations(container);
+   });
+
+   it('meter axe audit passes for score-null state', async () => {
+     const { container } = render(
+       <ReputationProfile name="Meter A11y Guest User" score={null} history={[]} />
+     );
+     await assertNoA11yViolations(container);
+   });
+ });

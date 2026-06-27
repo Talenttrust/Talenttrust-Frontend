@@ -10,6 +10,8 @@ export type ReputationProfileProps = {
   score?: number | null;
   level?: string;
   history?: ReputationEvent[];
+  /** Maximum possible score value. Used for aria-valuemax on the meter role. */
+  maxScore?: number;
 };
 
 const reputationSummary =
@@ -20,6 +22,7 @@ export default function ReputationProfile({
   score,
   level = 'Community Member',
   history = [],
+  maxScore = 5,
 }: ReputationProfileProps) {
   const hasReputation = typeof score === 'number' && score >= 0;
   const showPartial = hasReputation && history.length === 0;
@@ -44,13 +47,33 @@ export default function ReputationProfile({
           </div>
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        {/**
+          * Reputation score meter with accessible semantics.
+          *
+          * The score is rendered within a span with role="meter" to expose
+          * the measured value to assistive technologies. The meter includes
+          * aria-valuenow, aria-valuemin (0), and aria-valuemax (configurable
+          * maxScore, defaulting to 5) so screen readers understand the score
+          * as a quantified range value rather than plain text.
+          *
+          * When score is absent or null, the "No reputation yet" text is shown
+          * without a meter role.
+          */}
+         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
             <p className="text-sm font-medium text-slate-500" id="reputation-score-label">Reputation score</p>
             <p className="mt-3 text-3xl font-semibold text-slate-950" aria-labelledby="reputation-score-label">
               {hasReputation ? (
                 <>
-                  <span className="sr-only">Reputation score </span>{score}<span className="sr-only"> out of 5</span>
+                  <span
+                    role="meter"
+                    aria-valuenow={score}
+                    aria-valuemin={0}
+                    aria-valuemax={maxScore}
+                    aria-labelledby="reputation-score-label"
+                  >
+                    <span className="sr-only">Reputation score </span>{score}<span className="sr-only"> out of {maxScore}</span>
+                  </span>
                 </>
               ) : 'No reputation yet'}
             </p>
