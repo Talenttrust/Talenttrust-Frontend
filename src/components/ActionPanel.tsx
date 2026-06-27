@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
 import { ConfirmDialog } from './ConfirmDialog';
 
@@ -49,6 +49,7 @@ const ActionPanel = ({
   const { address } = useWallet();
   const isWalletConnected = !!address;
   const noWalletMsg = 'Connect wallet to perform this action';
+  const panelRef = useRef<HTMLElement | null>(null);
 
   const describedBy = (perActionId: string | undefined) =>
     isLoading ? LOADING_DESCRIPTION_ID : perActionId;
@@ -61,8 +62,13 @@ const ActionPanel = ({
   // Confirmation dialog state
   const [confirmAction, setConfirmAction] = useState<'release' | 'dispute' | null>(null);
   const triggerButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previousConfirmActionRef = useRef<'release' | 'dispute' | null>(null);
 
-  const handleOpenConfirm = (action: 'release' | 'dispute') => {
+  const handleOpenConfirm = (
+    action: 'release' | 'dispute',
+    triggerButton: HTMLButtonElement,
+  ) => {
+    triggerButtonRef.current = triggerButton;
     setConfirmAction(action);
   };
 
@@ -76,8 +82,26 @@ const ActionPanel = ({
     setConfirmAction(null);
   };
 
+  useEffect(() => {
+    const wasDialogOpen = previousConfirmActionRef.current !== null;
+
+    if (wasDialogOpen && confirmAction === null) {
+      const triggerButton = triggerButtonRef.current;
+
+      if (triggerButton && document.contains(triggerButton) && !triggerButton.disabled) {
+        triggerButton.focus();
+      } else {
+        panelRef.current?.focus();
+      }
+    }
+
+    previousConfirmActionRef.current = confirmAction;
+  }, [confirmAction]);
+
   return (
     <aside
+      ref={panelRef}
+      tabIndex={-1}
       aria-labelledby="action-panel-heading"
       className="sticky top-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
     >
@@ -141,8 +165,7 @@ const ActionPanel = ({
         {actions.includes('Release Funds') && (
           <button
             type="button"
-            ref={el => { triggerButtonRef.current = el; }}
-            onClick={() => handleOpenConfirm('release')}
+            onClick={(event) => handleOpenConfirm('release', event.currentTarget)}
             disabled={!isWalletConnected || isLoading || !!disabledReasons?.releaseFunds}
             title={!isWalletConnected ? noWalletMsg : undefined}
             aria-label="Release funds to the contractor"
@@ -156,8 +179,7 @@ const ActionPanel = ({
         {actions.includes('Dispute') && (
           <button
             type="button"
-            ref={el => { triggerButtonRef.current = el; }}
-            onClick={() => handleOpenConfirm('dispute')}
+            onClick={(event) => handleOpenConfirm('dispute', event.currentTarget)}
             disabled={!isWalletConnected || isLoading || !!disabledReasons?.dispute}
             title={!isWalletConnected ? noWalletMsg : undefined}
             aria-label="Open a dispute for this contract"

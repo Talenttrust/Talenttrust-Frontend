@@ -94,6 +94,24 @@ describe('ActionPanel', () => {
     expect(onDispute).toHaveBeenCalledTimes(1);
   });
 
+  it('returns focus to the destructive trigger when confirmation is cancelled', () => {
+    render(
+      <ActionPanel
+        status="Active"
+        onReleaseFunds={jest.fn()}
+        onDispute={jest.fn()}
+      />
+    );
+
+    const releaseFunds = screen.getByRole('button', { name: /release funds to the contractor/i });
+
+    fireEvent.click(releaseFunds);
+    fireEvent.click(within(screen.getByRole('dialog', { name: /confirm release funds/i })).getByRole('button', { name: /cancel/i }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(releaseFunds).toHaveFocus();
+  });
+
   it('disables visible actions while loading contract data', () => {
     const onSubmitMilestone = jest.fn();
 

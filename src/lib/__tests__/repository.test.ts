@@ -15,6 +15,7 @@
 import {
   listContracts,
   saveContract,
+  upsertContract,
   listMilestones,
   saveMilestone,
   STORAGE_KEY,
@@ -114,6 +115,28 @@ describe('contract round-trip', () => {
     expect(result.totalValue).toBe(1000);
     expect(result.status).toBe('Active');
     expect(result.milestoneCount).toBe(2);
+  });
+});
+
+describe('contract upsert', () => {
+  it('replaces a matching contract by contractName instead of appending a duplicate', () => {
+    saveContract(contractA);
+
+    const updatedContract: Contract = {
+      ...contractA,
+      status: 'Completed',
+      milestoneCount: 3,
+    };
+
+    expect(upsertContract(updatedContract)).toBe(true);
+    expect(listContracts()).toEqual([updatedContract]);
+  });
+
+  it('appends the contract when no matching contractName exists yet', () => {
+    saveContract(contractA);
+
+    expect(upsertContract(contractB)).toBe(true);
+    expect(listContracts()).toEqual([contractA, contractB]);
   });
 });
 
@@ -354,5 +377,14 @@ describe('write failure resilience', () => {
     saveContract(contractA);
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn.mock.calls[0][0]).toMatch(/\[repository\]/);
+  });
+
+  it('returns false when upsertContract cannot persist the write', () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
+      throw new DOMException('QuotaExceededError');
+    });
+
+    expect(upsertContract(contractA)).toBe(false);
   });
 });

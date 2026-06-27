@@ -77,14 +77,17 @@ function readStore(): AppData {
  * Serialises and writes the full data object back to localStorage.
  *
  * @param data - The complete `AppData` object to persist.
+ * @returns `true` when the write succeeds; otherwise `false`.
  */
-function writeStore(data: AppData): void {
-  if (!isBrowser()) return;
+function writeStore(data: AppData): boolean {
+  if (!isBrowser()) return false;
 
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return true;
   } catch (err) {
     console.warn('[repository] Failed to write to localStorage.', err);
+    return false;
   }
 }
 
@@ -136,6 +139,45 @@ export function listContracts(): Contract[] {
 export function saveContract(contract: Contract): void {
   const store = readStore();
   writeStore({ ...store, contracts: [...store.contracts, contract] });
+}
+
+/**
+ * Replaces an existing contract that shares the same `contractName`, or appends
+ * the contract when no persisted match exists yet.
+ *
+ * The helper returns a success flag so calling UI code can surface a toast or
+ * fallback message when persistence fails instead of assuming the write worked.
+ *
+ * @param contract - The full `Contract` record to insert or replace.
+ * @returns `true` when the contract is persisted successfully; otherwise `false`.
+ *
+ * @example
+ * ```ts
+ * const updated = upsertContract({
+ *   contractName: 'Design Sprint',
+ *   parties: [{ label: 'Client', address: '0xABC...' }],
+ *   totalValue: 5000,
+ *   currency: 'USD',
+ *   status: 'Completed',
+ *   createdAt: '2025-01-01',
+ *   milestoneCount: 3,
+ * });
+ * ```
+ */
+export function upsertContract(contract: Contract): boolean {
+  const store = readStore();
+  const existingIndex = store.contracts.findIndex(
+    (existingContract) => existingContract.contractName === contract.contractName,
+  );
+
+  const contracts =
+    existingIndex === -1
+      ? [...store.contracts, contract]
+      : store.contracts.map((existingContract, index) =>
+          index === existingIndex ? contract : existingContract,
+        );
+
+  return writeStore({ ...store, contracts });
 }
 
 // ---------------------------------------------------------------------------
