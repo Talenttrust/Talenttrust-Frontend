@@ -1,12 +1,9 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
-import userEvent from '@testing-library/user-event';
 import ContractsPage from '../page';
 import * as repository from '@/lib/repository';
 import * as stellarAddress from '@/lib/stellarAddress';
 
-const STORAGE_KEY = 'talenttrust_app_data';
 
 // Mock dependencies
 jest.mock('@/lib/repository');
