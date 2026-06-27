@@ -21,6 +21,11 @@ jest.mock('@/lib/repository', () => ({
   saveContract: jest.fn(),
 }));
 
+jest.mock('@/lib/stellarAddress', () => ({
+  isValidStellarAddress: jest.fn((addr: string) => addr.length === 56 && addr.startsWith('G')),
+  normalizeStellarAddress: jest.fn((addr: string) => addr.trim()),
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

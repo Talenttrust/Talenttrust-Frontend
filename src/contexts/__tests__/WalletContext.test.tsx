@@ -14,6 +14,10 @@ jest.mock('@/lib/safeStorage', () => ({
   },
 }));
 
+jest.mock('@stellar/freighter-api', () => ({
+  requestAccess: jest.fn().mockResolvedValue({ address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F', error: null }),
+}));
+
 const MockComponent = () => {
   const { address, connect, disconnect } = useWallet();
   return (
@@ -31,9 +35,7 @@ describe('WalletContext persistence', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
-    resetCache();
     localStorage.clear();
-    mockRequestAccess.mockReset();
     Object.defineProperty(window, 'freighter', {
       value: true,
       writable: true,

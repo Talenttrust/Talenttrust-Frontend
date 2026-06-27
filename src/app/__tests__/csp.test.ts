@@ -18,21 +18,12 @@ function getHeaderMap(headers: HeaderEntry[]) {
 describe("Content Security Policy", () => {
   const originalEnv = process.env.NODE_ENV;
 
-  async function loadHeaders() {
-    jest.resetModules();
-    return (await import('../../../next.config')).default.headers();
-  }
 
   afterAll(() => {
     process.env.NODE_ENV = originalEnv;
     jest.resetModules();
   });
 
-  async function loadNextConfig() {
-    jest.resetModules();
-    const nextConfigModule = await import('../../../next.config');
-    return nextConfigModule.default as { headers: () => Promise<unknown[]> };
-  }
 
   test('development includes unsafe-eval and unsafe-inline', async () => {
     const result = await loadHeadersForEnv('development');
