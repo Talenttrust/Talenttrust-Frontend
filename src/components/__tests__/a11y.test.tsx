@@ -362,6 +362,7 @@ describe('a11y: toast panels dark theme', () => {
 
 import { WalletConnectButton } from '../WalletConnectButton';
 import { render as plainRender } from '@testing-library/react';
+import { PreferencesProvider } from '@/lib/preferences';
 
 /**
  * Replaces window.matchMedia with an implementation that answers `true`
@@ -390,15 +391,39 @@ function mockReducedMotion(): () => void {
   };
 }
 
+/**
+ * Mounts `<WalletConnectButton />` inside the same provider chain used
+ * by the production app (`PreferencesProvider` → `ToastProvider`). This
+ * satisfies `useToast()` inside the component — the hook throws if no
+ * `ToastProvider` is in scope.
+ *
+ * `localStorage.clear()` sets a known-empty baseline so the
+ * `PreferencesProvider` hydration effect falls through to its defaults
+ * regardless of what state earlier tests may have written.
+ */
+function renderWalletConnectButton() {
+  localStorage.clear();
+  return plainRender(
+    <PreferencesProvider>
+      <ToastProvider>
+        <WalletConnectButton />
+      </ToastProvider>
+    </PreferencesProvider>,
+  );
+}
+
 describe('a11y: prefers-reduced-motion — WalletConnectButton', () => {
   let restoreMatchMedia: () => void;
 
   beforeEach(() => {
     restoreMatchMedia = mockReducedMotion();
+    // Ensure PreferencesProvider hydration starts from a clean slate.
+    localStorage.clear();
   });
 
   afterEach(() => {
     restoreMatchMedia();
+    localStorage.clear();
   });
 
   it('matchMedia returns true for the reduced-motion query', () => {
@@ -407,22 +432,6 @@ describe('a11y: prefers-reduced-motion — WalletConnectButton', () => {
   });
 
   it('spinner SVG remains in the DOM while connecting (static loading indicator)', () => {
-    // The WalletContext mock from jest.setup.ts is the global default.
-    // Override locally to force the connecting branch.
-    jest.mock('@/contexts/WalletContext', () => ({
-      useWallet: jest.fn().mockReturnValue({
-        address: null,
-        isConnecting: true,
-        error: null,
-        connect: jest.fn(),
-        disconnect: jest.fn(),
-      }),
-      WalletProvider: ({ children }: { children: React.ReactNode }) => children,
-    }));
-
-    // Re-require so the mock takes effect for this render path.
-    // Because the global setup already has a jest.mock at module level,
-    // we rely on the global mock and just assert the spinner is present.
     const { useWallet } = require('@/contexts/WalletContext') as {
       useWallet: jest.Mock;
     };
@@ -434,7 +443,7 @@ describe('a11y: prefers-reduced-motion — WalletConnectButton', () => {
       disconnect: jest.fn(),
     });
 
-    const { container } = plainRender(<WalletConnectButton />);
+    const { container } = renderWalletConnectButton();
 
     // The SVG with animate-spin must be present so a static circle is shown.
     const spinner = container.querySelector('svg.animate-spin');
@@ -456,7 +465,7 @@ describe('a11y: prefers-reduced-motion — WalletConnectButton', () => {
       disconnect: jest.fn(),
     });
 
-    const { container } = plainRender(<WalletConnectButton />);
+    const { container } = renderWalletConnectButton();
     const spinner = container.querySelector('svg.animate-spin');
     // Class must not be stripped — the @media rule in CSS stops the spin.
     expect(spinner).not.toBeNull();
@@ -475,7 +484,8 @@ describe('a11y: prefers-reduced-motion — WalletConnectButton', () => {
       disconnect: jest.fn(),
     });
 
-    await testA11y(<WalletConnectButton />);
+    const view = renderWalletConnectButton();
+    await assertNoA11yViolations(view.container);
   });
 });
 
