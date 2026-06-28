@@ -182,7 +182,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
               items={[
                 { label: 'Dashboard', href: '/' },
                 { label: 'Contracts', href: '/contracts' },
-                { label: `Contract #${id}` },
+                { label: `#${id}` },
               ]}
             />
             <h1 className="mt-2 text-3xl font-semibold text-slate-900">Contract #{id}</h1>
