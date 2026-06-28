@@ -58,6 +58,11 @@ export type ActionPanelProps = {
    * Useful for wallet-gating, unmet conditions, or missing permissions.
    */
   disabledReasons?: ActionPanelDisabledReasons;
+  /**
+   * Chooses whether Dispute uses the newer inline reason form or the legacy
+   * confirmation dialog expected by older page-level flows.
+   */
+  disputeFlow?: 'inline' | 'confirm';
 };
 
 const LOADING_REASON = 'Action is disabled while contract data is loading.';
@@ -76,7 +81,7 @@ const getActionButtons = (status: ActionPanelProps['status']) => {
   return ['View Summary'];
 };
 
-type ConfirmAction = 'submit' | 'release' | null;
+type ConfirmAction = 'submit' | 'release' | 'dispute' | null;
 
 const CONFIRM_COPY = {
   submit: {
@@ -89,6 +94,11 @@ const CONFIRM_COPY = {
     description: 'Are you sure you want to release funds? This action cannot be undone.',
     confirmLabel: 'Release Funds',
   },
+  dispute: {
+    title: 'Confirm Dispute',
+    description: 'Are you sure you want to open a dispute for this contract? This action cannot be undone.',
+    confirmLabel: 'Dispute',
+  },
 } as const;
 
 const ActionPanel = ({
@@ -100,6 +110,7 @@ const ActionPanel = ({
   isLoading = false,
   errorMessage,
   disabledReasons,
+  disputeFlow = 'inline',
 }: ActionPanelProps) => {
   const actions = getActionButtons(status);
   const { address } = useWallet();
@@ -141,6 +152,8 @@ const ActionPanel = ({
       showSuccess({ title: 'Milestone submitted' });
     } else if (confirmAction === 'release') {
       onReleaseFunds?.();
+    } else if (confirmAction === 'dispute') {
+      onDispute?.('Dispute opened from action panel.');
     }
     setConfirmAction(null);
     triggerElementRef.current?.focus();
@@ -188,9 +201,7 @@ const ActionPanel = ({
     setDisputeFormOpen(false);
     setDisputeReason('');
     setDisputeReasonError('');
-    requestAnimationFrame(() => {
-      disputeTriggerRef.current?.focus();
-    });
+    disputeTriggerRef.current?.focus();
   };
 
   const handleDisputeReasonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -325,20 +336,32 @@ const ActionPanel = ({
         {actions.includes('Dispute') && (
           <button
             type="button"
-            onClick={handleOpenDisputeForm}
-            disabled={!isWalletConnected || isLoading || !!disabledReasons?.dispute || disputeFormOpen}
+            onClick={(event) => {
+              if (disputeFlow === 'confirm') {
+                handleOpenConfirm('dispute', event);
+                return;
+              }
+
+              handleOpenDisputeForm(event);
+            }}
+            disabled={
+              !isWalletConnected ||
+              isLoading ||
+              !!disabledReasons?.dispute ||
+              (disputeFlow === 'inline' && disputeFormOpen)
+            }
             title={!isWalletConnected ? noWalletMsg : undefined}
             aria-label="Open a dispute for this contract"
             aria-describedby={describedBy(describedById('dispute'))}
-            aria-expanded={disputeFormOpen}
-            aria-controls="dispute-reason-form"
+            aria-expanded={disputeFlow === 'inline' ? disputeFormOpen : undefined}
+            aria-controls={disputeFlow === 'inline' ? 'dispute-reason-form' : undefined}
             className={`w-full rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed ${focusRingClass}`}
           >
             Dispute
           </button>
         )}
 
-        {disputeFormOpen && (
+        {disputeFlow === 'inline' && disputeFormOpen && (
           <form
             id="dispute-reason-form"
             role="group"
