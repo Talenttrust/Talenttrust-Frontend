@@ -59,3 +59,34 @@ The wallet public address is saved under the storage key:
 * No private keys, seed phrases, or sensitive wallet data are ever accessed or persisted.
 * Storage interactions are safely wrapped using `safeStorage` (in [`src/lib/safeStorage.ts`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/lib/safeStorage.ts)) to catch potential storage access exceptions in restricted browser environments.
 
+---
+
+## Idle Timeout Lifecycle & Activity Events
+
+The inactivity auto-disconnect safeguard ensures that the wallet does not remain connected indefinitely when a user is inactive. 
+
+### Active Event Monitoring
+When a wallet session is active (`address !== null`) and the configuration specifies an [`idleTimeout`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/contexts/WalletContext.tsx#L33) greater than `0`, the provider registers event listeners on the global `window` object. 
+
+The timer is reset back to zero on any of the following **five activity events**:
+
+* `pointermove` - Tracks mouse movement or hover actions.
+* `keydown` - Tracks any keyboard interaction.
+* `visibilitychange` - Tracks tab switches (e.g., when the user returns to the page/tab).
+* `mousedown` - Tracks mouse clicks.
+* `touchstart` - Tracks touch gestures on mobile devices.
+
+### Underlying Lifecycle Flow
+1. **Wallet Connected:** When `address` transitions from `null` to a valid public key, the timer is initialized.
+2. **Activity Event Fired:** Any of the five monitored events triggers the internal `resetTimer` function.
+3. **Timer Reset:** `resetTimer` clears the previous `setTimeout` (via `timerRef.current`) and schedules a new one.
+4. **Auto-Disconnect Execution:** If no monitored activity occurs before the timeout expires, the provider:
+   * Invokes [`disconnect()`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/contexts/WalletContext.tsx#L56) to nullify the connected address.
+   * Removes `wallet_connected_address` from local storage.
+   * Cleans up the event listeners and internal timer ref.
+   * Dispatches a "Session expired" toast (see details below).
+
+### Cleanup
+* When the wallet is disconnected manually or the session expires, all event listeners are unregistered from the `window` object and the timeout timer is cleared to prevent memory leaks.
+
+
