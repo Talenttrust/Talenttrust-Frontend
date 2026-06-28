@@ -37,3 +37,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 > [!NOTE]
 > Setting [`idleTimeout`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/contexts/WalletContext.tsx#L33) to `0` or omitting it (so it defaults to `0` or `undefined`) completely disables the inactivity auto-disconnect safeguard.
+
+---
+
+## Session Persistence & Rehydration
+
+To provide a seamless user experience across page reloads and navigations, the wallet session status is persisted in the browser.
+
+### Storage Key
+The wallet public address is saved under the storage key:
+* `wallet_connected_address` (as defined in [`WalletContext.tsx`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/contexts/WalletContext.tsx#L52)).
+
+### Rehydration Flow on Mount
+1. **Client Check:** During server-side rendering (SSR), `window` is undefined, and the rehydration hook does not execute.
+2. **Mount Event:** Once the component mounts on the client, a `useEffect` runs to rehydrate the wallet state.
+3. **Retrieval:** The address is retrieved from storage using [`getItem`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/lib/safeStorage.ts) via the `safeStorage` helper.
+4. **State Restoration:** If a valid address exists, the inner state of [`WalletProvider`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/contexts/WalletContext.tsx#L31) is restored, making the address globally accessible via [`useWallet`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/contexts/WalletContext.tsx#L147).
+
+### Security Profile
+* Only the public key (mocked or from the Stellar wallet extension) is saved to the storage.
+* No private keys, seed phrases, or sensitive wallet data are ever accessed or persisted.
+* Storage interactions are safely wrapped using `safeStorage` (in [`src/lib/safeStorage.ts`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/lib/safeStorage.ts)) to catch potential storage access exceptions in restricted browser environments.
+
