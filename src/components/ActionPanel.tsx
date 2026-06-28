@@ -180,6 +180,7 @@ const ActionPanel = ({
   const [disputeReasonError, setDisputeReasonError] = useState('');
   const disputeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const disputeTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const previousDisputeFormOpenRef = useRef(false);
 
   /** Opens the inline dispute form and moves focus to the textarea. */
   const handleOpenDisputeForm = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -190,18 +191,21 @@ const ActionPanel = ({
     setDisputeFormOpen(true);
   };
 
-  // Move focus into the textarea when the form becomes visible.
+  // Move focus after the form mounts/unmounts so disabled controls are not focused.
   useEffect(() => {
     if (disputeFormOpen) {
       disputeTextareaRef.current?.focus();
+    } else if (previousDisputeFormOpenRef.current) {
+      disputeTriggerRef.current?.focus();
     }
+
+    previousDisputeFormOpenRef.current = disputeFormOpen;
   }, [disputeFormOpen]);
 
   const closeDisputeForm = () => {
     setDisputeFormOpen(false);
     setDisputeReason('');
     setDisputeReasonError('');
-    disputeTriggerRef.current?.focus();
   };
 
   const handleDisputeReasonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
