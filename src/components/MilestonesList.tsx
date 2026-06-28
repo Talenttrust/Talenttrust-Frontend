@@ -1,5 +1,6 @@
 import StatusBadge, { StatusType } from './StatusBadge';
 import { usePreferences } from '@/lib/preferences';
+import { findCurrencyMismatches, normalizeCurrencyCode } from '@/lib/currencyMismatch';
 
 export type Milestone = {
   id: string;
@@ -12,10 +13,24 @@ export type Milestone = {
 
 export type MilestonesListProps = {
   milestones: Milestone[];
+  contractCurrency?: string;
 };
 
-const MilestonesList = ({ milestones }: MilestonesListProps) => {
+const MilestonesList = ({ milestones, contractCurrency }: MilestonesListProps) => {
   const { formatAmount } = usePreferences();
+  const mismatchedMilestoneIds = contractCurrency
+    ? new Set(findCurrencyMismatches(contractCurrency, milestones))
+    : new Set<string>();
+  const mismatchedMilestones = milestones.filter((milestone) =>
+    mismatchedMilestoneIds.has(milestone.id),
+  );
+  const mismatchCurrencies = Array.from(
+    new Set(mismatchedMilestones.map((milestone) => normalizeCurrencyCode(milestone.currency))),
+  ).sort();
+  const normalizedContractCurrency = contractCurrency
+    ? normalizeCurrencyCode(contractCurrency)
+    : undefined;
+
   return (
     <section aria-labelledby="milestones-title" className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between gap-4">
@@ -24,6 +39,26 @@ const MilestonesList = ({ milestones }: MilestonesListProps) => {
         </h2>
         <span id="milestones-count" className="text-sm text-slate-500">{milestones.length} total</span>
       </div>
+
+      {normalizedContractCurrency && mismatchedMilestones.length > 0 ? (
+        <div
+          role="alert"
+          className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+        >
+          <p className="font-semibold">
+            {mismatchedMilestones.length}{' '}
+            {mismatchedMilestones.length === 1 ? 'milestone uses' : 'milestones use'}{' '}
+            {mismatchCurrencies.join(', ')} instead of {normalizedContractCurrency}.
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {mismatchedMilestones.map((milestone) => (
+              <li key={milestone.id}>
+                {milestone.title}: {formatAmount(milestone.payout, milestone.currency)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {/*
         Keyboard Accessibility (WCAG 2.1.1):

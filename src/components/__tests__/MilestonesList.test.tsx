@@ -9,6 +9,12 @@ const SAMPLE: Milestone[] = [
   { id: '2', title: 'Milestone 2', status: 'Completed', payout: 1000, currency: 'USD', dueDate: 'Jun 1, 2026' },
 ];
 
+const MIXED_CURRENCY_SAMPLE: Milestone[] = [
+  SAMPLE[0],
+  { id: '2', title: 'Milestone 2', status: 'Completed', payout: 1000, currency: 'EUR', dueDate: 'Jun 1, 2026' },
+  { id: '3', title: 'Milestone 3', status: 'Pending', payout: 250, currency: 'GBP', dueDate: 'Jul 1, 2026' },
+];
+
 const scrollRegion = (container: HTMLElement) =>
   container.querySelector('.max-h-\\[calc\\(100vh-260px\\)\\]') as HTMLElement;
 
@@ -80,8 +86,39 @@ describe('MilestonesList', () => {
     );
   });
 
+  it('does not render a currency warning when the contract currency is absent', () => {
+    render(<MilestonesList milestones={MIXED_CURRENCY_SAMPLE} />);
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('renders an accessible warning for milestone currencies that differ from the contract', () => {
+    render(
+      <MilestonesList
+        milestones={MIXED_CURRENCY_SAMPLE}
+        contractCurrency="usd"
+      />
+    );
+
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('2 milestones use EUR, GBP instead of USD.');
+    expect(alert).toHaveTextContent('Milestone 2: €1,000.00');
+    expect(alert).toHaveTextContent('Milestone 3: £250.00');
+  });
+
   it('passes axe accessibility checks with a populated list', async () => {
     const { container } = render(<MilestonesList milestones={SAMPLE} />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('passes axe accessibility checks with a currency mismatch warning', async () => {
+    const { container } = render(
+      <MilestonesList
+        milestones={MIXED_CURRENCY_SAMPLE}
+        contractCurrency="USD"
+      />
+    );
+
     expect(await axe(container)).toHaveNoViolations();
   });
 

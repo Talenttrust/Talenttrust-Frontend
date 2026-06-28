@@ -32,8 +32,9 @@ See [`docs/components/ContractProgress.md`](./ContractProgress.md) for the full 
 
 Props:
 - `milestones: Array<{ id: string; title: string; status: 'Pending' | 'Completed' | 'Paid' | 'Disputed'; payout: number; currency: string; dueDate?: string; }>`
+- `contractCurrency?: string`
 
-Description: Renders a scrollable milestone roster, each showing the title, due date, status, and payout amount.
+Description: Renders a scrollable milestone roster, each showing the title, due date, status, and payout amount. When `contractCurrency` is provided, the component compares it against each milestone currency case-insensitively. Any milestone whose normalized currency differs from the contract currency is surfaced in a non-blocking `role="alert"` warning with the affected payout amounts formatted through the user preference formatter.
 
 ### `ActionPanel`
 
