@@ -33,6 +33,10 @@ The `ActionPanel` manages accessibility heavily through `aria-describedby` for d
 - Unavailable actions stay visible as disabled buttons with an accessible reason. Use `disabledReasons` for states such as no wallet, missing permissions, pending API responses, or unmet milestone conditions.
 - Loading states disable all visible actions and describe that contract data is still loading.
 - Error states are announced through `role="alert"` without moving focus or changing the action order.
+- **Dispute Reason Character Counter**: The character counter in the inline dispute form is associated with the textarea via `aria-describedby` (`id="dispute-reason-counter"`). The remaining count is announced to screen reader users using an `aria-live` region:
+  - **Debouncing/Throttling**: To avoid screen reader spam, updates are debounced by `1000ms` when typing non-boundary characters. Immediate announcements occur when pausing typing, or when crossing meaningful boundaries (multiples of 50, multiples of 10 when remaining count is $\le 50$, or every character when $\le 10$).
+  - **Assertive Escalation**: The live region defaults to `aria-live="polite"`, but escalates to `aria-live="assertive"` when within the threshold of $50$ characters or fewer remaining.
+  - **Clean State**: The live region is only rendered when the form is open, ensuring it remains quiet when closed.
 
 ## Focus Restoration
 
