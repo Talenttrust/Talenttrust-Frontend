@@ -151,6 +151,16 @@ const ActionPanel = ({
     triggerElementRef.current?.focus();
   };
 
+  useEffect(() => {
+    const wasDialogOpen = previousConfirmActionRef.current !== null;
+
+    if (wasDialogOpen && confirmAction === null) {
+      triggerElementRef.current?.focus();
+    }
+
+    previousConfirmActionRef.current = confirmAction;
+  }, [confirmAction]);
+
   // ── Inline dispute form state ────────────────────────────────────────────
   const [disputeFormOpen, setDisputeFormOpen] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
@@ -174,8 +184,14 @@ const ActionPanel = ({
     }
   }, [disputeFormOpen]);
 
-    if (wasDialogOpen && confirmAction === null) {
-      const triggerButton = triggerElementRef.current;
+  const closeDisputeForm = () => {
+    setDisputeFormOpen(false);
+    setDisputeReason('');
+    setDisputeReasonError('');
+    requestAnimationFrame(() => {
+      disputeTriggerRef.current?.focus();
+    });
+  };
 
   const handleDisputeReasonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -309,15 +325,71 @@ const ActionPanel = ({
         {actions.includes('Dispute') && (
           <button
             type="button"
-            onClick={(event) => handleOpenConfirm('dispute', event)}
-            disabled={!isWalletConnected || isLoading || !!disabledReasons?.dispute}
+            onClick={handleOpenDisputeForm}
+            disabled={!isWalletConnected || isLoading || !!disabledReasons?.dispute || disputeFormOpen}
             title={!isWalletConnected ? noWalletMsg : undefined}
             aria-label="Open a dispute for this contract"
             aria-describedby={describedBy(describedById('dispute'))}
+            aria-expanded={disputeFormOpen}
+            aria-controls="dispute-reason-form"
             className={`w-full rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed ${focusRingClass}`}
           >
             Dispute
           </button>
+        )}
+
+        {disputeFormOpen && (
+          <form
+            id="dispute-reason-form"
+            role="group"
+            aria-label="Describe the reason for this dispute"
+            onSubmit={handleDisputeSubmit}
+            className="rounded-2xl border border-rose-200 bg-rose-50 p-4"
+          >
+            <label htmlFor="dispute-reason" className="text-sm font-semibold text-slate-900">
+              Reason
+            </label>
+            <textarea
+              id="dispute-reason"
+              ref={disputeTextareaRef}
+              value={disputeReason}
+              onChange={handleDisputeReasonChange}
+              maxLength={DISPUTE_REASON_MAX_LENGTH}
+              aria-invalid={disputeReasonError ? 'true' : 'false'}
+              aria-describedby={
+                disputeReasonError
+                  ? `${DISPUTE_REASON_ERROR_ID} ${DISPUTE_REASON_HINT_ID}`
+                  : DISPUTE_REASON_HINT_ID
+              }
+              className={`mt-2 min-h-28 w-full rounded-2xl border border-rose-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm ${focusRingClass}`}
+            />
+            {disputeReasonError && (
+              <p id={DISPUTE_REASON_ERROR_ID} role="alert" className="mt-2 text-sm text-rose-700">
+                {disputeReasonError}
+              </p>
+            )}
+            <p
+              id={DISPUTE_REASON_HINT_ID}
+              className={`mt-2 text-xs ${isOverLimit ? 'text-rose-700' : 'text-slate-500'}`}
+            >
+              {remainingChars} characters remaining
+            </p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <button
+                type="submit"
+                className={`rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 ${focusRingClass}`}
+              >
+                Confirm Dispute
+              </button>
+              <button
+                type="button"
+                onClick={closeDisputeForm}
+                className={`rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-400 ${focusRingClass}`}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
         )}
 
         {actions.includes('View Summary') && (
