@@ -22,23 +22,27 @@ const MilestonesList = ({ milestones }: MilestonesListProps) => {
         <h2 id="milestones-title" className="text-xl font-semibold text-slate-900">
           Milestones
         </h2>
-        <span className="text-sm text-slate-500">{milestones.length} total</span>
+        <span id="milestones-count" className="text-sm text-slate-500">{milestones.length} total</span>
       </div>
 
-      {/* 
+      {/*
         Keyboard Accessibility (WCAG 2.1.1):
-        We make the scrollable milestones container focusable (tabIndex={0}) and assign it a 'region' role
-        with an accessible label (aria-label="Milestones list"). This allows keyboard-only users to
-        navigate to the region and scroll its contents using the arrow keys.
-        
-        Why this is always applied when the list is populated:
-        Always applying tabIndex={0} when milestones are present ensures:
-        1. Consistency between Server-Side Rendering (SSR) and client hydration, avoiding layout/hydration shifts.
-        2. Testability in JSDOM environments where DOM layout metrics (clientHeight/scrollHeight) are always zero.
+        The scrollable container is focusable (tabIndex={0}) with role="region" so keyboard-only users
+        can navigate to it and scroll with arrow keys.
+
+        Labelling (WCAG 1.3.1 / 4.1.2):
+        aria-labelledby references both the visible "Milestones" heading (milestones-title) and the live
+        count span (milestones-count) so AT users hear e.g. "Milestones, 3 total – region" rather than
+        a disconnected static string. This keeps the accessible name in sync with both the heading and
+        the rendered item count without duplicating text.
+
+        Why tabIndex is always applied when the list is populated:
+        1. Consistency between SSR and client hydration avoids layout/hydration shifts.
+        2. Testability in JSDOM where clientHeight/scrollHeight are always zero.
       */}
       <div
         role={milestones.length > 0 ? 'region' : undefined}
-        aria-label={milestones.length > 0 ? 'Milestones list' : undefined}
+        aria-labelledby={milestones.length > 0 ? 'milestones-title milestones-count' : undefined}
         tabIndex={milestones.length > 0 ? 0 : undefined}
         className="mt-6 space-y-4 max-h-[calc(100vh-260px)] overflow-y-auto pr-2 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
       >

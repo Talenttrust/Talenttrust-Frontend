@@ -1,17 +1,20 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import MilestonesList from '../MilestonesList';
+import type { Milestone } from '../MilestonesList';
+
+const SAMPLE: Milestone[] = [
+  { id: '1', title: 'Milestone 1', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 10, 2026' },
+  { id: '2', title: 'Milestone 2', status: 'Completed', payout: 1000, currency: 'USD', dueDate: 'Jun 1, 2026' },
+];
+
+const scrollRegion = (container: HTMLElement) =>
+  container.querySelector('.max-h-\\[calc\\(100vh-260px\\)\\]') as HTMLElement;
 
 describe('MilestonesList', () => {
   it('renders each milestone item with status and payout', () => {
-    render(
-      <MilestonesList
-        milestones={[
-          { id: '1', title: 'Milestone 1', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 10, 2026' },
-          { id: '2', title: 'Milestone 2', status: 'Completed', payout: 1000, currency: 'USD', dueDate: 'Jun 1, 2026' },
-        ]}
-      />
-    );
+    render(<MilestonesList milestones={SAMPLE} />);
 
     expect(screen.getByText('Milestone 1')).toBeInTheDocument();
     expect(screen.getByText('Milestone 2')).toBeInTheDocument();
@@ -21,21 +24,55 @@ describe('MilestonesList', () => {
     expect(screen.getByText('$1,000.00')).toBeInTheDocument();
   });
 
-  it('makes the container a keyboard-accessible scroll region when milestones are present', () => {
-    const { container } = render(
-      <MilestonesList
-        milestones={[
-          { id: '1', title: 'Milestone 1', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 10, 2026' },
-        ]}
-      />
-    );
+  describe('scroll region labelling', () => {
+    it('associates the region with the visible heading via aria-labelledby', () => {
+      const { container } = render(<MilestonesList milestones={SAMPLE} />);
 
-    const scrollContainer = container.querySelector('.max-h-\\[calc\\(100vh-260px\\)\\]');
-    expect(scrollContainer).toBeInTheDocument();
-    expect(scrollContainer).toHaveAttribute('role', 'region');
-    expect(scrollContainer).toHaveAttribute('tabIndex', '0');
-    expect(scrollContainer).toHaveAttribute('aria-label', 'Milestones list');
-    expect(scrollContainer).toHaveClass(
+      const heading = screen.getByRole('heading', { name: 'Milestones' });
+      expect(heading).toHaveAttribute('id', 'milestones-title');
+
+      const region = scrollRegion(container);
+      expect(region).toHaveAttribute('role', 'region');
+      expect(region.getAttribute('aria-labelledby')).toContain('milestones-title');
+    });
+
+    it('includes the count span id in aria-labelledby', () => {
+      const { container } = render(<MilestonesList milestones={SAMPLE} />);
+
+      const countSpan = container.querySelector('#milestones-count');
+      expect(countSpan).toBeInTheDocument();
+      expect(countSpan).toHaveTextContent('2 total');
+
+      const region = scrollRegion(container);
+      expect(region.getAttribute('aria-labelledby')).toContain('milestones-count');
+    });
+
+    it('count span reflects a single-item list', () => {
+      const { container } = render(
+        <MilestonesList milestones={[SAMPLE[0]]} />
+      );
+      expect(container.querySelector('#milestones-count')).toHaveTextContent('1 total');
+    });
+
+    it('does not apply region attributes when the list is empty', () => {
+      const { container } = render(<MilestonesList milestones={[]} />);
+      const region = scrollRegion(container);
+      expect(region).not.toHaveAttribute('role');
+      expect(region).not.toHaveAttribute('tabIndex');
+      expect(region).not.toHaveAttribute('aria-labelledby');
+    });
+
+    it('does not use a static aria-label on the scroll region', () => {
+      const { container } = render(<MilestonesList milestones={SAMPLE} />);
+      expect(scrollRegion(container)).not.toHaveAttribute('aria-label');
+    });
+  });
+
+  it('makes the scroll region keyboard-focusable with focus-ring styles when populated', () => {
+    const { container } = render(<MilestonesList milestones={SAMPLE} />);
+    const region = scrollRegion(container);
+    expect(region).toHaveAttribute('tabIndex', '0');
+    expect(region).toHaveClass(
       'focus-visible:outline-none',
       'focus-visible:ring-2',
       'focus-visible:ring-[var(--ring)]',
@@ -43,14 +80,13 @@ describe('MilestonesList', () => {
     );
   });
 
-  it('does not apply scroll region attributes when milestones list is empty', () => {
+  it('passes axe accessibility checks with a populated list', async () => {
+    const { container } = render(<MilestonesList milestones={SAMPLE} />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('passes axe accessibility checks with an empty list', async () => {
     const { container } = render(<MilestonesList milestones={[]} />);
-    
-    // The inner container div should not have tabIndex, role, or aria-labelledby
-    const scrollContainer = container.querySelector('.max-h-\\[calc\\(100vh-260px\\)\\]');
-    expect(scrollContainer).toBeInTheDocument();
-    expect(scrollContainer).not.toHaveAttribute('tabIndex');
-    expect(scrollContainer).not.toHaveAttribute('role');
-    expect(scrollContainer).not.toHaveAttribute('aria-labelledby');
+    expect(await axe(container)).toHaveNoViolations();
   });
 });
