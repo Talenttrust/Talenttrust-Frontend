@@ -105,7 +105,7 @@ describe('ContractDetailPage', () => {
   it('renders the resolved contract details and action panel', async () => {
     await renderPage();
 
-    expect(await screen.findByText('Contract #123')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: /contract #123/i })).toBeInTheDocument();
     expect(screen.getByText('Milestones')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /back to contracts/i })).toHaveAttribute('href', '/contracts');
     expect(within(getContractSummarySection()).getByLabelText('Status: Active')).toBeInTheDocument();
@@ -355,7 +355,9 @@ describe('existing contract detail page behaviour', () => {
     await renderPage();
 
     await user.click(await screen.findByRole('button', { name: /open a dispute for this contract/i }));
-    await user.click(within(screen.getByRole('dialog', { name: /confirm dispute/i })).getByRole('button', { name: /^dispute$/i }));
+    const textarea = screen.getByRole('textbox', { name: /reason/i });
+    await user.type(textarea, 'Contract terms were violated');
+    await user.click(screen.getByRole('button', { name: /confirm dispute/i }));
 
     await waitFor(() => {
       expect(mockedUpsertContract).toHaveBeenCalledWith(
