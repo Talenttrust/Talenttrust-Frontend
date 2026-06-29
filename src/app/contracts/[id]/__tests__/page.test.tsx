@@ -357,7 +357,7 @@ describe('existing contract detail page behaviour', () => {
     await user.click(await screen.findByRole('button', { name: /open a dispute for this contract/i }));
     await user.type(
       screen.getByRole('textbox', { name: /reason/i }),
-      'Milestone work is materially incomplete.',
+      'Deliverable was not met',
     );
     await user.click(screen.getByRole('button', { name: /confirm dispute/i }));
 

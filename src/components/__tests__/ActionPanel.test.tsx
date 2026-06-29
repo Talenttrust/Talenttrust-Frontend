@@ -652,8 +652,7 @@ describe('inline dispute form — validation', () => {
     await user.click(screen.getByRole('button', { name: /open a dispute for this contract/i }));
 
     const textarea = screen.getByRole('textbox', { name: /reason/i });
-    const over500 = 'a'.repeat(501);
-    fireEvent.change(textarea, { target: { value: over500 } });
+    fireEvent.change(textarea, { target: { value: 'a'.repeat(501) } });
 
     // The textarea value must be capped at 500 chars
     expect(textarea.value.length).toBeLessThanOrEqual(500);
