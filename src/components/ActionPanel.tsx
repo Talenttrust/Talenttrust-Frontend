@@ -68,6 +68,8 @@ const DISPUTE_REASON_MAX_LENGTH = 500;
 
 const DISPUTE_REASON_ERROR_ID = 'dispute-reason-error';
 const DISPUTE_REASON_HINT_ID = 'dispute-reason-hint';
+const DISPUTE_FORM_ID = 'action-panel-dispute-form';
+const DISPUTE_WALLET_ERROR = 'Connect your wallet before submitting a dispute.';
 
 const getActionButtons = (status: ActionPanelProps['status']) => {
   if (status === 'Active') return ['Submit Milestone', 'Release Funds', 'Dispute'];
@@ -116,9 +118,8 @@ const ActionPanel = ({
   const focusRingClass =
     'focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500';
 
-  // ── Submit / Release confirmation dialog state ───────────────────────────
+  // Submit / Release confirmation dialog state.
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
-  const previousConfirmActionRef = useRef<ConfirmAction>(null);
 
   /**
    * Holds a reference to the button that opened the confirmation dialog or the
@@ -151,20 +152,25 @@ const ActionPanel = ({
     triggerElementRef.current?.focus();
   };
 
-  // ── Inline dispute form state ────────────────────────────────────────────
+  // Inline dispute form state.
   const [disputeFormOpen, setDisputeFormOpen] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
   const [disputeReasonError, setDisputeReasonError] = useState('');
   const disputeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const disputeTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const wasDisputeFormOpenRef = useRef(false);
 
   /** Opens the inline dispute form and moves focus to the textarea. */
   const handleOpenDisputeForm = (event: React.MouseEvent<HTMLButtonElement>) => {
-    disputeTriggerRef.current = event.currentTarget;
     triggerElementRef.current = event.currentTarget;
     setDisputeReason('');
     setDisputeReasonError('');
     setDisputeFormOpen(true);
+  };
+
+  const closeDisputeForm = () => {
+    setDisputeFormOpen(false);
+    setDisputeReason('');
+    setDisputeReasonError('');
   };
 
   // Move focus into the textarea when the form becomes visible.
@@ -174,8 +180,12 @@ const ActionPanel = ({
     }
   }, [disputeFormOpen]);
 
-    if (wasDialogOpen && confirmAction === null) {
-      const triggerButton = triggerElementRef.current;
+  useEffect(() => {
+    if (wasDisputeFormOpenRef.current && !disputeFormOpen) {
+      triggerElementRef.current?.focus();
+    }
+    wasDisputeFormOpenRef.current = disputeFormOpen;
+  }, [disputeFormOpen]);
 
   const handleDisputeReasonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -195,8 +205,9 @@ const ActionPanel = ({
    * Validates and submits the dispute reason.
    *
    * Validation rules:
-   *   1. Must not be empty / whitespace-only.
-   *   2. Trimmed length must not exceed DISPUTE_REASON_MAX_LENGTH.
+   *   1. Wallet must still be connected at submit time.
+   *   2. Reason must not be empty / whitespace-only.
+   *   3. Trimmed length must not exceed DISPUTE_REASON_MAX_LENGTH.
    *
    * On success the trimmed reason is forwarded to `onDispute` and the form
    * is closed; focus returns to the originating "Dispute" button.
@@ -205,13 +216,19 @@ const ActionPanel = ({
     e.preventDefault();
     const trimmed = disputeReason.trim();
 
+    if (!isWalletConnected) {
+      setDisputeReasonError(DISPUTE_WALLET_ERROR);
+      disputeTextareaRef.current?.focus();
+      return;
+    }
+
     if (trimmed.length === 0) {
       setDisputeReasonError('Please provide a reason for the dispute.');
       disputeTextareaRef.current?.focus();
       return;
     }
 
-    // Trimmed length is guaranteed ≤ DISPUTE_REASON_MAX_LENGTH because the
+    // Trimmed length is guaranteed <= DISPUTE_REASON_MAX_LENGTH because the
     // textarea hard-caps raw input; this check is a belt-and-suspenders guard.
     if (trimmed.length > DISPUTE_REASON_MAX_LENGTH) {
       setDisputeReasonError(
@@ -226,7 +243,6 @@ const ActionPanel = ({
   };
 
   const remainingChars = DISPUTE_REASON_MAX_LENGTH - disputeReason.length;
-  const isOverLimit = remainingChars < 0;
 
   return (
     <aside
@@ -241,12 +257,12 @@ const ActionPanel = ({
           What would you like to do?
         </h2>
         {!isWalletConnected && (
-          <p className="mt-2 text-sm text-red-500 bg-red-50 p-2 rounded-lg border border-red-100">
+          <p className="mt-2 rounded-lg border border-red-100 bg-red-50 p-2 text-sm text-red-500">
             {noWalletMsg}
           </p>
         )}
         {errorMessage && (
-          <p role="alert" className="mt-2 text-sm text-rose-700 bg-rose-50 p-2 rounded-lg border border-rose-200">
+          <p role="alert" className="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700">
             {errorMessage}
           </p>
         )}
@@ -286,7 +302,7 @@ const ActionPanel = ({
             title={!isWalletConnected ? noWalletMsg : undefined}
             aria-label="Submit milestone for approval"
             aria-describedby={describedBy(describedById('submitMilestone'))}
-            className={`w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed ${focusRingClass}`}
+            className={`w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 ${focusRingClass}`}
           >
             Submit Milestone
           </button>
@@ -300,7 +316,7 @@ const ActionPanel = ({
             title={!isWalletConnected ? noWalletMsg : undefined}
             aria-label="Release funds to the contractor"
             aria-describedby={describedBy(describedById('releaseFunds'))}
-            className={`w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-400 disabled:opacity-50 disabled:cursor-not-allowed ${focusRingClass}`}
+            className={`w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50 ${focusRingClass}`}
           >
             Release Funds
           </button>
@@ -309,15 +325,68 @@ const ActionPanel = ({
         {actions.includes('Dispute') && (
           <button
             type="button"
-            onClick={(event) => handleOpenConfirm('dispute', event)}
-            disabled={!isWalletConnected || isLoading || !!disabledReasons?.dispute}
+            onClick={handleOpenDisputeForm}
+            disabled={!isWalletConnected || isLoading || !!disabledReasons?.dispute || disputeFormOpen}
             title={!isWalletConnected ? noWalletMsg : undefined}
             aria-label="Open a dispute for this contract"
             aria-describedby={describedBy(describedById('dispute'))}
-            className={`w-full rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed ${focusRingClass}`}
+            aria-controls={DISPUTE_FORM_ID}
+            aria-expanded={disputeFormOpen}
+            className={`w-full rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50 ${focusRingClass}`}
           >
             Dispute
           </button>
+        )}
+
+        {disputeFormOpen && (
+          <form
+            id={DISPUTE_FORM_ID}
+            onSubmit={handleDisputeSubmit}
+            aria-label="Describe the reason for this dispute"
+            role="group"
+            className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-4"
+          >
+            <label htmlFor="dispute-reason" className="block text-sm font-semibold text-slate-900">
+              Reason
+            </label>
+            <textarea
+              ref={disputeTextareaRef}
+              id="dispute-reason"
+              value={disputeReason}
+              onChange={handleDisputeReasonChange}
+              maxLength={DISPUTE_REASON_MAX_LENGTH}
+              aria-invalid={disputeReasonError ? 'true' : 'false'}
+              aria-describedby={
+                disputeReasonError
+                  ? `${DISPUTE_REASON_ERROR_ID} ${DISPUTE_REASON_HINT_ID}`
+                  : DISPUTE_REASON_HINT_ID
+              }
+              className={`min-h-28 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 ${focusRingClass}`}
+            />
+            {disputeReasonError && (
+              <p id={DISPUTE_REASON_ERROR_ID} role="alert" className="text-sm font-medium text-rose-700">
+                {disputeReasonError}
+              </p>
+            )}
+            <p id={DISPUTE_REASON_HINT_ID} className="text-xs text-slate-600">
+              {remainingChars} characters remaining.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className={`rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 ${focusRingClass}`}
+              >
+                Confirm Dispute
+              </button>
+              <button
+                type="button"
+                onClick={closeDisputeForm}
+                className={`rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-400 ${focusRingClass}`}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
         )}
 
         {actions.includes('View Summary') && (
@@ -327,14 +396,14 @@ const ActionPanel = ({
             disabled={isLoading || !!disabledReasons?.viewSummary}
             aria-label="View contract summary details"
             aria-describedby={describedBy(describedById('viewSummary'))}
-            className={`w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-400 disabled:opacity-50 disabled:cursor-not-allowed ${focusRingClass}`}
+            className={`w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50 ${focusRingClass}`}
           >
             View Summary
           </button>
         )}
       </div>
 
-      {/* Confirmation Dialog — used for Submit Milestone and Release Funds only.
+      {/* Confirmation Dialog: used for Submit Milestone and Release Funds only.
           Dispute is handled by the inline form above. */}
       <ConfirmDialog
         isOpen={confirmAction !== null}

@@ -8,7 +8,7 @@
 |------|------|----------|-------------|
 | `status` | `'Active' \| 'Completed' \| 'Disputed' \| 'Pending'` | Yes | Determines which actions are shown and their tab order. |
 | `onSubmitMilestone` | `() => void` | No | Callback for submitting milestone work for approval. |
-| `onDispute` | `() => void` | No | Callback for opening the dispute flow. |
+| `onDispute` | `(reason: string) => void` | No | Callback for confirming a dispute with a trimmed, non-empty reason. |
 | `onReleaseFunds` | `() => void` | No | Callback for releasing escrow funds. |
 | `onViewSummary` | `() => void` | No | Callback for viewing the completed contract summary. |
 | `disabledReasons` | `ActionPanelDisabledReasons` | No | Disables specific visible actions globally and exposes the provided reason through `aria-describedby` (e.g. `submitMilestone`, `releaseFunds`, `dispute`, `viewSummary`). |
@@ -24,19 +24,22 @@ The `ActionPanel` manages accessibility heavily through `aria-describedby` for d
 
 **Note on Wallet Gating**: Buttons are automatically disabled and receive a `title` (tooltip) if `isWalletConnected` is false, overriding individual `disabledReasons` visually but still preserving the accessible structure.
 
+The inline dispute form also re-checks the wallet connection at submit time before invoking `onDispute(reason)`. This protects the mid-flow disconnect case where a user opens the form while connected, then the wallet session expires or disconnects before the final submit. When blocked, the form keeps focus on the reason field and announces the wallet error through the existing `role="alert"` dispute validation region.
+
 ## Accessibility
 
 - Buttons use browser-native keyboard support for `Tab`, `Enter`, and `Space`.
 - Visible focus rings use high-contrast Tailwind `focus-visible:outline` utilities and are not removed in any state.
 - Actions are rendered in contract workflow order: submit milestone, release funds, dispute, then summary when applicable.
 - Submit Milestone opens the shared confirmation dialog before invoking the callback, then shows a success toast once the action is confirmed.
+- Dispute opens an inline reason form. The submitted reason is trimmed, must be non-empty, and is only passed to `onDispute` while a wallet address is still connected.
 - Unavailable actions stay visible as disabled buttons with an accessible reason. Use `disabledReasons` for states such as no wallet, missing permissions, pending API responses, or unmet milestone conditions.
 - Loading states disable all visible actions and describe that contract data is still loading.
 - Error states are announced through `role="alert"` without moving focus or changing the action order.
 
 ## Focus Restoration
 
-When a confirmation-gated action (Submit Milestone, Release Funds, Dispute) opens the `ConfirmDialog`, focus moves into the dialog per the ARIA dialog pattern. When the dialog closes — by confirming, cancelling, or pressing Escape — focus is restored to the button that originally opened it.
+When a confirmation-gated action (Submit Milestone or Release Funds) opens the `ConfirmDialog`, focus moves into the dialog per the ARIA dialog pattern. When the dialog closes — by confirming, cancelling, or pressing Escape — focus is restored to the button that originally opened it. The Dispute action uses an inline form instead; cancelling or submitting that form restores focus to the Dispute button, while validation failures keep focus on the textarea.
 
 **Implementation detail:** `handleOpenConfirm` captures `event.currentTarget` into a `triggerElementRef` at the moment the button is clicked. Both `handleConfirm` and `handleCancel` call `triggerElementRef.current?.focus()` after clearing the dialog state. This is intentionally done via event capture rather than static `ref` props on each button, which would cause the last-rendered button to always win when multiple confirmation-gated buttons are visible at the same time (e.g. Release Funds and Dispute on `Active`/`Pending` status).
 
@@ -101,4 +104,5 @@ The component tests cover:
 - Visible focus ring classes on every enabled action.
 - Disabled action semantics and screen-reader descriptions.
 - Loading, slow-network error, and missing-handler edge cases.
-- **Focus restoration:** After cancel, confirm, or Escape on each confirmation-gated action, focus lands on the exact button that opened the dialog — asserting Release Funds and Dispute are correctly distinguished even when both are rendered simultaneously.
+- Inline dispute validation: empty reason, whitespace-only reason, 500-character cap, trimmed valid submission, disconnect-then-submit wallet guard, and reconnect-then-submit recovery.
+- **Focus restoration:** After cancel, confirm, or Escape on each confirmation-gated action, focus lands on the exact button that opened the dialog; the inline dispute form also restores focus to the Dispute trigger after cancel or valid submit.

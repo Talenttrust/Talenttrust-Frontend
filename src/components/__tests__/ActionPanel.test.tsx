@@ -7,6 +7,10 @@ import { useToast } from '@/components/toast/toast-provider';
 
 const mockShowSuccess = jest.fn();
 
+jest.mock('@/contexts/WalletContext', () => ({
+  useWallet: jest.fn(),
+}));
+
 jest.mock('@/components/toast/toast-provider', () => ({
   useToast: jest.fn(() => ({
     showSuccess: mockShowSuccess,
@@ -236,6 +240,71 @@ describe('ActionPanel', () => {
     expect(onSubmitMilestone).not.toHaveBeenCalled();
     expect(mockShowSuccess).not.toHaveBeenCalled();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('blocks dispute submission if the wallet disconnects after the form opens', async () => {
+    const user = userEvent.setup();
+    const onDispute = jest.fn();
+
+    const { rerender } = render(<ActionPanel status="Active" onDispute={onDispute} />);
+
+    await user.click(screen.getByRole('button', { name: /open a dispute for this contract/i }));
+    await user.type(screen.getByRole('textbox', { name: /reason/i }), 'Milestone evidence is incomplete');
+
+    mockUseWallet.mockReturnValue({
+      address: null,
+      isConnecting: false,
+      error: null,
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+    });
+    rerender(<ActionPanel status="Active" onDispute={onDispute} />);
+
+    await user.click(screen.getByRole('button', { name: /confirm dispute/i }));
+
+    expect(onDispute).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Connect your wallet before submitting a dispute.',
+    );
+    expect(screen.getByRole('textbox', { name: /reason/i })).toHaveFocus();
+    expect(screen.getByRole('group', { name: /describe the reason for this dispute/i })).toBeInTheDocument();
+  });
+
+  it('allows dispute submission after the wallet reconnects', async () => {
+    const user = userEvent.setup();
+    const onDispute = jest.fn();
+
+    const { rerender } = render(<ActionPanel status="Active" onDispute={onDispute} />);
+
+    await user.click(screen.getByRole('button', { name: /open a dispute for this contract/i }));
+    await user.type(screen.getByRole('textbox', { name: /reason/i }), 'Milestone evidence is incomplete');
+
+    mockUseWallet.mockReturnValue({
+      address: null,
+      isConnecting: false,
+      error: null,
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+    });
+    rerender(<ActionPanel status="Active" onDispute={onDispute} />);
+
+    await user.click(screen.getByRole('button', { name: /confirm dispute/i }));
+    expect(onDispute).not.toHaveBeenCalled();
+
+    mockUseWallet.mockReturnValue({
+      address: '0x456',
+      isConnecting: false,
+      error: null,
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+    });
+    rerender(<ActionPanel status="Active" onDispute={onDispute} />);
+
+    await user.click(screen.getByRole('button', { name: /confirm dispute/i }));
+
+    expect(onDispute).toHaveBeenCalledTimes(1);
+    expect(onDispute).toHaveBeenCalledWith('Milestone evidence is incomplete');
+    expect(screen.queryByRole('group', { name: /describe the reason for this dispute/i })).not.toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------
@@ -583,7 +652,7 @@ describe('inline dispute form — validation', () => {
 
     const textarea = screen.getByRole('textbox', { name: /reason/i });
     const over500 = 'a'.repeat(501);
-    await user.type(textarea, over500);
+    fireEvent.change(textarea, { target: { value: over500 } });
 
     // The textarea value must be capped at 500 chars
     expect((textarea as HTMLTextAreaElement).value.length).toBeLessThanOrEqual(500);
