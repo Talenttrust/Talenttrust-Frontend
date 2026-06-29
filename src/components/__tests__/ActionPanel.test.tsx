@@ -5,8 +5,10 @@ import ActionPanel from '../ActionPanel';
 import { useWallet } from '@/contexts/WalletContext';
 import { useToast } from '@/components/toast/toast-provider';
 import { assertNoA11yViolations } from '@/test-utils/a11y';
+import { DISPUTE_REASON_MAX_LENGTH } from '@/lib/disputeReason';
 
 const mockShowSuccess = jest.fn();
+const maxChars = 'a'.repeat(DISPUTE_REASON_MAX_LENGTH);
 
 jest.mock('@/contexts/WalletContext', () => ({
   useWallet: jest.fn(),
@@ -796,7 +798,7 @@ describe('inline dispute form — character counter live region', () => {
     expect(liveRegion).toHaveClass('sr-only');
     expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
     expect(liveRegion).toHaveAttribute('aria-live', 'polite');
-    expect(liveRegion).toHaveTextContent('500 / 500 characters remaining');
+    expect(liveRegion).toHaveTextContent('0 of 500 characters');
   });
 
   it('throttles/debounces announcements so every keystroke does not update immediately', async () => {
@@ -810,7 +812,7 @@ describe('inline dispute form — character counter live region', () => {
     });
 
     const liveRegion = document.getElementById('dispute-reason-counter');
-    expect(liveRegion).toHaveTextContent('500 / 500 characters remaining');
+    expect(liveRegion).toHaveTextContent('0 of 500 characters');
 
     const textarea = screen.getByRole('textbox', { name: /reason/i });
 
@@ -821,19 +823,19 @@ describe('inline dispute form — character counter live region', () => {
     });
 
     // Should NOT have updated immediately
-    expect(liveRegion).toHaveTextContent('500 / 500 characters remaining');
+    expect(liveRegion).toHaveTextContent('0 of 500 characters');
 
     // Wait 500ms
     act(() => {
       jest.advanceTimersByTime(500);
     });
-    expect(liveRegion).toHaveTextContent('500 / 500 characters remaining');
+    expect(liveRegion).toHaveTextContent('0 of 500 characters');
 
     // Wait another 500ms (1000ms total)
     act(() => {
       jest.advanceTimersByTime(500);
     });
-    expect(liveRegion).toHaveTextContent('499 / 500 characters remaining');
+    expect(liveRegion).toHaveTextContent('1 of 500 characters');
   });
 
   it('updates immediately when remaining characters hits a boundary', async () => {
@@ -854,7 +856,7 @@ describe('inline dispute form — character counter live region', () => {
       fireEvent.change(textarea, { target: { value: 'a'.repeat(50) } });
     });
 
-    expect(liveRegion).toHaveTextContent('450 / 500 characters remaining');
+    expect(liveRegion).toHaveTextContent('50 of 500 characters');
   });
 
   it('assertively escalates near and at the limit', async () => {
@@ -884,21 +886,21 @@ describe('inline dispute form — character counter live region', () => {
       fireEvent.change(textarea, { target: { value: 'a'.repeat(450) } });
     });
     expect(liveRegion).toHaveAttribute('aria-live', 'assertive');
-    expect(liveRegion).toHaveTextContent('50 / 500 characters remaining');
+    expect(liveRegion).toHaveTextContent('450 of 500 characters');
 
     // Type 460 characters (40 remaining, multiple of 10)
     await act(async () => {
       fireEvent.change(textarea, { target: { value: 'a'.repeat(460) } });
     });
     expect(liveRegion).toHaveAttribute('aria-live', 'assertive');
-    expect(liveRegion).toHaveTextContent('40 / 500 characters remaining');
+    expect(liveRegion).toHaveTextContent('460 of 500 characters');
 
     // Type 495 characters (5 remaining, <= 10)
     await act(async () => {
       fireEvent.change(textarea, { target: { value: 'a'.repeat(495) } });
     });
     expect(liveRegion).toHaveAttribute('aria-live', 'assertive');
-    expect(liveRegion).toHaveTextContent('5 / 500 characters remaining');
+    expect(liveRegion).toHaveTextContent('495 of 500 characters');
   });
 
   it('keeps the live region quiet/empty when the form is closed', async () => {
