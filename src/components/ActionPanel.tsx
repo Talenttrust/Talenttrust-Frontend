@@ -174,8 +174,32 @@ const ActionPanel = ({
     }
   }, [disputeFormOpen]);
 
+  useEffect(() => {
+    const wasDialogOpen = previousConfirmActionRef.current !== null;
+
     if (wasDialogOpen && confirmAction === null) {
       const triggerButton = triggerElementRef.current;
+
+      if (triggerButton && document.contains(triggerButton) && !triggerButton.disabled) {
+        triggerButton.focus();
+      } else {
+        panelRef.current?.focus();
+      }
+    }
+
+    previousConfirmActionRef.current = confirmAction;
+  }, [confirmAction]);
+
+  /** Closes the inline form and returns focus to the button that opened it. */
+  const closeDisputeForm = () => {
+    setDisputeFormOpen(false);
+    setDisputeReason('');
+    setDisputeReasonError('');
+    // Defer so the button is re-enabled in the DOM before focus is applied.
+    requestAnimationFrame(() => {
+      disputeTriggerRef.current?.focus();
+    });
+  };
 
   const handleDisputeReasonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;

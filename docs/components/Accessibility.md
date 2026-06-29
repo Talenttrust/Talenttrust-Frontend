@@ -361,6 +361,38 @@ All states pass axe-core with zero violations.
 
 ---
 
+## FormField – Tested Guarantees (issue #90)
+
+**Component:** `src/components/FormField.tsx`
+**Test file:** `src/components/__tests__/FormField.test.tsx`
+
+### Accessibility Prop Injection & Contracts
+
+To ensure robust accessibility structure without requiring boilerplate, `FormField` automatically clones its child form control element (e.g. `<input>`) to inject relevant accessibility and state properties:
+
+| Target Child Prop | Injected / Merged Value | Condition / Context |
+|---|---|---|
+| `id` | Passes the outer `id` prop | Always injected (links with visual `<label htmlFor={id}>`) |
+| `aria-describedby` | Space-separated string of `"{id}-error"` and/or `"{id}-helper"` | Appended if `error` and/or `helperText` are provided; omitted if neither is present |
+| `aria-invalid` | `"true"` or `"false"` | `"true"` if `error` is present, `"false"` otherwise |
+| `className` | Merged existing classes with `border-red-500 focus:ring-red-500 focus:border-red-500` | Error classes are only appended if `error` is present; child's original className is always preserved |
+
+### Accessibility Elements and Roles
+
+- **Required Marker**: If `required` is true, a visual `*` character is added to the label element and marked with `aria-hidden="true"` to prevent screen readers from reading it redundantly or confusingly.
+- **Helper text**: Renders as a `<p>` element with `id={id-helper}`.
+- **Error message**: Renders as a `<p>` element with `id={id-error}` and carrying the **`role="alert"`** attribute to prompt immediate assistive technology notifications.
+
+### jest-axe coverage
+
+We assert compliance using `testA11y` helper from `src/test-utils/a11y.tsx` across the following states:
+1. **Default state**: Basic setup with no helper/error attributes.
+2. **Errored & Labelled state**: Loaded with `error`, `helperText`, and `required` parameters.
+
+All test states run against `axe-core` and must produce zero accessibility violations.
+
+---
+
 ## Keyboard-Accessible Scroll Regions (WCAG 2.1.1)
 
 A scrollable container with no focusable elements inside is unreachable by keyboard-only users, preventing them from scrolling. To solve this, the container itself is made keyboard-focusable and exposed to assistive technologies.

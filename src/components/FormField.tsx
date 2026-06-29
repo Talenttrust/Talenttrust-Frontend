@@ -1,17 +1,34 @@
 import React from 'react';
 
+/**
+ * Props for the FormField component.
+ */
 interface FormFieldProps {
+  /** The text content for the label element. */
   label: string;
+  /** The unique identifier for the form control. Linked with the label's htmlFor attribute. */
   id: string;
+  /** Optional error message. If provided, sets aria-invalid to 'true', applies error styles, and renders a role="alert" message. */
   error?: string;
+  /** Optional helper text describing the form field's purpose or constraints. */
   helperText?: string;
+  /** The single interactive form element (input, select, textarea, etc.) that will have accessibility props injected. */
   children: React.ReactElement;
+  /** If true, renders a visual '*' indicator within the label, hidden from screen readers via aria-hidden="true". */
   required?: boolean;
 }
 
 /**
- * A wrapper component for form fields that provides accessible labels, 
+ * A wrapper component for form fields that provides accessible labels,
  * helper text, and error messages.
+ *
+ * Accessibility Guarantees & Prop Injection:
+ * 1. Child element receives the `id` prop to associate it with the `<label>`'s `htmlFor`.
+ * 2. Child element receives `aria-describedby` pointing to the helper text and/or error message IDs when present.
+ * 3. Child element's `aria-invalid` attribute flips to `"true"` when there is an error, and `"false"` otherwise.
+ * 4. Merges the child's existing `className` and appends error border/ring classes (`border-red-500` etc.) only if an error is present.
+ * 5. Appends a visual required indicator (`*`) which is hidden from screen readers with `aria-hidden="true"`.
+ * 6. Renders the error message with `role="alert"` for direct announcements to assistive technologies.
  */
 export const FormField: React.FC<FormFieldProps> = ({
   label,
