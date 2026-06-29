@@ -76,14 +76,58 @@ saveMilestone({
 ```
 
 ### Update Operations
-The public API currently implements additive writes (appending to existing arrays). There is no explicit `updateContract` or `updateMilestone` method in the public interface. 
-**To update a record:**
-1. Future implementations requiring atomic updates would need to map over the existing `listContracts()` or `listMilestones()` arrays.
-2. Replace the target record using its unique identifier (e.g., `id` for milestones, or `contractName` for contracts, as contracts currently lack a dedicated `id` field).
-3. Overwrite the entire collection using a newly exposed `writeStore` wrapper.
-*(Note: As the public API primarily exposes append-only methods at present, callers are currently responsible for preventing duplication prior to saving).*
+The public API includes both additive writes (appending to arrays) and atomic upserts.
+
+#### `upsertContract(contract: Contract): boolean`
+Replaces the existing contract that matches `contractName`, or appends the contract when no match exists. Returns `true` on success, `false` on failure (SSR or storage error).
+```typescript
+import { upsertContract } from '@/lib/repository';
+const ok = upsertContract({ ...existingContract, status: 'Completed' });
+```
+
+---
+
+### Maintenance Helpers
+
+The following helpers provide safe, SSR-aware paths for resetting persisted state. They route through the same `isBrowser()` guard and `reportError` plumbing as every other repository operation and **never throw**.
+
+#### `clearAppData(): boolean`
+Removes the single `STORAGE_KEY` (`talenttrust_app_data`) entry, effectively resetting all persisted contracts **and** milestones in a single call.
+
+- Returns `true` when the item is successfully removed (including when the key did not exist — `removeItem` is idempotent).
+- Returns `false` in SSR contexts (no `window`) or when `localStorage.removeItem` throws; errors are forwarded to the central `reportError` reporter.
+
+```typescript
+import { clearAppData } from '@/lib/repository';
+
+// User clicks “Reset all data”
+const ok = clearAppData();
+if (!ok) toast.error('Could not clear persisted data.');
+```
+
+**Typical use cases:** unit-test teardown, demo resets, and user-initiated “start over” flows.
+
+#### `clearByPrefix(prefix: string): number`
+Removes every `localStorage` key whose name **starts with** the given `prefix` and returns the count of keys that were successfully deleted.
+
+- Iterates over a **snapshot** of the key list so that removing a key during iteration can never cause index-shift bugs.
+- Never touches keys that do not start with `prefix` — prefix scoping is strictly enforced.
+- Returns `0` in SSR contexts or when no keys match the prefix.
+- Individual removal errors are reported via `reportError`; the function continues with the remaining keys and does not count failed removals.
+
+```typescript
+import { clearByPrefix } from '@/lib/repository';
+
+// Remove every TalentTrust key (e.g. during integration-test teardown)
+const removed = clearByPrefix('talenttrust_');
+console.log(`Cleared ${removed} localStorage entries.`);
+```
+
+> **Warning:** Passing an empty string (`''`) will match **all** localStorage keys.
+> Always use an intentionally scoped prefix.
 
 ## Security Profile
 - **Non-sensitive data only:** Only display-level, non-sensitive metadata (contract names, statuses, public wallet addresses) is persisted. 
 - **No private keys or PII:** Absolutely no private keys, passwords, or Personally Identifiable Information (PII) are stored in this layer.
 - **Client-only boundaries:** Data never leaves the device through this module, making it secure against cross-origin data leakage given the frontend's strict CSP boundaries.
+- **Prefix scoping:** `clearByPrefix` strictly checks `String.prototype.startsWith` and never removes keys outside the supplied prefix. Callers must supply a meaningful prefix; an empty string `''` will match every localStorage key.
