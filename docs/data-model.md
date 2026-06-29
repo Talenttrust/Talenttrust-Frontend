@@ -79,7 +79,12 @@ saveMilestone({
 The public API includes both additive writes (appending to arrays) and atomic upserts.
 
 #### `upsertContract(contract: Contract): boolean`
-Replaces the existing contract that matches `contractName`, or appends the contract when no match exists. Returns `true` on success, `false` on failure (SSR or storage error).
+Inserts or updates a contract in the persisted list:
+- **Append branch**: When no contract matches the same `contractName`, the contract is appended to the end of the array.
+- **Replace branch**: When an existing contract matches the same `contractName`, it is replaced in-place, preserving the existing array order and avoiding duplicates. In the case of multiple same-name candidates, only the first matching contract is replaced.
+- **Milestones isolation**: Milestones data and other contracts are preserved completely unchanged.
+- **Error reporting**: If `window.localStorage.setItem` throws (e.g. storage quota exceeded) or in SSR contexts, the failure is reported to the central `reportError` reporter and `false` is returned; otherwise, `true` is returned.
+
 ```typescript
 import { upsertContract } from '@/lib/repository';
 const ok = upsertContract({ ...existingContract, status: 'Completed' });

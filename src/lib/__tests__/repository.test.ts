@@ -144,6 +144,66 @@ describe('contract upsert', () => {
     expect(upsertContract(contractB)).toBe(true);
     expect(listContracts()).toEqual([contractA, contractB]);
   });
+
+  it('preserves array order and does not duplicate when replacing a same-name contract in place', () => {
+    saveContract(contractA);
+    saveContract(contractB);
+
+    const updatedA: Contract = {
+      ...contractA,
+      status: 'Completed',
+    };
+
+    expect(upsertContract(updatedA)).toBe(true);
+    const result = listContracts();
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual(updatedA);
+    expect(result[1]).toEqual(contractB);
+  });
+
+  it('never disturbs persisted milestones and preserves other contracts unchanged during upsert', () => {
+    saveContract(contractA);
+    saveContract(contractB);
+    saveMilestone(milestoneA);
+    saveMilestone(milestoneB);
+
+    const updatedB: Contract = {
+      ...contractB,
+      status: 'Completed',
+    };
+
+    expect(upsertContract(updatedB)).toBe(true);
+
+    // Other contracts and milestones remain unchanged
+    expect(listContracts()).toEqual([contractA, updatedB]);
+    expect(listMilestones()).toEqual([milestoneA, milestoneB]);
+  });
+
+  it('successfully inserts a contract into an empty store', () => {
+    expect(upsertContract(contractA)).toBe(true);
+    expect(listContracts()).toEqual([contractA]);
+  });
+
+  it('replaces only the first candidate and preserves array order when multiple same-name candidates exist', () => {
+    // Seed store with duplicate names manually
+    const duplicateA1 = { ...contractA, status: 'Active' as const };
+    const duplicateA2 = { ...contractA, status: 'Pending' as const };
+    const store = {
+      contracts: [duplicateA1, contractB, duplicateA2],
+      milestones: []
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+
+    const upserted: Contract = { ...contractA, status: 'Completed' as const };
+    expect(upsertContract(upserted)).toBe(true);
+
+    const result = listContracts();
+    expect(result).toHaveLength(3);
+    // Only the first one is replaced, order is preserved, and second duplicate is untouched
+    expect(result[0]).toEqual(upserted);
+    expect(result[1]).toEqual(contractB);
+    expect(result[2]).toEqual(duplicateA2);
+  });
 });
 
 describe('milestone round-trip', () => {
@@ -435,13 +495,14 @@ describe('write failure resilience', () => {
     expect(mockReporter.mock.calls[0][1]).toMatch(/\[repository\]/);
   });
 
-  it('returns false when upsertContract cannot persist the write', () => {
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  it('returns false and reports the error when upsertContract fails to persist the write', () => {
     jest.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
       throw new DOMException('QuotaExceededError');
     });
 
     expect(upsertContract(contractA)).toBe(false);
+    expect(mockReporter).toHaveBeenCalledTimes(1);
+    expect(mockReporter.mock.calls[0][1]).toMatch(/\[repository\]/);
   });
 });
 
