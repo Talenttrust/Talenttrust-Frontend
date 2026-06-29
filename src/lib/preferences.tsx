@@ -37,6 +37,11 @@ export interface UserPreferences {
   amountFormat: AmountFormat;
   toastDensity: ToastDensity;
   quietMode: boolean;
+  /**
+   * Idle auto‑disconnect timeout in milliseconds. 0 disables the feature.
+   * Allowed values: 0 or between 5,000 ms and 30,000 ms.
+   */
+  idleDisconnectMs: number;
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
@@ -44,6 +49,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   amountFormat: 'usd',
   toastDensity: 'relaxed',
   quietMode: false,
+  idleDisconnectMs: 0,
 };
 
 /**
@@ -57,6 +63,7 @@ const KNOWN_KEYS: ReadonlySet<keyof UserPreferences> = new Set([
   'amountFormat',
   'toastDensity',
   'quietMode',
+  'idleDisconnectMs',
 ]);
 
 /**
@@ -126,6 +133,7 @@ export function sanitizePreferences(raw: unknown): UserPreferences {
   let amountFormat: AmountFormat = DEFAULT_PREFERENCES.amountFormat;
   let toastDensity: ToastDensity = DEFAULT_PREFERENCES.toastDensity;
   let quietMode: boolean = DEFAULT_PREFERENCES.quietMode;
+  let idleDisconnectMs: number = DEFAULT_PREFERENCES.idleDisconnectMs;
 
   for (const key of Object.keys(raw as object)) {
     // Drop dangerous keys regardless of value. These are the keys historically
@@ -162,10 +170,19 @@ export function sanitizePreferences(raw: unknown): UserPreferences {
           quietMode = value;
         }
         break;
+      case 'idleDisconnectMs':
+        if (typeof value === 'number') {
+          const min = 5000;
+          const max = 30000;
+          if (value === 0 || (value >= min && value <= max)) {
+            idleDisconnectMs = value;
+          }
+        }
+        break;
     }
   }
 
-  return { theme, amountFormat, toastDensity, quietMode };
+  return { theme, amountFormat, toastDensity, quietMode, idleDisconnectMs };
 }
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
