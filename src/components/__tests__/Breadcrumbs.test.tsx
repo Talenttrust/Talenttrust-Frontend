@@ -32,7 +32,6 @@ describe('Breadcrumbs — structure and ARIA', () => {
   it('contains an ordered list (<ol>) inside the nav', () => {
     const { container } = render(<Breadcrumbs items={THREE_CRUMBS} />);
     const nav = screen.getByRole('navigation', { name: 'Breadcrumb' });
-    // eslint-disable-next-line testing-library/no-node-access
     expect(nav.querySelector('ol')).toBeInTheDocument();
     // ol must be a direct or nested child — confirm via container
     expect(container.querySelector('nav > ol')).toBeInTheDocument();
@@ -136,7 +135,6 @@ describe('Breadcrumbs — separators', () => {
   it('renders no separator before the first crumb', () => {
     const { container } = render(<Breadcrumbs items={THREE_CRUMBS} />);
     const firstLi = container.querySelector('ol > li:first-child');
-    // eslint-disable-next-line testing-library/no-node-access
     expect(firstLi?.querySelector('[aria-hidden="true"]')).toBeNull();
   });
 });
