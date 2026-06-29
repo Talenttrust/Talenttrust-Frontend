@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import ActionPanel from '../ActionPanel';
 import { useWallet } from '@/contexts/WalletContext';
 import { useToast } from '@/components/toast/toast-provider';
+import { assertNoA11yViolations } from '@/test-utils/a11y';
 
 const mockShowSuccess = jest.fn();
 
@@ -687,5 +688,177 @@ describe('inline dispute form — validation', () => {
     const errorEl = document.getElementById(describedBy.split(' ')[0]);
     expect(errorEl).not.toBeNull();
     expect(errorEl).toHaveTextContent('Please provide a reason for the dispute.');
+  });
+});
+
+describe('inline dispute form — character counter live region', () => {
+  beforeEach(() => {
+    mockUseWallet.mockReturnValue({
+      address: '0x123',
+      isConnecting: false,
+      error: null,
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+    });
+    mockUseToast.mockReturnValue({
+      showSuccess: mockShowSuccess,
+      showError: jest.fn(),
+      toasts: [],
+      dismissToast: jest.fn(),
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('renders a visually hidden live region associated with the textarea', async () => {
+    const user = userEvent.setup();
+    render(<ActionPanel status="Active" onDispute={jest.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: /open a dispute for this contract/i }));
+
+    const textarea = screen.getByRole('textbox', { name: /reason/i });
+    const describedBy = textarea.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain('dispute-reason-counter');
+
+    const liveRegion = document.getElementById('dispute-reason-counter');
+    expect(liveRegion).toBeInTheDocument();
+    expect(liveRegion).toHaveClass('sr-only');
+    expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
+    expect(liveRegion).toHaveAttribute('aria-live', 'polite');
+    expect(liveRegion).toHaveTextContent('500 / 500 characters remaining');
+  });
+
+  it('throttles/debounces announcements so every keystroke does not update immediately', async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ delay: null });
+    render(<ActionPanel status="Active" onDispute={jest.fn()} />);
+
+    // Open dispute form
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /open a dispute for this contract/i }));
+    });
+
+    const liveRegion = document.getElementById('dispute-reason-counter');
+    expect(liveRegion).toHaveTextContent('500 / 500 characters remaining');
+
+    const textarea = screen.getByRole('textbox', { name: /reason/i });
+
+    // Type 1 character: 'a'
+    // remainingChars = 499 (not a boundary)
+    await act(async () => {
+      await user.type(textarea, 'a');
+    });
+
+    // Should NOT have updated immediately
+    expect(liveRegion).toHaveTextContent('500 / 500 characters remaining');
+
+    // Wait 500ms
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(liveRegion).toHaveTextContent('500 / 500 characters remaining');
+
+    // Wait another 500ms (1000ms total)
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(liveRegion).toHaveTextContent('499 / 500 characters remaining');
+  });
+
+  it('updates immediately when remaining characters hits a boundary', async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ delay: null });
+    render(<ActionPanel status="Active" onDispute={jest.fn()} />);
+
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /open a dispute for this contract/i }));
+    });
+
+    const liveRegion = document.getElementById('dispute-reason-counter');
+    const textarea = screen.getByRole('textbox', { name: /reason/i }) as HTMLTextAreaElement;
+
+    // Remaining count = 450 is a boundary (multiple of 50).
+    // Let's set the value to 50 characters (remaining 450).
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'a'.repeat(50) } });
+    });
+
+    expect(liveRegion).toHaveTextContent('450 / 500 characters remaining');
+  });
+
+  it('assertively escalates near and at the limit', async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ delay: null });
+    render(<ActionPanel status="Active" onDispute={jest.fn()} />);
+
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /open a dispute for this contract/i }));
+    });
+
+    const liveRegion = document.getElementById('dispute-reason-counter');
+    const textarea = screen.getByRole('textbox', { name: /reason/i }) as HTMLTextAreaElement;
+
+    // Type 449 characters (51 remaining, which is > 50)
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'a'.repeat(449) } });
+    });
+    // Let timer expire to update live region
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(liveRegion).toHaveAttribute('aria-live', 'polite');
+
+    // Type 450 characters (50 remaining, which is exactly the threshold)
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'a'.repeat(450) } });
+    });
+    expect(liveRegion).toHaveAttribute('aria-live', 'assertive');
+    expect(liveRegion).toHaveTextContent('50 / 500 characters remaining');
+
+    // Type 460 characters (40 remaining, multiple of 10)
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'a'.repeat(460) } });
+    });
+    expect(liveRegion).toHaveAttribute('aria-live', 'assertive');
+    expect(liveRegion).toHaveTextContent('40 / 500 characters remaining');
+
+    // Type 495 characters (5 remaining, <= 10)
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'a'.repeat(495) } });
+    });
+    expect(liveRegion).toHaveAttribute('aria-live', 'assertive');
+    expect(liveRegion).toHaveTextContent('5 / 500 characters remaining');
+  });
+
+  it('keeps the live region quiet/empty when the form is closed', async () => {
+    const user = userEvent.setup();
+    render(<ActionPanel status="Active" onDispute={jest.fn()} />);
+
+    // Not in DOM initially
+    expect(document.getElementById('dispute-reason-counter')).toBeNull();
+
+    // Open form
+    await user.click(screen.getByRole('button', { name: /open a dispute for this contract/i }));
+    expect(document.getElementById('dispute-reason-counter')).toBeInTheDocument();
+
+    // Close form
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(document.getElementById('dispute-reason-counter')).toBeNull();
+  });
+
+  it('should have no accessibility violations in default state and when dispute form is open', async () => {
+    const { container } = render(<ActionPanel status="Active" onDispute={jest.fn()} />);
+
+    // Check default state
+    await assertNoA11yViolations(container);
+
+    // Open dispute form
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /open a dispute for this contract/i }));
+
+    // Check with dispute form open
+    await assertNoA11yViolations(container);
   });
 });
