@@ -595,3 +595,47 @@ describe('formatAmount invalid currency codes', () => {
   });
 });
 
+describe('theme application', () => {
+  function mockMatchMedia(matches: boolean) {
+    const addEventListener = jest.fn();
+    const removeEventListener = jest.fn();
+    const mediaQueryList = {
+      matches,
+      media: '(prefers-color-scheme: dark)',
+      onchange: null,
+      addEventListener,
+      removeEventListener,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    } as unknown as MediaQueryList;
+
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: jest.fn(() => mediaQueryList),
+    });
+
+    return { addEventListener, removeEventListener };
+  }
+
+  it('applies the system theme using the media query result', () => {
+    mockMatchMedia(true);
+    render(<PreferencesProvider><div /></PreferencesProvider>);
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(document.documentElement.classList.contains('light')).toBe(false);
+  });
+
+  it('registers and cleans up the system theme listener while theme is set to system', () => {
+    const { addEventListener, removeEventListener } = mockMatchMedia(false);
+
+    const { unmount } = render(<PreferencesProvider><div /></PreferencesProvider>);
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+
+    unmount();
+    expect(removeEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+  });
+});

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { getItem, setItem } from './safeStorage';
 
 export type Theme = 'light' | 'dark' | 'system';
@@ -196,6 +197,7 @@ export function sanitizePreferences(raw: unknown): UserPreferences {
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
   const [isHydrated, setIsHydrated] = useState(false);
+  const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)');
 
   // Load from localStorage on mount. Every value is routed through
   // `sanitizePreferences` so tampered, corrupted, or prototype-polluting
@@ -227,7 +229,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       let effectiveTheme = theme;
 
       if (theme === 'system') {
-        effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        effectiveTheme = systemPrefersDark ? 'dark' : 'light';
       }
 
       root.setAttribute('data-theme', effectiveTheme);
@@ -236,15 +238,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     };
 
     applyTheme(preferences.theme);
-
-    // Listener for system theme changes
-    if (preferences.theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const listener = () => applyTheme('system');
-      mediaQuery.addEventListener('change', listener);
-      return () => mediaQuery.removeEventListener('change', listener);
-    }
-  }, [preferences.theme]);
+  }, [preferences.theme, systemPrefersDark]);
 
   const updatePreference = <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => {
     setPreferences(prev => ({ ...prev, [key]: value }));
