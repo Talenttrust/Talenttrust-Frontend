@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   },
 };
 
-import { PreferencesProvider, usePreferences } from '@/lib/preferences';
+import { PreferencesProvider } from '@/lib/preferences';
 import { SettingsTrigger } from '@/components/settings/SettingsTrigger';
 import { WalletProvider } from '@/contexts/WalletContext';
 import RouteAnnouncer from '@/components/RouteAnnouncer';
@@ -58,13 +58,12 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { preferences } = usePreferences();
   return (
     <html lang="en">
       <body>
         <PreferencesProvider>
           <ToastProvider>
-            <WalletProvider idleTimeout={preferences.idleDisconnectMs}>
+            <WalletProvider>
               {/* Skip link must be the first focusable element so keyboard users
                   can bypass the sticky header on every page (WCAG 2.4.1). */}
               <a

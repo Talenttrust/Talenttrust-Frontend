@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
 import { useToast } from '@/components/toast/toast-provider';
 import { ConfirmDialog } from './ConfirmDialog';
+import { DISPUTE_REASON_MAX_LENGTH, validateDisputeReason } from '@/lib/disputeReason';
 
 /**
  * Defines the per-action screen-reader-only disabled reasons.
@@ -68,12 +69,10 @@ export type ActionPanelProps = {
 const LOADING_REASON = 'Action is disabled while contract data is loading.';
 const LOADING_DESCRIPTION_ID = 'action-panel-loading-reason';
 
-/** Maximum character length for a dispute reason. */
-const DISPUTE_REASON_MAX_LENGTH = 500;
-
 const DISPUTE_REASON_ERROR_ID = 'dispute-reason-error';
 const DISPUTE_REASON_HINT_ID = 'dispute-reason-hint';
-const DISPUTE_FORM_ID = 'action-panel-dispute-form';
+const DISPUTE_REASON_COUNTER_ID = 'dispute-reason-counter';
+const DISPUTE_REASON_ASSERTIVE_THRESHOLD = 50;
 const DISPUTE_WALLET_ERROR = 'Connect your wallet before submitting a dispute.';
 
 const getActionButtons = (status: ActionPanelProps['status']) => {
@@ -112,7 +111,7 @@ const ActionPanel = ({
   isLoading = false,
   errorMessage,
   disabledReasons,
-  disputeFlow = 'inline',
+  disputeFlow: _disputeFlow = 'inline',
 }: ActionPanelProps) => {
   const actions = getActionButtons(status);
   const { address } = useWallet();
@@ -171,8 +170,9 @@ const ActionPanel = ({
   const [disputeReasonError, setDisputeReasonError] = useState('');
   const [liveAnnouncement, setLiveAnnouncement] = useState('');
   const disputeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const disputeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const shouldRestoreDisputeFocusRef = useRef(false);
+
+  const previousConfirmActionRef = useRef<ConfirmAction>(null);
+  const disputeTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   /** Opens the inline dispute form and moves focus to the textarea. */
   const handleOpenDisputeForm = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -199,6 +199,35 @@ const ActionPanel = ({
     }
     previousDisputeFormOpenRef.current = disputeFormOpen;
   }, [disputeFormOpen]);
+
+  // Manage debounced/throttled screen reader announcements for character count
+  useEffect(() => {
+    if (!disputeFormOpen) {
+      setLiveAnnouncement('');
+      return;
+    }
+
+    const remaining = DISPUTE_REASON_MAX_LENGTH - disputeReason.length;
+    const announcement = `${disputeReason.length} of ${DISPUTE_REASON_MAX_LENGTH} characters`;
+
+    const isBoundary = (chars: number) => {
+      if (chars <= 0) return true;
+      if (chars <= 10) return true;
+      if (chars <= 50) return chars % 10 === 0;
+      return chars % 50 === 0;
+    };
+
+    if (isBoundary(remaining)) {
+      setLiveAnnouncement(announcement);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setLiveAnnouncement(announcement);
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, [disputeReason, disputeFormOpen]);
 
   useEffect(() => {
     const wasDialogOpen = previousConfirmActionRef.current !== null;
@@ -250,7 +279,6 @@ const ActionPanel = ({
    */
   const handleDisputeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = disputeReason.trim();
 
     if (!isWalletConnected) {
       setDisputeReasonError(DISPUTE_WALLET_ERROR);
@@ -258,27 +286,19 @@ const ActionPanel = ({
       return;
     }
 
-    if (trimmed.length === 0) {
-      setDisputeReasonError('Please provide a reason for the dispute.');
+    const validation = validateDisputeReason(disputeReason);
+    if (!validation.valid) {
+      setDisputeReasonError(validation.error || '');
       disputeTextareaRef.current?.focus();
       return;
     }
 
-    // Trimmed length is guaranteed <= DISPUTE_REASON_MAX_LENGTH because the
-    // textarea hard-caps raw input; this check is a belt-and-suspenders guard.
-    if (trimmed.length > DISPUTE_REASON_MAX_LENGTH) {
-      setDisputeReasonError(
-        `Reason must be ${DISPUTE_REASON_MAX_LENGTH} characters or fewer.`,
-      );
-      disputeTextareaRef.current?.focus();
-      return;
-    }
-
-    onDispute?.(trimmed);
+    onDispute?.(disputeReason.trim());
     closeDisputeForm();
   };
 
   const remainingChars = DISPUTE_REASON_MAX_LENGTH - disputeReason.length;
+  const isOverLimit = disputeReason.length >= DISPUTE_REASON_MAX_LENGTH;
 
   return (
     <aside
@@ -361,6 +381,7 @@ const ActionPanel = ({
         {actions.includes('Dispute') && (
           <>
             <button
+              ref={disputeTriggerRef}
               type="button"
               onClick={handleOpenDisputeForm}
               disabled={
@@ -424,8 +445,8 @@ const ActionPanel = ({
                     aria-required="true"
                     aria-describedby={
                       disputeReasonError
-                        ? `${DISPUTE_REASON_ERROR_ID} ${DISPUTE_REASON_HINT_ID}`
-                        : DISPUTE_REASON_HINT_ID
+                        ? `${DISPUTE_REASON_ERROR_ID} ${DISPUTE_REASON_HINT_ID} ${DISPUTE_REASON_COUNTER_ID}`
+                        : `${DISPUTE_REASON_HINT_ID} ${DISPUTE_REASON_COUNTER_ID}`
                     }
                     aria-invalid={disputeReasonError ? 'true' : undefined}
                     placeholder="Explain why you are opening this dispute…"
@@ -436,17 +457,25 @@ const ActionPanel = ({
                     }`}
                   />
 
-                  {/* Live character counter — aria-live so screen readers
-                      announce the remaining count as the user types. */}
+                  {/* Visual character counter - not a live region to avoid double reading */}
                   <p
-                    aria-live="polite"
-                    aria-atomic="true"
+                    aria-hidden="true"
                     className={`mt-1 text-xs text-right ${
                       isOverLimit ? 'text-rose-600 font-semibold' : 'text-slate-500'
                     }`}
                   >
-                    {remainingChars} / {DISPUTE_REASON_MAX_LENGTH} characters remaining
+                    {disputeReason.length} of {DISPUTE_REASON_MAX_LENGTH} characters
                   </p>
+
+                  {/* Visually hidden live region for screen readers */}
+                  <div
+                    id={DISPUTE_REASON_COUNTER_ID}
+                    aria-live={remainingChars <= DISPUTE_REASON_ASSERTIVE_THRESHOLD ? 'assertive' : 'polite'}
+                    aria-atomic="true"
+                    className="sr-only"
+                  >
+                    {liveAnnouncement}
+                  </div>
 
                   {/* Validation error — linked to the textarea via aria-describedby */}
                   {disputeReasonError && (

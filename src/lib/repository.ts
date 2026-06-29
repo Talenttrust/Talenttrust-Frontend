@@ -241,6 +241,39 @@ export function saveMilestone(milestone: Milestone): void {
   writeStore({ ...store, milestones: [...store.milestones, milestone] });
 }
 
+/**
+ * Updates an existing milestone identified by `id` with the provided `patch`.
+ *
+ * The operation is pure – it does not mutate the original milestone objects
+ * but returns a new array with the updated record. If the `id` cannot be found
+ * a warning is emitted via `console.warn` and the store is left unchanged.
+ *
+ * @param id - The unique identifier of the milestone to update.
+ * @param patch - A partial milestone object containing the fields to merge.
+ * @returns `true` when the update is persisted successfully; otherwise `false`.
+ *
+ * @example
+ * ```ts
+ * updateMilestone('ms-1', { status: 'Completed' });
+ * // → true (milestone status persisted)
+ * ```
+ */
+export function updateMilestone(id: string, patch: Partial<Milestone>): boolean {
+  const store = readStore();
+  const index = store.milestones.findIndex((m) => m.id === id);
+
+  if (index === -1) {
+    console.warn(`[repository] updateMilestone: No milestone found with id '${id}'.`);
+    return false;
+  }
+
+  const updatedMilestones = store.milestones.map((m, i) =>
+    i === index ? { ...m, ...patch } : m,
+  );
+
+  return writeStore({ ...store, milestones: updatedMilestones });
+}
+
 // ---------------------------------------------------------------------------
 // Public API — Maintenance helpers
 // ---------------------------------------------------------------------------

@@ -76,6 +76,7 @@ describe('PreferencesProvider', () => {
       toastDensity: 'relaxed',
       quietMode: false,
       toastDuration: 'normal',
+      idleDisconnectMs: 0,
     });
     (console.error as jest.Mock).mockRestore();
   });
@@ -141,7 +142,7 @@ describe('PreferencesProvider', () => {
     expect(r2.current.preferences.quietMode).toBe(false);
   });
 
-  it('persists only the five known keys even after a malicious payload round-trips', async () => {
+  it('persists only the six known keys even after a malicious payload round-trips', async () => {
     localStorage.setItem(
       'talenttrust-user-preferences',
       JSON.stringify({
@@ -150,6 +151,7 @@ describe('PreferencesProvider', () => {
         toastDensity: 'compact',
         quietMode: true,
         toastDuration: 'long',
+        idleDisconnectMs: 10000,
         secretKey: 'leaked',
       }),
     );
@@ -164,6 +166,7 @@ describe('PreferencesProvider', () => {
     // so we compare with `.sort()` for engine-independent comparison.
     expect(Object.keys(serialized).sort()).toEqual([
       'amountFormat',
+      'idleDisconnectMs',
       'quietMode',
       'theme',
       'toastDensity',
@@ -219,6 +222,7 @@ describe('sanitizePreferences (pure helper)', () => {
     toastDensity: 'relaxed',
     quietMode: false,
     toastDuration: 'normal',
+    idleDisconnectMs: 0,
   };
 
   it('returns DEFAULT_PREFERENCES for null', () => {
@@ -249,6 +253,7 @@ describe('sanitizePreferences (pure helper)', () => {
         toastDensity: 'compact',
         quietMode: true,
         toastDuration: 'long',
+        idleDisconnectMs: 15000,
       }),
     ).toEqual({
       theme: 'dark',
@@ -256,6 +261,7 @@ describe('sanitizePreferences (pure helper)', () => {
       toastDensity: 'compact',
       quietMode: true,
       toastDuration: 'long',
+      idleDisconnectMs: 15000,
     });
   });
 
@@ -268,6 +274,7 @@ describe('sanitizePreferences (pure helper)', () => {
       toastDensity: 'relaxed',
       quietMode: true,
       toastDuration: 'normal',
+      idleDisconnectMs: 0,
     });
   });
 
@@ -353,6 +360,7 @@ describe('sanitizePreferences (pure helper)', () => {
       toastDensity: 'compact',
       quietMode: 'yes', // invalid
       toastDuration: 'persistent', // valid
+      idleDisconnectMs: 10000, // valid
       bogus: true, // unknown
       constructor: { hacked: 1 }, // dangerous
     } as unknown as UserPreferences);
@@ -362,6 +370,7 @@ describe('sanitizePreferences (pure helper)', () => {
       toastDensity: 'compact',
       quietMode: false,
       toastDuration: 'persistent',
+      idleDisconnectMs: 10000,
     });
   });
 
@@ -371,6 +380,17 @@ describe('sanitizePreferences (pure helper)', () => {
       ...DEFAULTS,
     });
     expect(sanitizePreferences({ toastDuration: null } as unknown as UserPreferences)).toEqual({
+      ...DEFAULTS,
+    });
+  });
+
+  it('rejects invalid idleDisconnectMs values', () => {
+    expect(sanitizePreferences({ idleDisconnectMs: 4000 })).toEqual({ ...DEFAULTS });
+    expect(sanitizePreferences({ idleDisconnectMs: 31000 })).toEqual({ ...DEFAULTS });
+    expect(sanitizePreferences({ idleDisconnectMs: '10000' } as unknown as UserPreferences)).toEqual({
+      ...DEFAULTS,
+    });
+    expect(sanitizePreferences({ idleDisconnectMs: null } as unknown as UserPreferences)).toEqual({
       ...DEFAULTS,
     });
   });

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/components/toast/toast-provider';
 import { getItem, setItem, removeItem } from '@/lib/safeStorage';
+import { usePreferences } from '@/lib/preferences';
 
 /**
  * Shape of the value exposed by {@link WalletContext}.
@@ -112,11 +113,14 @@ export const MOCKED_STELLAR_ADDRESS = 'GAAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBA
 
 export function WalletProvider({
   children,
-  idleTimeout = 0,
+  idleTimeout: propIdleTimeout,
 }: {
   children: ReactNode;
   idleTimeout?: number;
 }) {
+  const { preferences } = usePreferences();
+  const idleTimeout = propIdleTimeout !== undefined ? propIdleTimeout : preferences.idleDisconnectMs;
+
   const [address, setAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);

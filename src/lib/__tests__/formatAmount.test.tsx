@@ -4,23 +4,22 @@
  *   - Compact notation (produces compact strings and respects caller currency)
  *   - Provider-less fallback behavior.
  */
-import { renderHook, act } from "@testing-library/react-hooks";
-import { usePreferences } from "../preferences"; // Adjust path if needed
-
-/** Helper to call formatAmount via the hook */
-function formatAmountHelper(
-  amount: number,
-  currency: string = "USD",
-  options?: { notation?: "compact" },
-) {
-  const { result } = renderHook(() => usePreferences());
-  // @ts-ignore – formatAmount signature varies based on provider context
-  return result.current.formatAmount(amount, currency, options);
-}
+import React from "react";
+import { renderHook, act } from "@testing-library/react";
+import { usePreferences, PreferencesProvider } from "../preferences";
 
 describe("formatAmount – NGN locale override", () => {
   test("forces NGN currency and en-NG locale regardless of caller currency", () => {
-    const formatted = formatAmountHelper(12345, "USD"); // caller provides USD but format should be NGN
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <PreferencesProvider>{children}</PreferencesProvider>
+    );
+    const { result } = renderHook(() => usePreferences(), { wrapper });
+
+    act(() => {
+      result.current.updatePreference("amountFormat", "ngn");
+    });
+
+    const formatted = result.current.formatAmount(12345, "USD");
     // Should contain NGN symbol or code
     expect(formatted).toMatch(/₦|NGN/);
     // Verify locale formatting (comma separator) – simple regex check
@@ -30,8 +29,17 @@ describe("formatAmount – NGN locale override", () => {
 
 describe("formatAmount – compact notation", () => {
   test("produces compact strings while keeping original currency", () => {
-    const usdCompact = formatAmountHelper(1500000, "USD", { notation: "compact" });
-    const ngnCompact = formatAmountHelper(1500000, "NGN", { notation: "compact" });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <PreferencesProvider>{children}</PreferencesProvider>
+    );
+    const { result } = renderHook(() => usePreferences(), { wrapper });
+
+    act(() => {
+      result.current.updatePreference("amountFormat", "compact");
+    });
+
+    const usdCompact = result.current.formatAmount(1500000, "USD");
+    const ngnCompact = result.current.formatAmount(1500000, "NGN");
     // Expect compact representation like 1.5M (or locale‑specific variant)
     expect(usdCompact).toMatch(/1\.5[MK]?/i);
     expect(ngnCompact).toMatch(/1\.5[MK]?/i);
@@ -43,8 +51,7 @@ describe("formatAmount – compact notation", () => {
 
 describe("formatAmount – provider-less fallback", () => {
   test("formats correctly when usePreferences is called outside a provider", () => {
-    const { result } = renderHook(() => usePreferences({ skipProvider: true } as any));
-    // @ts-ignore – fallback formatAmount signature
+    const { result } = renderHook(() => usePreferences());
     const fallback = result.current.formatAmount(99.99, "USD");
     expect(fallback).toBe("$99.99");
   });

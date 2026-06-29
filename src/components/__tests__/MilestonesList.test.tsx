@@ -10,9 +10,10 @@ const SAMPLE: Milestone[] = [
   { id: '2', title: 'Milestone 2', status: 'Completed', payout: 1000, currency: 'USD', dueDate: 'Jun 1, 2026' },
 ];
 
-const MISMATCHED: Milestone[] = [
+const MIXED_CURRENCY_SAMPLE: Milestone[] = [
   { id: '1', title: 'Milestone 1', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 10, 2026' },
   { id: '2', title: 'Milestone 2', status: 'Completed', payout: 1000, currency: 'EUR', dueDate: 'Jun 1, 2026' },
+  { id: '3', title: 'Milestone 3', status: 'Pending', payout: 250, currency: 'GBP', dueDate: 'Jun 15, 2026' },
 ];
 
 const scrollRegion = (container: HTMLElement) =>
