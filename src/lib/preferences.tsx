@@ -6,6 +6,18 @@ import { getItem, setItem } from './safeStorage';
 export type Theme = 'light' | 'dark' | 'system';
 export type AmountFormat = 'usd' | 'ngn' | 'compact';
 export type ToastDensity = 'relaxed' | 'compact';
+/**
+ * Controls the default auto-dismiss duration for toasts when the caller does
+ * not supply an explicit `duration`.
+ *
+ * | Value          | Duration  | Notes                              |
+ * |----------------|-----------|------------------------------------|
+ * | `'short'`      | 2 500 ms  | Quick, low-priority confirmations  |
+ * | `'normal'`     | 5 000 ms  | Default – matches legacy behaviour |
+ * | `'long'`       | 10 000 ms | Complex messages or slow readers   |
+ * | `'persistent'` | ∞         | Toast stays until manually closed  |
+ */
+export type ToastDuration = 'short' | 'normal' | 'long' | 'persistent';
 
 /**
  * Safely format a number as currency, falling back to USD if the provided currency code is invalid.
@@ -37,6 +49,7 @@ export interface UserPreferences {
   amountFormat: AmountFormat;
   toastDensity: ToastDensity;
   quietMode: boolean;
+  toastDuration: ToastDuration;
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
@@ -44,6 +57,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   amountFormat: 'usd',
   toastDensity: 'relaxed',
   quietMode: false,
+  toastDuration: 'normal',
 };
 
 /**
@@ -57,6 +71,7 @@ const KNOWN_KEYS: ReadonlySet<keyof UserPreferences> = new Set([
   'amountFormat',
   'toastDensity',
   'quietMode',
+  'toastDuration',
 ]);
 
 /**
@@ -76,6 +91,7 @@ const DANGEROUS_KEYS: ReadonlySet<string> = new Set(['__proto__', 'constructor',
 const ALLOWED_THEMES: ReadonlySet<Theme> = new Set(['light', 'dark', 'system']);
 const ALLOWED_AMOUNT_FORMATS: ReadonlySet<AmountFormat> = new Set(['usd', 'ngn', 'compact']);
 const ALLOWED_TOAST_DENSITIES: ReadonlySet<ToastDensity> = new Set(['relaxed', 'compact']);
+const ALLOWED_TOAST_DURATIONS: ReadonlySet<ToastDuration> = new Set(['short', 'normal', 'long', 'persistent']);
 
 interface PreferencesContextType {
   preferences: UserPreferences;
@@ -100,9 +116,10 @@ const STORAGE_KEY = 'talenttrust-user-preferences';
  *   (`Object.keys`) so inherited prototype keys can never reach the merge step.
  * - Rejects `__proto__`, `constructor`, and `prototype` keys outright so a
  *   spread or `Object.assign` downstream cannot rewire the prototype chain.
- * - Whitelists the four known keys (`theme`, `amountFormat`, `toastDensity`,
- *   `quietMode`) and validates each value against its allowed set. Unknown
- *   keys are silently dropped; invalid values fall back to the default.
+ * - Whitelists the five known keys (`theme`, `amountFormat`, `toastDensity`,
+ *   `quietMode`, `toastDuration`) and validates each value against its allowed
+ *   set. Unknown keys are silently dropped; invalid values fall back to the
+ *   default.
  *
  * Booleans are checked with `typeof === 'boolean'` (not truthiness) so values
  * like `1`, `"true"`, or an object cannot be coerced into a `quietMode` flag.
@@ -126,6 +143,7 @@ export function sanitizePreferences(raw: unknown): UserPreferences {
   let amountFormat: AmountFormat = DEFAULT_PREFERENCES.amountFormat;
   let toastDensity: ToastDensity = DEFAULT_PREFERENCES.toastDensity;
   let quietMode: boolean = DEFAULT_PREFERENCES.quietMode;
+  let toastDuration: ToastDuration = DEFAULT_PREFERENCES.toastDuration;
 
   for (const key of Object.keys(raw as object)) {
     // Drop dangerous keys regardless of value. These are the keys historically
@@ -162,10 +180,17 @@ export function sanitizePreferences(raw: unknown): UserPreferences {
           quietMode = value;
         }
         break;
+      case 'toastDuration':
+        // Cast at call site and assignment: Set.has does not narrow `unknown`
+        // on its own, but membership is verified at runtime.
+        if (typeof value === 'string' && ALLOWED_TOAST_DURATIONS.has(value as ToastDuration)) {
+          toastDuration = value as ToastDuration;
+        }
+        break;
     }
   }
 
-  return { theme, amountFormat, toastDensity, quietMode };
+  return { theme, amountFormat, toastDensity, quietMode, toastDuration };
 }
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {

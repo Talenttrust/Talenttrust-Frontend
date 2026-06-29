@@ -75,6 +75,7 @@ describe('PreferencesProvider', () => {
       amountFormat: 'usd',
       toastDensity: 'relaxed',
       quietMode: false,
+      toastDuration: 'normal',
     });
     (console.error as jest.Mock).mockRestore();
   });
@@ -140,7 +141,7 @@ describe('PreferencesProvider', () => {
     expect(r2.current.preferences.quietMode).toBe(false);
   });
 
-  it('persists only the four known keys even after a malicious payload round-trips', async () => {
+  it('persists only the five known keys even after a malicious payload round-trips', async () => {
     localStorage.setItem(
       'talenttrust-user-preferences',
       JSON.stringify({
@@ -148,6 +149,7 @@ describe('PreferencesProvider', () => {
         amountFormat: 'ngn',
         toastDensity: 'compact',
         quietMode: true,
+        toastDuration: 'long',
         secretKey: 'leaked',
       }),
     );
@@ -165,7 +167,48 @@ describe('PreferencesProvider', () => {
       'quietMode',
       'theme',
       'toastDensity',
+      'toastDuration',
     ]);
+  });
+
+  it('loads toastDuration from localStorage when valid', () => {
+    localStorage.setItem(
+      'talenttrust-user-preferences',
+      JSON.stringify({ toastDuration: 'short' }),
+    );
+    const { result } = renderHook(() => usePreferences(), { wrapper });
+    expect(result.current.preferences.toastDuration).toBe('short');
+  });
+
+  it('loads toastDuration: persistent from localStorage', () => {
+    localStorage.setItem(
+      'talenttrust-user-preferences',
+      JSON.stringify({ toastDuration: 'persistent' }),
+    );
+    const { result } = renderHook(() => usePreferences(), { wrapper });
+    expect(result.current.preferences.toastDuration).toBe('persistent');
+  });
+
+  it('falls back to normal when stored toastDuration is invalid', () => {
+    localStorage.setItem(
+      'talenttrust-user-preferences',
+      JSON.stringify({ toastDuration: 'forever' }),
+    );
+    const { result } = renderHook(() => usePreferences(), { wrapper });
+    expect(result.current.preferences.toastDuration).toBe('normal');
+  });
+
+  it('persists toastDuration change and re-hydrates correctly', () => {
+    const { result } = renderHook(() => usePreferences(), { wrapper });
+    act(() => { result.current.updatePreference('toastDuration', 'long'); });
+
+    const saved = JSON.parse(localStorage.getItem('talenttrust-user-preferences') || '{}');
+    expect(saved.toastDuration).toBe('long');
+
+    // Simulate page reload by mounting a fresh hook instance after the save.
+    const { result: result2 } = renderHook(() => usePreferences(), { wrapper });
+    act(() => {}); // flush effects
+    expect(result2.current.preferences.toastDuration).toBe('long');
   });
 });
 
@@ -175,6 +218,7 @@ describe('sanitizePreferences (pure helper)', () => {
     amountFormat: 'usd',
     toastDensity: 'relaxed',
     quietMode: false,
+    toastDuration: 'normal',
   };
 
   it('returns DEFAULT_PREFERENCES for null', () => {
@@ -204,12 +248,14 @@ describe('sanitizePreferences (pure helper)', () => {
         amountFormat: 'compact',
         toastDensity: 'compact',
         quietMode: true,
+        toastDuration: 'long',
       }),
     ).toEqual({
       theme: 'dark',
       amountFormat: 'compact',
       toastDensity: 'compact',
       quietMode: true,
+      toastDuration: 'long',
     });
   });
 
@@ -221,6 +267,7 @@ describe('sanitizePreferences (pure helper)', () => {
       amountFormat: 'usd',
       toastDensity: 'relaxed',
       quietMode: true,
+      toastDuration: 'normal',
     });
   });
 
@@ -305,6 +352,7 @@ describe('sanitizePreferences (pure helper)', () => {
       amountFormat: '???', // invalid
       toastDensity: 'compact',
       quietMode: 'yes', // invalid
+      toastDuration: 'persistent', // valid
       bogus: true, // unknown
       constructor: { hacked: 1 }, // dangerous
     } as unknown as UserPreferences);
@@ -313,6 +361,17 @@ describe('sanitizePreferences (pure helper)', () => {
       amountFormat: 'usd',
       toastDensity: 'compact',
       quietMode: false,
+      toastDuration: 'persistent',
+    });
+  });
+
+  it('rejects invalid toastDuration values', () => {
+    expect(sanitizePreferences({ toastDuration: 'forever' })).toEqual({ ...DEFAULTS });
+    expect(sanitizePreferences({ toastDuration: 5000 } as unknown as UserPreferences)).toEqual({
+      ...DEFAULTS,
+    });
+    expect(sanitizePreferences({ toastDuration: null } as unknown as UserPreferences)).toEqual({
+      ...DEFAULTS,
     });
   });
 

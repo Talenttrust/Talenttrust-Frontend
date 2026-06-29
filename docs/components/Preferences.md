@@ -2,7 +2,7 @@
 
 `src/lib/preferences.tsx`
 
-Global user-preference state (theme, amount format, toast density, quiet mode) backed by `localStorage`. Used across the escrow payout display in `MilestonesList` and any component that needs to format monetary amounts.
+Global user-preference state (theme, amount format, toast density, toast duration, quiet mode) backed by `localStorage`. Used across the escrow payout display in `MilestonesList` and any component that needs to format monetary amounts.
 
 ---
 
@@ -44,12 +44,14 @@ Edge cases handled: `0`, fractions (e.g. `0.5`), large payouts (`1 000 000+`), n
 type Theme        = 'light' | 'dark' | 'system';
 type AmountFormat = 'usd'   | 'ngn'  | 'compact';
 type ToastDensity = 'relaxed' | 'compact';
+type ToastDuration = 'short' | 'normal' | 'long' | 'persistent';
 
 interface UserPreferences {
-  theme:        Theme;
-  amountFormat: AmountFormat;
-  toastDensity: ToastDensity;
-  quietMode:    boolean;
+  theme:         Theme;
+  amountFormat:  AmountFormat;
+  toastDensity:  ToastDensity;
+  quietMode:     boolean;
+  toastDuration: ToastDuration;
 }
 ```
 
@@ -93,11 +95,12 @@ result to React state.
    keys inherited from a hostile prototype cannot reach the merge step.
 3. Drops `__proto__`, `constructor`, and `prototype` keys outright — keys
    historically used to hijack prototypes via shallow merges.
-4. Whitelists exactly `{ theme, amountFormat, toastDensity, quietMode }` and
+4. Whitelists exactly `{ theme, amountFormat, toastDensity, quietMode, toastDuration }` and
    validates each candidate value against its allowed set:
    - `theme` ∈ `'light' | 'dark' | 'system'`
    - `amountFormat` ∈ `'usd' | 'ngn' | 'compact'`
    - `toastDensity` ∈ `'relaxed' | 'compact'`
+   - `toastDuration` ∈ `'short' | 'normal' | 'long' | 'persistent'`
    - `quietMode` must be a literal `boolean` (not truthy coercibles like
      `1`, `'true'`, or objects).
 5. Falls back to `DEFAULT_PREFERENCES` for any invalid or unknown value — the
@@ -117,6 +120,7 @@ falls back to defaults rather than throwing.
 | `__proto__` pollution via spread/Object.assign  | Explicit rejection of `__proto__` during sanitization     |
 | `constructor` / `prototype` pollution           | Explicit rejection of these dangerous key names           |
 | `quietMode` truthy coercion (`1`, `"true"`)     | Strict `typeof === 'boolean'` check                       |
+| Invalid `toastDuration` string                  | Allow-list check; falls back to `'normal'` (5 000 ms)    |
 | Inherited keys on attacker objects              | `Object.keys` enumerates own enumerable keys only         |
 | Non-object payloads (arrays, primitives, null)  | Early-return with `DEFAULT_PREFERENCES`                   |
 
@@ -124,7 +128,7 @@ falls back to defaults rather than throwing.
 
 - The sanitizer is exported so it can be unit-tested in isolation.
 - Re-saving sanitized preferences back to `localStorage` guarantees the
-  stored payload contains only the four known keys, so a corrupt value can
+  stored payload contains only the five known keys, so a corrupt value can
   eventually self-heal once the user changes any preference.
 
 ---
