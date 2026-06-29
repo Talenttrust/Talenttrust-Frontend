@@ -13,11 +13,11 @@ module.exports = [
   // - `src/declarations.d.ts` holds ambient declarations (no executable code).
   {
     ignores: [
-      'test_check.js',
-      '.next/**',
-      'node_modules/**',
-      'coverage/**',
-      'src/declarations.d.ts',
+      '**/test_check.js',
+      '**/.next/**',
+      '**/node_modules/**',
+      '**/coverage/**',
+      '**/src/declarations.d.ts',
     ],
   },
   js.configs.recommended,
