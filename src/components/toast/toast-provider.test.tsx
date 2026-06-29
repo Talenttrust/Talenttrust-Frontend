@@ -830,6 +830,7 @@ describe('toast action button', () => {
 
     function OrderHarness() {
       const { showSuccess } = useToast();
+      // We can't spy on dismissToast directly, so we proxy it.
       return (
         <button
           type="button"

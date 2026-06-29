@@ -199,13 +199,15 @@ const ActionPanel = ({
 
     previousDisputeFormOpenRef.current = disputeFormOpen;
   }, [disputeFormOpen]);
-
   /** Closes the inline form and returns focus to the button that opened it. */
   const closeDisputeForm = () => {
-    shouldRestoreDisputeFocusRef.current = true;
     setDisputeFormOpen(false);
     setDisputeReason('');
     setDisputeReasonError('');
+    // Defer so the button is re-enabled in the DOM before focus is applied.
+    setTimeout(() => {
+      disputeTriggerRef.current?.focus();
+    }, 0);
   };
 
   const handleDisputeReasonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -346,7 +348,6 @@ const ActionPanel = ({
         {actions.includes('Dispute') && (
           <>
             <button
-              ref={disputeButtonRef}
               type="button"
               onClick={handleOpenDisputeForm}
               disabled={
@@ -410,7 +411,7 @@ const ActionPanel = ({
                         : DISPUTE_REASON_HINT_ID
                     }
                     aria-invalid={disputeReasonError ? 'true' : undefined}
-                    placeholder="Explain why you are opening this dispute..."
+                    placeholder="Explain why you are opening this dispute…"
                     className={`w-full resize-y rounded-xl border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500 ${
                       disputeReasonError
                         ? 'border-rose-500 bg-white'

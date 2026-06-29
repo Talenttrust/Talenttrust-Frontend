@@ -2,6 +2,9 @@
 const config = {
   testEnvironment: 'jsdom',
   watchman: false,
+  // Run tests serially in a single worker to prevent concurrent axe-core
+  // singleton collisions ("Axe is already running") in the a11y test suite.
+  maxWorkers: 1,
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   testPathIgnorePatterns: ['/node_modules/', '/.next/'],
   modulePathIgnorePatterns: ['<rootDir>/.next/'],
