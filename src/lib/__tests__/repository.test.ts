@@ -16,6 +16,7 @@ import {
   listContracts,
   saveContract,
   upsertContract,
+  updateMilestone,
   listMilestones,
   saveMilestone,
   STORAGE_KEY,
@@ -156,6 +157,30 @@ describe('milestone round-trip', () => {
     expect(result.dueDate).toBe('Mar 1, 2025');
   });
 });
+
+describe('updateMilestone operation', () => {
+  it('updates an existing milestone by id', () => {
+    saveMilestone(milestoneA);
+    const updated = { status: 'Completed' } as Partial<Milestone>;
+    expect(updateMilestone('ms-001', updated)).toBe(true);
+    const [result] = listMilestones();
+    expect(result.status).toBe('Completed');
+  });
+
+  it('returns false and warns when id not found', () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(updateMilestone('non-existent', { status: 'Paid' })).toBe(false);
+    expect(console.warn).toHaveBeenCalled();
+  });
+
+  it('does not mutate original milestone object', () => {
+    saveMilestone(milestoneA);
+    const original = { ...milestoneA };
+    updateMilestone('ms-001', { status: 'Disputed' });
+    expect(milestoneA).toEqual(original);
+  });
+});
+
 
 // ===========================================================================
 // 3. MULTIPLE WRITES ARE ADDITIVE
