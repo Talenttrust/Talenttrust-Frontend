@@ -656,10 +656,111 @@ describe('ReputationProfile – reputation score meter (issue #245)', () => {
      await assertNoA11yViolations(container);
    });
 
-   it('meter axe audit passes for score-null state', async () => {
-     const { container } = render(
-       <ReputationProfile name="Meter A11y Guest User" score={null} history={[]} />
-     );
-     await assertNoA11yViolations(container);
-   });
- });
+    it('meter axe audit passes for score-null state', async () => {
+      const { container } = render(
+        <ReputationProfile name="Meter A11y Guest User" score={null} history={[]} />
+      );
+      await assertNoA11yViolations(container);
+    });
+  });
+
+  describe('reputation level legend and derived level', () => {
+    it('does not render the legend when there is no score', () => {
+      renderProfile({ name: 'No Score User', score: undefined });
+      expect(screen.queryByText(/Reputation Level Legend/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('list', { name: /Reputation Level Legend/i })).not.toBeInTheDocument();
+    });
+
+    it('renders the legend when score exists', () => {
+      renderProfile({ name: 'Score User', score: 3.5 });
+      expect(screen.getByText(/Reputation Level Legend/i)).toBeInTheDocument();
+      const legendList = screen.getByRole('list', { name: /Reputation Level Legend/i });
+      expect(legendList).toBeInTheDocument();
+      expect(within(legendList).getAllByRole('listitem')).toHaveLength(5);
+    });
+
+    it('associates the meter with the legend via aria-describedby', () => {
+      renderProfile({ name: 'A11y User', score: 3.5 });
+      const meter = screen.getByRole('meter');
+      expect(meter).toHaveAttribute('aria-describedby', 'reputation-legend');
+    });
+
+    it('honors the explicit level prop when provided', () => {
+      renderProfile({ name: 'Explicit Level User', score: 4.5, level: 'Custom Legend Status' });
+      expect(screen.getByText('Custom Legend Status')).toBeInTheDocument();
+    });
+
+    it('derives level from score when level is not provided (default maxScore = 5)', () => {
+      // Band 1 [0, 1): Newcomer
+      const { unmount } = renderProfile({ name: 'User 1', score: 0.5 });
+      expect(screen.getByText('Newcomer')).toBeInTheDocument();
+      unmount();
+
+      // Band 2 [1, 2): Contributor
+      const { unmount: unmount2 } = renderProfile({ name: 'User 2', score: 1.5 });
+      expect(screen.getByText('Contributor')).toBeInTheDocument();
+      unmount2();
+
+      // Band 3 [2, 3): Active Contributor
+      const { unmount: unmount3 } = renderProfile({ name: 'User 3', score: 2.5 });
+      expect(screen.getByText('Active Contributor')).toBeInTheDocument();
+      unmount3();
+
+      // Band 4 [3, 4): Trusted Partner
+      const { unmount: unmount4 } = renderProfile({ name: 'User 4', score: 3.5 });
+      expect(screen.getByText('Trusted Partner')).toBeInTheDocument();
+      unmount4();
+
+      // Band 5 [4, 5]: Expert
+      renderProfile({ name: 'User 5', score: 4.5 });
+      expect(screen.getByText('Expert')).toBeInTheDocument();
+    });
+
+    it('correctly maps scores at boundaries (default maxScore = 5)', () => {
+      // Score exactly 0 -> Newcomer
+      const { unmount: u0 } = renderProfile({ name: 'U0', score: 0 });
+      expect(screen.getByText('Newcomer')).toBeInTheDocument();
+      u0();
+
+      // Score exactly 1 -> Contributor
+      const { unmount: u1 } = renderProfile({ name: 'U1', score: 1.0 });
+      expect(screen.getByText('Contributor')).toBeInTheDocument();
+      u1();
+
+      // Score exactly 2 -> Active Contributor
+      const { unmount: u2 } = renderProfile({ name: 'U2', score: 2.0 });
+      expect(screen.getByText('Active Contributor')).toBeInTheDocument();
+      u2();
+
+      // Score exactly 3 -> Trusted Partner
+      const { unmount: u3 } = renderProfile({ name: 'U3', score: 3.0 });
+      expect(screen.getByText('Trusted Partner')).toBeInTheDocument();
+      u3();
+
+      // Score exactly 4 -> Expert
+      const { unmount: u4 } = renderProfile({ name: 'U4', score: 4.0 });
+      expect(screen.getByText('Expert')).toBeInTheDocument();
+      u4();
+
+      // Score exactly 5 -> Expert
+      renderProfile({ name: 'U5', score: 5.0 });
+      expect(screen.getByText('Expert')).toBeInTheDocument();
+    });
+
+    it('handles custom maxScore scaling correctly', () => {
+      // With custom maxScore = 10, the bands are:
+      // [0, 2): Newcomer
+      // [2, 4): Contributor
+      // [4, 6): Active Contributor
+      // [6, 8): Trusted Partner
+      // [8, 10]: Expert
+      renderProfile({ name: 'Scaled User', score: 7.0, maxScore: 10 });
+      expect(screen.getByText('Trusted Partner')).toBeInTheDocument();
+    });
+
+    it('passes axe accessibility checks when legend is rendered', async () => {
+      const { container } = renderProfile({ name: 'A11y Legend User', score: 3.5 });
+      await assertNoA11yViolations(container);
+    });
+  });
+});
