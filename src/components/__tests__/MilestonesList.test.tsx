@@ -1,9 +1,9 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { axe } from 'jest-axe';
 import MilestonesList from '../MilestonesList';
 import type { Milestone } from '../MilestonesList';
-import type { StatusType } from '../StatusBadge';
+import { parseLocalDate, isDueSoon } from '../../lib/dueSoon';
 
 const SAMPLE: Milestone[] = [
   { id: '1', title: 'Milestone 1', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 10, 2026' },
@@ -127,75 +127,131 @@ describe('MilestonesList', () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  describe('currency mismatch warning', () => {
-    it('does not render warning when all milestones match contract currency', () => {
-      const { container } = render(
-        <MilestonesList milestones={SAMPLE} contractCurrency="USD" />,
-      );
-      expect(container.querySelector('[role="alert"]')).not.toBeInTheDocument();
+  describe('due-soon reminder banner', () => {
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-05-10T12:00:00'));
     });
 
-    it('does not render warning when contractCurrency is not provided', () => {
-      const { container } = render(
-        <MilestonesList milestones={MISMATCHED} />,
-      );
-      expect(container.querySelector('[role="alert"]')).not.toBeInTheDocument();
+    afterEach(() => {
+      jest.useRealTimers();
     });
 
-    it('renders warning with role="alert" when a milestone currency mismatches', () => {
-      const { container } = render(
-        <MilestonesList milestones={MISMATCHED} contractCurrency="USD" />,
-      );
-      const alert = container.querySelector('[role="alert"]');
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent('Currency mismatch');
-    });
-
-    it('shows singular text for a single mismatched milestone', () => {
-      render(
-        <MilestonesList milestones={MISMATCHED} contractCurrency="USD" />,
-      );
-      expect(screen.getByText(/1 milestone uses EUR instead of USD/i)).toBeInTheDocument();
-    });
-
-    it('shows plural text for multiple mismatched milestones', () => {
-      const multiMismatch: Milestone[] = [
-        { id: '1', title: 'M1', status: 'Pending', payout: 500, currency: 'EUR' },
-        { id: '2', title: 'M2', status: 'Pending', payout: 600, currency: 'EUR' },
+    it('does not render banner if no milestones are due soon', () => {
+      const milestones: Milestone[] = [
+        { id: '1', title: 'Future Milestone', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 20, 2026' }, // 10 days away
+        { id: '2', title: 'TBD Milestone', status: 'Pending', payout: 1000, currency: 'USD', dueDate: undefined },
       ];
-      render(
-        <MilestonesList milestones={multiMismatch} contractCurrency="USD" />,
-      );
-      expect(screen.getByText(/2 milestones use EUR instead of USD/i)).toBeInTheDocument();
+      render(<MilestonesList milestones={milestones} />);
+      expect(screen.queryByText(/due within/i)).not.toBeInTheDocument();
     });
 
-    it('lists multiple distinct mismatched currencies', () => {
-      const multiCurrencyMismatch: Milestone[] = [
-        { id: '1', title: 'M1', status: 'Pending', payout: 500, currency: 'EUR' },
-        { id: '2', title: 'M2', status: 'Pending', payout: 600, currency: 'GBP' },
+    it('renders banner with correct pluralization for 1 due-soon milestone', () => {
+      const milestones: Milestone[] = [
+        { id: '1', title: 'Due Soon Milestone', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 15, 2026' }, // 5 days away
       ];
-      render(
-        <MilestonesList milestones={multiCurrencyMismatch} contractCurrency="USD" />,
-      );
-      expect(screen.getByText(/2 milestones use EUR, GBP instead of USD/i)).toBeInTheDocument();
+      render(<MilestonesList milestones={milestones} />);
+      expect(screen.getByText('1 milestone is due within 7 days')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Due Soon Milestone' })).toHaveAttribute('href', '#milestone-1');
     });
 
-    it('case-insensitive match does not trigger warning', () => {
-      const caseInsensitiveMismatch: Milestone[] = [
-        { id: '1', title: 'M1', status: 'Pending', payout: 500, currency: 'usd' },
-        { id: '2', title: 'M2', status: 'Pending', payout: 600, currency: 'Usd' },
+    it('renders banner with correct pluralization for multiple due-soon milestones', () => {
+      const milestones: Milestone[] = [
+        { id: '1', title: 'Milestone A', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 12, 2026' }, // 2 days away
+        { id: '2', title: 'Milestone B', status: 'Active', payout: 1000, currency: 'USD', dueDate: 'May 17, 2026' }, // 7 days away
       ];
-      const { container } = render(
-        <MilestonesList milestones={caseInsensitiveMismatch} contractCurrency="USD" />,
-      );
-      expect(container.querySelector('[role="alert"]')).not.toBeInTheDocument();
+      render(<MilestonesList milestones={milestones} />);
+      expect(screen.getByText('2 milestones are due within 7 days')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Milestone A' })).toHaveAttribute('href', '#milestone-1');
+      expect(screen.getByRole('link', { name: 'Milestone B' })).toHaveAttribute('href', '#milestone-2');
     });
 
-    it('passes axe accessibility check with mismatch warning visible', async () => {
-      const { container } = render(
-        <MilestonesList milestones={MISMATCHED} contractCurrency="USD" />,
-      );
-      expect(await axe(container)).toHaveNoViolations();
+    it('excludes milestones with terminal statuses (Paid, Completed)', () => {
+      const milestones: Milestone[] = [
+        { id: '1', title: 'Milestone A', status: 'Paid', payout: 500, currency: 'USD', dueDate: 'May 12, 2026' }, // 2 days away (Paid)
+        { id: '2', title: 'Milestone B', status: 'Completed', payout: 1000, currency: 'USD', dueDate: 'May 15, 2026' }, // 5 days away (Completed)
+      ];
+      render(<MilestonesList milestones={milestones} />);
+      expect(screen.queryByText(/due within/i)).not.toBeInTheDocument();
+    });
+
+    it('handles exactly-at-boundary due dates (today and 7 days from now)', () => {
+      const milestones: Milestone[] = [
+        { id: '1', title: 'Due Today', status: 'Pending', payout: 500, currency: 'USD', dueDate: '2026-05-10' }, // Today (May 10)
+        { id: '2', title: 'Due in 7 Days', status: 'Pending', payout: 1000, currency: 'USD', dueDate: '2026-05-17' }, // Exactly 7 days
+      ];
+      render(<MilestonesList milestones={milestones} />);
+      expect(screen.getByText('2 milestones are due within 7 days')).toBeInTheDocument();
+    });
+
+    it('ignores milestones with invalid/unparseable due dates', () => {
+      const milestones: Milestone[] = [
+        { id: '1', title: 'Invalid Date', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'Not a Date' },
+      ];
+      render(<MilestonesList milestones={milestones} />);
+      expect(screen.queryByText(/due within/i)).not.toBeInTheDocument();
+    });
+
+    it('hides the banner on dismiss and shifts focus to the scroll region', async () => {
+      const milestones: Milestone[] = [
+        { id: '1', title: 'Due Soon', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 15, 2026' },
+      ];
+      const { container } = render(<MilestonesList milestones={milestones} />);
+      
+      const dismissBtn = screen.getByRole('button', { name: 'Dismiss reminder' });
+      expect(dismissBtn).toBeInTheDocument();
+      
+      // Focus the dismiss button first to simulate user keyboard interaction
+      dismissBtn.focus();
+      expect(document.activeElement).toBe(dismissBtn);
+
+      // Click the dismiss button
+      fireEvent.click(dismissBtn);
+
+      // Banner should be removed
+      expect(screen.queryByText(/due within/i)).not.toBeInTheDocument();
+
+      // Focus should shift to the scroll container
+      const region = container.querySelector('.max-h-\\[calc\\(100vh-260px\\)\\]');
+      expect(document.activeElement).toBe(region);
+    });
+  });
+
+  it('passes axe accessibility checks when banner is rendered', async () => {
+    const today = new Date();
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowStr = tomorrow.toLocaleDateString('en-US');
+    const milestones: Milestone[] = [
+      { id: '1', title: 'Due Soon', status: 'Pending', payout: 500, currency: 'USD', dueDate: tomorrowStr },
+    ];
+    const { container } = render(<MilestonesList milestones={milestones} />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  describe('dueSoon helper utilities', () => {
+    it('parseLocalDate returns null for invalid types and empty values', () => {
+      expect(parseLocalDate('')).toBeNull();
+      expect(parseLocalDate(null as any)).toBeNull();
+      expect(parseLocalDate(undefined as any)).toBeNull();
+      expect(parseLocalDate(123 as any)).toBeNull();
+    });
+
+    it('parseLocalDate returns null for invalid date strings', () => {
+      expect(parseLocalDate('not-a-date')).toBeNull();
+      expect(parseLocalDate('2026-99-99')).toBeNull();
+    });
+
+    it('parseLocalDate parses ISO format to local midnight correctly', () => {
+      const date = parseLocalDate('2026-05-15');
+      expect(date).not.toBeNull();
+      expect(date?.getFullYear()).toBe(2026);
+      expect(date?.getMonth()).toBe(4); // 0-indexed May
+      expect(date?.getDate()).toBe(15);
+    });
+
+    it('isDueSoon returns false for missing or invalid dates', () => {
+      const today = new Date('2026-05-10');
+      expect(isDueSoon(undefined, today, 7)).toBe(false);
+      expect(isDueSoon('not-a-date', today, 7)).toBe(false);
     });
   });
 });

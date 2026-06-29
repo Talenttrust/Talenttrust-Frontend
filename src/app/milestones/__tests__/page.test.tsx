@@ -44,7 +44,7 @@ describe('MilestonesPage', () => {
 
     render(<MilestonesPage />);
 
-    expect(await screen.findByText('Repository Kickoff')).toBeInTheDocument();
+    expect((await screen.findAllByText('Repository Kickoff'))[0]).toBeInTheDocument();
     expect(screen.getByText('Repository Review')).toBeInTheDocument();
     expect(mockedListMilestones).toHaveBeenCalledTimes(1);
 
@@ -89,7 +89,7 @@ describe('MilestonesPage', () => {
 
     render(<MilestonesPage />);
 
-    await screen.findByText('Repository Kickoff');
+    await screen.findAllByText('Repository Kickoff');
     await user.click(screen.getByRole('radio', { name: 'Paid' }));
 
     expect(screen.getByText('No milestones match this filter')).toBeInTheDocument();
