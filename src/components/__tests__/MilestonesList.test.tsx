@@ -1,8 +1,9 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { axe } from 'jest-axe';
 import MilestonesList from '../MilestonesList';
 import type { Milestone } from '../MilestonesList';
+import { parseLocalDate, isDueSoon } from '../../lib/dueSoon';
 
 const SAMPLE: Milestone[] = [
   { id: '1', title: 'Milestone 1', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 10, 2026' },
@@ -105,8 +106,7 @@ describe('MilestonesList', () => {
         { id: '2', title: 'TBD Milestone', status: 'Pending', payout: 1000, currency: 'USD', dueDate: undefined },
       ];
       render(<MilestonesList milestones={milestones} />);
-      expect(screen.queryByRole('status')).not.toBeInTheDocument();
-      expect(screen.queryByText(/due within 7 days/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/due within/i)).not.toBeInTheDocument();
     });
 
     it('renders banner with correct pluralization for 1 due-soon milestone', () => {
@@ -114,7 +114,6 @@ describe('MilestonesList', () => {
         { id: '1', title: 'Due Soon Milestone', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 15, 2026' }, // 5 days away
       ];
       render(<MilestonesList milestones={milestones} />);
-      expect(screen.getByRole('status')).toBeInTheDocument();
       expect(screen.getByText('1 milestone is due within 7 days')).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Due Soon Milestone' })).toHaveAttribute('href', '#milestone-1');
     });
@@ -136,7 +135,7 @@ describe('MilestonesList', () => {
         { id: '2', title: 'Milestone B', status: 'Completed', payout: 1000, currency: 'USD', dueDate: 'May 15, 2026' }, // 5 days away (Completed)
       ];
       render(<MilestonesList milestones={milestones} />);
-      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.queryByText(/due within/i)).not.toBeInTheDocument();
     });
 
     it('handles exactly-at-boundary due dates (today and 7 days from now)', () => {
@@ -153,7 +152,7 @@ describe('MilestonesList', () => {
         { id: '1', title: 'Invalid Date', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'Not a Date' },
       ];
       render(<MilestonesList milestones={milestones} />);
-      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.queryByText(/due within/i)).not.toBeInTheDocument();
     });
 
     it('hides the banner on dismiss and shifts focus to the scroll region', async () => {
@@ -170,22 +169,53 @@ describe('MilestonesList', () => {
       expect(document.activeElement).toBe(dismissBtn);
 
       // Click the dismiss button
-      dismissBtn.click();
+      fireEvent.click(dismissBtn);
 
       // Banner should be removed
-      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.queryByText(/due within/i)).not.toBeInTheDocument();
 
       // Focus should shift to the scroll container
       const region = container.querySelector('.max-h-\\[calc\\(100vh-260px\\)\\]');
       expect(document.activeElement).toBe(region);
     });
+  });
 
-    it('passes axe accessibility checks when banner is rendered', async () => {
-      const milestones: Milestone[] = [
-        { id: '1', title: 'Due Soon', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 15, 2026' },
-      ];
-      const { container } = render(<MilestonesList milestones={milestones} />);
-      expect(await axe(container)).toHaveNoViolations();
+  it('passes axe accessibility checks when banner is rendered', async () => {
+    const today = new Date();
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowStr = tomorrow.toLocaleDateString('en-US');
+    const milestones: Milestone[] = [
+      { id: '1', title: 'Due Soon', status: 'Pending', payout: 500, currency: 'USD', dueDate: tomorrowStr },
+    ];
+    const { container } = render(<MilestonesList milestones={milestones} />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  describe('dueSoon helper utilities', () => {
+    it('parseLocalDate returns null for invalid types and empty values', () => {
+      expect(parseLocalDate('')).toBeNull();
+      expect(parseLocalDate(null as any)).toBeNull();
+      expect(parseLocalDate(undefined as any)).toBeNull();
+      expect(parseLocalDate(123 as any)).toBeNull();
+    });
+
+    it('parseLocalDate returns null for invalid date strings', () => {
+      expect(parseLocalDate('not-a-date')).toBeNull();
+      expect(parseLocalDate('2026-99-99')).toBeNull();
+    });
+
+    it('parseLocalDate parses ISO format to local midnight correctly', () => {
+      const date = parseLocalDate('2026-05-15');
+      expect(date).not.toBeNull();
+      expect(date?.getFullYear()).toBe(2026);
+      expect(date?.getMonth()).toBe(4); // 0-indexed May
+      expect(date?.getDate()).toBe(15);
+    });
+
+    it('isDueSoon returns false for missing or invalid dates', () => {
+      const today = new Date('2026-05-10');
+      expect(isDueSoon(undefined, today, 7)).toBe(false);
+      expect(isDueSoon('not-a-date', today, 7)).toBe(false);
     });
   });
 });

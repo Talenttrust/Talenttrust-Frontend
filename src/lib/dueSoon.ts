@@ -17,7 +17,12 @@ export function parseLocalDate(dateStr: string): Date | null {
     const month = parseInt(match[2], 10) - 1; // 0-indexed month
     const day = parseInt(match[3], 10);
     const date = new Date(year, month, day);
-    if (!isNaN(date.getTime())) {
+    if (
+      !isNaN(date.getTime()) &&
+      date.getFullYear() === year &&
+      date.getMonth() === month &&
+      date.getDate() === day
+    ) {
       return date;
     }
   }
