@@ -124,15 +124,16 @@ export function WalletProvider({
   const [address, setAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Safely obtain toast functions; fallback to no-op if provider missing
+  // Safely obtain toast functions; fallback to no-ops if provider is absent
+  // (e.g. during unit tests that render WalletProvider without ToastProvider).
   const useSafeToast = () => {
     try {
       return useToast();
     } catch {
-      return { showSuccess: () => {} };
+      return { showSuccess: () => {}, showError: () => {} };
     }
   };
-  const { showSuccess } = useSafeToast();
+  const { showSuccess, showError } = useSafeToast();
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const STORAGE_KEY = 'wallet_connected_address';
@@ -223,7 +224,23 @@ export function WalletProvider({
       setAddress(MOCKED_STELLAR_ADDRESS);
       setItem(STORAGE_KEY, MOCKED_STELLAR_ADDRESS);
     } catch (_err) {
-      setError('Failed to connect wallet');
+      const message = 'Failed to connect wallet';
+      /**
+       * Set inline error state so button-level consumers can render it.
+       * The toast below provides an assertive screen-reader announcement;
+       * avoid duplicating the message in aria-live regions by keeping a
+       * single source-of-truth in the toast system.
+       */
+      setError(message);
+      /**
+       * Surface the failure via the toast system so screen-reader users
+       * receive an assertive `role="alert"` announcement in addition to
+       * the inline error rendered by consuming components.
+       */
+      showError({
+        title: 'Wallet connection failed',
+        description: message,
+      });
     } finally {
       setIsConnecting(false);
     }

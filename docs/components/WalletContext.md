@@ -110,6 +110,18 @@ Human-readable error message from the most recent failed `connect()` attempt,
 or `null` when no error is present. Cleared automatically at the start of each
 new `connect()` call.
 
+When a connection failure occurs, the provider does **two** things:
+
+1. **Sets `error`** – so consuming components (e.g. `WalletConnectButton`) can
+   render an inline message next to the button.
+2. **Calls `showError` from `ToastProvider`** – so screen-reader users receive
+   an assertive `role="alert"` announcement via the `aria-live="assertive"`
+   region without relying on the inline element being visible or focused.
+
+This dual approach avoids duplicate announcements: the toast is the single
+source of truth for assistive-technology notifications, while the inline `error`
+field handles visual/interactive presentation at the component level.
+
 Known values (exported as named constants from `WalletContext.tsx`):
 
 | Constant                  | Value                                                                           | Cause                                        |
@@ -128,7 +140,12 @@ connect: () => Promise<void>
 Initiates a wallet connection attempt. Sets `isConnecting` to `true` for the
 duration and resets it in the `finally` block regardless of outcome. The
 returned `Promise` always resolves; errors are surfaced through the `error`
-field rather than via rejection.
+field **and via an accessible error toast** (`showError`) rather than via rejection.
+
+On failure the provider:
+- Sets `error` to `'Failed to connect wallet'` for inline display.
+- Calls `showError({ title: 'Wallet connection failed', description: '...' })`
+  so screen readers receive an assertive `role="alert"` announcement.
 
 > ⚠️ **Temporary mock — real Freighter integration pending.**
 >
