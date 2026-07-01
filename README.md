@@ -66,6 +66,8 @@ Shared components live in `src/components/` (e.g., `src/components/toast/`). Sha
 
 The application relies on a client-side persistence layer for storing contracts and milestones. For a complete overview of the API, `AppData` shape, and update operations, see the [Persistence API and Data Model Guide](docs/data-model.md).
 
+User-level settings are handled by `PreferencesProvider`. For the preference model, theme hydration flow, safe storage behavior, and `formatAmount` branches, see the [Preferences Provider Guide](docs/preferences.md).
+
 ## Toast notifications
 
 The app includes a global accessible toast system for transient feedback:
