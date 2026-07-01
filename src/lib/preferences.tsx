@@ -211,6 +211,11 @@ export function sanitizePreferences(raw: unknown): UserPreferences {
   return { theme, amountFormat, toastDensity, quietMode, toastDuration, idleDisconnectMs };
 }
 
+/**
+ * Provides sanitized, persisted user preferences and applies the effective
+ * document theme. See `docs/preferences.md` for the hydration, persistence,
+ * system-theme, and amount-formatting contract.
+ */
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -289,6 +294,13 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   );
 }
 
+/**
+ * Read preference state and helpers from {@link PreferencesProvider}.
+ *
+ * When no provider is mounted, this hook intentionally returns defaults plus
+ * no-op helpers so isolated tests can render preference-aware components.
+ * See `docs/preferences.md#provider-less-fallback` for the fallback contract.
+ */
 export function usePreferences() {
   const context = useContext(PreferencesContext);
   if (context === undefined) {
