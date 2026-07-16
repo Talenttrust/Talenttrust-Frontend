@@ -419,4 +419,102 @@ When the milestone list container is populated, we apply accessibility propertie
 
 Instead of dynamically measuring DOM sizes (e.g. `scrollHeight > clientHeight`) which requires layout execution, we always apply these properties when the list contains items. This guarantees:
 1. **Hydration Consistency**: Identical SSR and client-side HTML output, preventing hydration errors and layout shifts.
-2. **Deterministic JSDOM Testing**: JSDOM does not calculate visual rendering or scroll heights (metrics default to zero). Always applying the attributes when populated ensures unit tests and automated accessibility audits (e.g. `jest-axe`) can inspect and verify the accessibility tree.
+2. **Deterministic JSDOM Testing**: JSDOM does not calculate visual rendering or scroll heights (metrics default to zero). Always applying the attributes when populated ensures unit tests and automated accessibility audits (e.g. `jest-axe`) can inspect and verify the accessibility tree.
+
+---
+
+## prefers-reduced-motion Support (WCAG 2.3.3 Animation from Interactions)
+
+**Standard:** WCAG 2.3.3 — Motion from interactions can be disabled unless essential to functionality or information.
+
+### Implementation
+
+The application respects the `prefers-reduced-motion: reduce` media query to halt non-essential animations and transitions for users who have requested reduced motion via their OS or browser settings.
+
+#### CSS Rules (src/app/globals.css)
+
+A global `@media (prefers-reduced-motion: reduce)` block applies the following:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-spin {
+    animation: none !important;
+  }
+
+  .animate-shimmer {
+    animation: none !important;
+    background-image: none !important;
+  }
+}
+```
+
+**Key behaviors:**
+- All CSS animations are collapsed to near-instant (0.01ms) duration and run exactly once
+- All CSS transitions snap instantly to their end state (0.01ms duration)
+- Smooth scrolling is disabled (`scroll-behavior: auto`)
+- Tailwind's `animate-spin` utility is explicitly halted (spinner becomes static)
+- The shimmer skeleton animation is frozen (placeholder remains visible but static)
+
+#### Component Implementation
+
+**WalletConnectButton (src/components/WalletConnectButton.tsx)**
+- The connecting spinner uses `animate-spin` unconditionally
+- When `prefers-reduced-motion: reduce` is active, the CSS rule halts the rotation
+- The SVG remains in the DOM and visible as a static loading indicator
+- The "Connecting..." text label remains, ensuring the loading state is perceivable without motion
+
+**ToastProvider (src/components/toast/toast-provider.tsx)**
+- Toast panels and their dismiss button use the `transition` utility for hover/focus states
+- The CSS rule collapses transition durations to 0.01ms, causing instant state changes
+- The `transition` class is **not** stripped from the element — removing it would break themed hover/focus styles
+- Toasts still render and are fully functional; they simply snap into view instead of animating
+
+### Testing
+
+Comprehensive tests in `src/components/__tests__/a11y.test.tsx` verify reduced-motion behavior:
+
+| Test | Verification |
+|------|---------------|
+| `matchMedia returns true for the reduced-motion query` | Mock implementation correctly answers the query |
+| `spinner SVG remains in the DOM while connecting` | Loading indicator stays visible (static circle) |
+| `spinner SVG carries animate-spin class` | Class not stripped — CSS handles the halt |
+| `WalletConnectButton has no axe violations under reduced motion` | Structural a11y maintained when motion is reduced |
+| `success toast snaps into view with no axe violations` | Toast renders cleanly with instant transitions |
+| `error toast snaps into view with no axe violations` | Error toasts also render cleanly |
+| `dismiss button retains its transition class` | Class kept for theming; CSS handles duration collapse |
+| `toast panel is present in the DOM immediately` | No deferred mount — instant snap behavior |
+
+**Mock implementation:**
+The tests use a `mockReducedMotion()` helper that replaces `window.matchMedia` with an implementation that returns `matches: true` only for `(prefers-reduced-motion: reduce)`, simulating a user who has enabled reduced motion in their system preferences.
+
+### Design Philosophy
+
+1. **CSS-first approach:** Motion is gated at the CSS level via media queries, not JavaScript conditionals. This ensures:
+   - No layout shift or flash of animated content before JS executes
+   - Respects system preferences immediately on page load
+   - No additional runtime overhead or conditional rendering logic
+
+2. **Static indicators remain:** Elements that serve as loading indicators (spinner SVG, shimmer skeleton) stay in the DOM and visible. Only the motion is halted, not the presence of the element itself. This ensures users can still perceive loading states without animation.
+
+3. **Transitions snap, don't disappear:** CSS transition classes are retained; the media query collapses their duration. This preserves hover/focus styling that depends on the `transition` utility while eliminating the motion.
+
+### Verification
+
+To verify reduced-motion behavior:
+1. Enable reduced motion in your OS (macOS: System Settings → Accessibility → Display → "Reduce motion"; Windows: Settings → Ease of Access → Display → "Show animations")
+2. Navigate to the application
+3. Trigger a wallet connection — the spinner should appear as a static circle, not rotating
+4. Trigger a toast notification — it should appear instantly without slide/fade animation
+5. Hover over interactive elements — state changes should be instant, not gradual
+
+All automated tests pass with zero axe violations under reduced-motion conditions.
