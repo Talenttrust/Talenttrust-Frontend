@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { isValidStellarAddress } from '@/lib/stellarAddress';
 import { ToastProvider } from '@/components/toast/toast-provider';
@@ -347,7 +347,7 @@ describe('WalletContext – error toast surfacing', () => {
     jest
       .spyOn(global, 'setTimeout')
       // First call (inside connect) → reject
-      .mockImplementationOnce((_fn: TimerHandler, _ms?: number, ..._args: unknown[]) => {
+      .mockImplementationOnce((_fn: (...args: unknown[]) => void, _ms?: number, ..._args: unknown[]) => {
         // Return a timer id and schedule a rejection
         return originalSetTimeout(() => {
           throw new Error('Wallet unavailable');
