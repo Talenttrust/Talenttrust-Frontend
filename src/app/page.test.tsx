@@ -89,13 +89,13 @@ describe('Home', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Form submitted successfully!');
   });
 
-  it.skip('has no accessibility violations on render (empty state)', async () => {
+  it('has no accessibility violations on render (empty state)', async () => {
     const { container } = renderWithProviders(<Home />);
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
 
-  it.skip('has no accessibility violations when errors are displayed', async () => {
+  it('has no accessibility violations when errors are displayed', async () => {
     const { container } = renderWithProviders(<Home />);
     
     // Submit form empty to trigger errors
@@ -105,7 +105,7 @@ describe('Home', () => {
     expect(results).toHaveNoViolations();
   });
 
-  it.skip('has no accessibility violations with valid form data', async () => {
+  it('has no accessibility violations with valid form data', async () => {
     const { container } = renderWithProviders(<Home />);
 
     const emailInput = screen.getByLabelText(/Email/i);
@@ -185,7 +185,7 @@ describe('Home', () => {
     expect(passwordError).toBeInTheDocument();
   });
 
-  it.skip('uses testA11y helper for empty state', async () => {
+  it('uses testA11y helper for empty state', async () => {
     await testA11y(
       <PreferencesProvider>
         <ToastProvider>
@@ -195,7 +195,7 @@ describe('Home', () => {
     );
   });
 
-  it.skip('uses testA11y helper for error state', async () => {
+  it('uses testA11y helper for error state', async () => {
     const view = renderWithProviders(<Home />);
     
     // Submit form empty to trigger errors
