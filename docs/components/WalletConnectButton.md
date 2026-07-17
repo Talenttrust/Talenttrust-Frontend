@@ -22,11 +22,10 @@ export function Header() {
 ## Features
 
 - **Global State Integration:** Uses `useWallet` context to ensure the connection state is shared across the app, such as gating actions in `ActionPanel`.
-- **States:**
-  - **Disconnected:** Displays a prominent "Connect Wallet" button.
-  - **Connecting:** Displays a loading spinner and "Connecting..." text. Disables the button.
-  - **Error:** Displays a "Connection Error" message with a "Retry" link.
-  - **Connected:** Displays the truncated wallet address along with options to copy to clipboard or disconnect.
+- **Three rendered branches:**
+  - **Disconnected / connecting:** Renders the primary "Connect Wallet" button and swaps to a disabled spinner state with "Connecting..." while `isConnecting` is true.
+  - **Error:** Renders a "Connection Error" banner with a retry control labeled `Retry wallet connection`.
+  - **Connected:** Renders the truncated wallet address plus icon-only controls for copy and disconnect, labeled `Copy address to clipboard` and `Disconnect wallet`.
 - **Clipboard Copy (hardened):** See details in the section below.
 - **Accessibility:** Fully accessible with ARIA labels, semantic HTML, and proper focus states. All interactive elements are keyboard operable.
 - **Responsiveness:** Works across mobile and desktop viewpoints.
@@ -50,7 +49,7 @@ Error notifications use the application's `showError` method from `useToast`. Th
 
 - `@/contexts/WalletContext` — provides `address`, `connect`, `disconnect`, `isConnecting`, `error`.
 - `@/components/toast/toast-provider` — provides `useToast` / `showError` for clipboard failure notifications.
-- `@/lib/truncateAddress` — shortens the address for display.
+- `@/lib/truncateAddress` — derives the connected-state address pill text shown to the user.
 - Inline SVGs for icons (no external icon library dependency).
 
 ## Testing
@@ -59,11 +58,9 @@ Tested with Jest and React Testing Library in `src/components/__tests__/WalletCo
 
 Coverage targets ≥ 95% for this module and includes the following scenarios:
 
-- **Disconnected state:** renders connect button, handles click, shows connecting/disabled state.
-- **Error state:** renders retry UI, calls `connect` on retry click.
-- **Connected state:** renders truncated address, copy and disconnect buttons with correct ARIA attributes.
-- **Copy — success path:** `writeText` called with full address; checkmark icon shown; no error toast fired; icon resets after 2 s.
-- **Copy — missing clipboard:** `navigator.clipboard` is `undefined`; `writeText` property is absent; error toast shown; checkmark not shown.
-- **Copy — rejected promise:** `writeText` rejects; error toast shown; checkmark not shown; address not leaked to console.
-- **Copy — rapid repeated clicks:** multiple fast clicks each invoke `writeText`; no spurious error toasts; icon resets correctly after 2 s.
-- **Copy — no-op with no address:** copy button is not rendered when disconnected.
+- **Disconnected branch:** renders the connect button with the expected accessible name and calls `connect`.
+- **Connecting branch:** disables the connect button and renders the loading spinner without leaking connected or error controls.
+- **Error branch:** renders the retry control with the expected accessible name and calls `connect` again on retry.
+- **Connected branch:** verifies the address display comes from `truncateAddress`, exposes the copy and disconnect controls, and calls `disconnect`.
+- **Copy success flow:** mocks `navigator.clipboard.writeText`, verifies the full address is copied, swaps to the success icon, and resets back after 2 seconds with fake timers.
+- **Accessibility:** runs `jest-axe` against the connected state via `src/test-utils/a11y.tsx` and expects zero violations.
