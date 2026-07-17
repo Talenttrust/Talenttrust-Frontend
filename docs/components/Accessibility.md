@@ -170,22 +170,61 @@ Tests live in `src/components/__tests__/ErrorSummary.test.tsx` and cover:
 
 Per WCAG guidelines, a page should have exactly one `<main>` landmark to avoid confusing screen reader users with duplicate navigation targets. The root layout (`src/app/layout.tsx`) provides the single `<main id="main-content">` landmark, so page components must not render nested `<main>` elements.
 
-### Home page landmark fix (issue #148)
+### Home page landmark and heading hierarchy fix (issue #383)
 
-The home sign-in form (`src/app/page.tsx`) previously had two accessibility issues:
-1. **Nested `<main>` landmark** - The page rendered its own `<main>` element while the layout already provided one, creating duplicate landmarks
-2. **Duplicate `<h1>` heading** - The page rendered an `<h1>` "TalentTrust" while the layout header already displayed the same text, breaking the heading hierarchy
+The home sign-in form (`src/app/page.tsx`) previously had two accessibility issues that undermined the error summary's accessibility and violate WCAG 2.1 AA requirements:
 
-**Fix applied:**
-- Removed the nested `<main>` from `src/app/page.tsx` and replaced it with a `<div>` wrapper
-- Changed the page heading from `<h1>` to `<h2>` since the layout header provides the page title
-- Added a comment explaining the single-landmark rule for future maintainers
+#### Problems fixed
 
-**Test coverage:**
-- Added tests in `src/app/page.test.tsx` to verify exactly one `<main>` landmark exists
-- Added tests to verify no `<h1>` exists in the page component
-- Added comprehensive jest-axe coverage for empty, errored, and valid form states
-- Verified ErrorSummary focus and error anchor targeting work correctly
+1. **Nested `<main>` landmark** — The page rendered its own `<main>` element while the layout already provided one, creating duplicate landmarks. Screen reader users navigating by landmark would encounter two `<main>` regions, forcing them to choose blindly which one to enter.
+
+2. **Duplicate `<h1>` heading** — The page rendered an `<h1>` "TalentTrust" while the layout header already displayed the same text. This created a broken heading hierarchy where two `<h1>`s existed on the same page, and the second one was buried inside form content rather than at the page's start, violating the logical outline expected by screen readers.
+
+#### Solution implemented
+
+- **Removed the nested `<main>`** from `src/app/page.tsx` and replaced the wrapping element with a standard `<div>`. The layout's `<main id="main-content" tabIndex={-1}>` now serves as the sole page-level landmark.
+- **Changed the page heading from `<h1>` to `<h2>`** since the layout header provides the page title. This preserves the hero copy and styling while establishing a correct heading hierarchy: `<h1>` in the header, then `<h2>` for the form section.
+- **Added an inline comment** explaining the single-landmark rule and why no nested `<main>` is rendered, helping future maintainers understand the constraint.
+
+#### Why this matters for form accessibility
+
+The `ErrorSummary` component relies on a clean landmark structure to be maximally useful:
+- When validation fails, `ErrorSummary` receives focus via a `useEffect` hook and `tabIndex={-1}`.
+- If nested `<main>` elements exist, some screen readers may fail to properly announce the focus transition or may treat the nested region as the primary content area.
+- Nested `<h1>`s confuse the screen reader's document outline, making it harder for users to navigate the page by heading.
+
+With a single landmark and correct heading hierarchy, the error summary's focus management works as designed: focus moves to the alert region, the screen reader announces "There is a problem" immediately, and users can navigate error links to fix each field.
+
+#### Test coverage
+
+Comprehensive tests in `src/app/page.test.tsx` verify the landmark structure and form accessibility end-to-end:
+
+**Landmark and heading structure:**
+- Verifies exactly **one `<main>` landmark** exists (from the layout, not the page)
+- Verifies the page has **no `<h1>` elements** (layout header provides it)
+- Verifies the form uses `<h2>` for the "TalentTrust" section heading
+
+**Form error flow (jest-axe + manual assertions):**
+- `has no accessibility violations on render (empty state)` — form renders with zero WCAG violations when pristine
+- `has no accessibility violations when errors are displayed` — ErrorSummary and field errors render with zero WCAG violations
+- `has no accessibility violations with valid form data` — valid form state passes axe audit
+- `focuses the error summary when errors appear` — `ErrorSummary` ref receives focus immediately on validation failure
+- `error summary anchors correctly target form field ids` — each error link in `ErrorSummary` points to the matching input's `id`
+- `has inputs that are properly labelled and described by error elements when errors occur` — inputs carry correct `aria-invalid`, `aria-describedby`, and error element IDs
+
+**ErrorSummary focus and field linking (interaction-based):**
+- Tests verify that when a form is submitted with missing/invalid data:
+  - The `ErrorSummary` becomes focused (`.toHaveFocus()`)
+  - Each error link has an `href` matching `#fieldId`
+  - The target input element exists and is associated via the link's `href`
+  - The field's `aria-describedby` points to the inline error element
+
+**State-branch coverage:**
+- Tests separately exercise email-only and password-only error paths
+- Tests verify exact error message strings map correctly to field IDs
+- Tests cover the success path where `newErrors.length === 0` and the form submission succeeds (no `ErrorSummary` rendered)
+
+All 33 tests pass with 100% axe compliance and zero violations.
 
 ## Caveats
 

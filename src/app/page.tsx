@@ -34,11 +34,25 @@ export default function Home() {
   const getError = (fieldId: string) => errors.find((e) => e.fieldId === fieldId)?.message;
 
   return (
-    // NOTE: No <main> landmark here - the root layout (src/app/layout.tsx) already provides
-    // the single <main id="main-content"> landmark. Per WCAG, a page should have exactly one
-    // main landmark to avoid confusing screen reader users with duplicate navigation targets.
+    /**
+     * ACCESSIBILITY LANDMARK STRUCTURE (WCAG 2.1 AA / issue #383)
+     *
+     * NOTE: No <main> landmark here — the root layout (src/app/layout.tsx) already
+     * provides the single <main id="main-content" tabIndex={-1}> landmark. Per WCAG 2.1 AA,
+     * a page should have exactly one main landmark to avoid confusing screen reader users
+     * with duplicate navigation targets. Additionally, no <h1> is rendered here; the layout
+     * header provides the page title, so this component uses <h2> to maintain a correct
+     * heading hierarchy (h1 → h2).
+     *
+     * This structure ensures that:
+     * 1. Screen readers see a single, unambiguous main content region
+     * 2. Heading navigation produces a logical outline (h1 first, then h2 for sections)
+     * 3. The ErrorSummary component's focus management works reliably (focus can move to
+     *    the alert region and screen readers announce it without landmark confusion)
+     */
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#eff6ff_100%)] px-6 py-20">
       <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl flex-col items-center justify-center rounded-[2rem] border border-white/70 bg-white/80 p-10 text-center shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
+        {/* Section heading (h2, not h1 — see accessibility note above) */}
         <h2 className="mb-4 text-3xl font-bold text-center text-slate-900 sm:text-5xl">
           TalentTrust
         </h2>
