@@ -27,14 +27,17 @@ describe('Home Page Login Form', () => {
 
   it('form has noValidate attribute', () => {
     renderHome();
-    expect(screen.getByRole('form')).toHaveAttribute('novalidate');
+    // Forms don't have implicit role="form" — use getByRole('button').closest('form') instead
+    const form = screen.getByRole('button', { name: /sign in/i }).closest('form');
+    expect(form).toHaveAttribute('novalidate');
   });
 
   it('shows error summary and per-field errors when submitting empty form', async () => {
     const user = userEvent.setup();
     renderHome();
     await user.click(screen.getByRole('button', { name: /sign in/i }));
-    expect(screen.getByRole('alert')).toBeInTheDocument();
+    // ErrorSummary has aria-labelledby="error-summary-title" to differentiate from FormField alerts
+    expect(screen.getByRole('alert', { name: /there is a problem/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInvalid();
     expect(screen.getByLabelText(/password/i)).toBeInvalid();
   });
@@ -49,8 +52,9 @@ describe('Home Page Login Form', () => {
     // Check per-field errors
     expect(screen.getByLabelText(/email/i)).toBeInvalid();
     expect(screen.getByLabelText(/password/i)).toBeInvalid();
-    expect(screen.getByText(/email must be valid/i)).toBeInTheDocument();
-    expect(screen.getByText(/password must be at least 8 characters/i)).toBeInTheDocument();
+    // Use getElementById to get the specific error element, not the ErrorSummary anchor
+    expect(document.getElementById('email-error')).toHaveTextContent('Email must be valid');
+    expect(document.getElementById('password-error')).toHaveTextContent('Password must be at least 8 characters');
   });
 
   it('shows success toast when valid email and password submitted', async () => {
