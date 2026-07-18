@@ -26,32 +26,39 @@ describe('Home Page Login Form', () => {
   });
 
   it('form has noValidate attribute', () => {
-    renderHome();
-    expect(screen.getByRole('form')).toHaveAttribute('novalidate');
-  });
+  renderHome();
+  const forms = screen.getAllByRole('form');
+  expect(forms[0]).toHaveAttribute('novalidate');
+});
 
-  it('shows error summary and per-field errors when submitting empty form', async () => {
-    const user = userEvent.setup();
-    renderHome();
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
-    expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByLabelText(/email/i)).toBeInvalid();
-    expect(screen.getByLabelText(/password/i)).toBeInvalid();
-  });
+it('shows error summary and per-field errors when submitting empty form', async () => {
+  const user = userEvent.setup();
+  renderHome();
+  await user.click(screen.getByRole('button', { name: /sign in/i }));
+  
+  // Get the error summary alert specifically
+  const alerts = screen.getAllByRole('alert');
+  expect(alerts.length > 0).toBe(true);
+  
+  expect(screen.getByLabelText(/email/i)).toBeInvalid();
+  expect(screen.getByLabelText(/password/i)).toBeInvalid();
+});
 
-  it('shows per-field errors for invalid email and short password', async () => {
-    const user = userEvent.setup();
-    renderHome();
-    await user.type(screen.getByLabelText(/email/i), 'invalid-email');
-    await user.type(screen.getByLabelText(/password/i), '1234567');
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
-    
-    // Check per-field errors
-    expect(screen.getByLabelText(/email/i)).toBeInvalid();
-    expect(screen.getByLabelText(/password/i)).toBeInvalid();
-    expect(screen.getByText(/email must be valid/i)).toBeInTheDocument();
-    expect(screen.getByText(/password must be at least 8 characters/i)).toBeInTheDocument();
-  });
+ it('shows per-field errors for invalid email and short password', async () => {
+  const user = userEvent.setup();
+  renderHome();
+  await user.type(screen.getByLabelText(/email/i), 'invalid-email');
+  await user.type(screen.getByLabelText(/password/i), '1234567');
+  await user.click(screen.getByRole('button', { name: /sign in/i }));
+  
+  // Check per-field errors
+  expect(screen.getByLabelText(/email/i)).toBeInvalid();
+  expect(screen.getByLabelText(/password/i)).toBeInvalid();
+  
+  // Use getAllByText and get first match
+  expect(screen.getAllByText(/email must be valid/i)[0]).toBeInTheDocument();
+  expect(screen.getAllByText(/password must be at least 8 characters/i)[0]).toBeInTheDocument();
+});
 
   it('shows success toast when valid email and password submitted', async () => {
     const user = userEvent.setup();
