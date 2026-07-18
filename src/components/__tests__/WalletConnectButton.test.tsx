@@ -192,12 +192,193 @@ describe('WalletConnectButton', () => {
     expect(disconnect).toHaveBeenCalledTimes(1);
   });
 
+  it('handles clipboard write failure gracefully', async () => {
+    const address = '0xABCDEF1234567890';
+    const writeText = jest.fn().mockRejectedValue(new Error('Write failed'));
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    mockUseWallet.mockReturnValue(createWalletState({ address }));
+
+    render(<WalletConnectButton />);
+
+    const copyButton = screen.getByRole('button', { name: 'Copy address to clipboard' });
+    expect(getButtonIconPath(copyButton)).toBe(COPY_ICON_PATH);
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Verify that the error toast was shown
+    expect(mockShowError).toHaveBeenCalledWith({
+      title: 'Copy failed',
+      description: 'Unable to copy the address to your clipboard. Please try again.',
+    });
+
+    // Icon should remain as copy (not change to checkmark)
+    expect(getButtonIconPath(copyButton)).toBe(COPY_ICON_PATH);
+  });
+
+  it('handles missing clipboard API gracefully', async () => {
+    const address = '0xABCDEF1234567890';
+
+    // Simulate missing clipboard API
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: undefined,
+    });
+
+    mockUseWallet.mockReturnValue(createWalletState({ address }));
+
+    render(<WalletConnectButton />);
+
+    const copyButton = screen.getByRole('button', { name: 'Copy address to clipboard' });
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Verify that the appropriate error toast was shown
+    expect(mockShowError).toHaveBeenCalledWith({
+      title: 'Copy not supported',
+      description: 'Your browser does not support clipboard access. Please copy the address manually.',
+    });
+
+    // Icon should remain as copy (not change to checkmark)
+    expect(getButtonIconPath(copyButton)).toBe(COPY_ICON_PATH);
+  });
+
+  it('handles rapid consecutive copy clicks and only shows final success/error', async () => {
+    const address = '0xABCDEF1234567890';
+    const writeText = jest.fn().mockResolvedValue(undefined);
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    mockUseWallet.mockReturnValue(createWalletState({ address }));
+
+    render(<WalletConnectButton />);
+
+    const copyButton = screen.getByRole('button', { name: 'Copy address to clipboard' });
+
+    // First click
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(getButtonIconPath(copyButton)).toBe(COPIED_ICON_PATH);
+
+    // Second click before reset (should cancel first timer and set new one)
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(writeText).toHaveBeenCalledTimes(2);
+    expect(getButtonIconPath(copyButton)).toBe(COPIED_ICON_PATH);
+
+    // Advance 1999ms (almost to first reset)
+    act(() => {
+      jest.advanceTimersByTime(1999);
+    });
+    expect(getButtonIconPath(copyButton)).toBe(COPIED_ICON_PATH);
+
+    // Advance 1ms more (now at 2000ms from second click, should reset)
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
+    expect(getButtonIconPath(copyButton)).toBe(COPY_ICON_PATH);
+  });
+
+  it('does not copy if address is not available', async () => {
+    const writeText = installClipboardMock();
+
+    mockUseWallet.mockReturnValue(createWalletState({ address: null }));
+
+    render(<WalletConnectButton />);
+
+    // Should render disconnected state, no copy button
+    expect(screen.queryByRole('button', { name: 'Copy address to clipboard' })).not.toBeInTheDocument();
+
+    expect(writeText).not.toHaveBeenCalled();
+    expect(mockShowError).not.toHaveBeenCalled();
+  });
+
+  it('cleans up timer on unmount to prevent state updates', async () => {
+    const address = '0xABCDEF1234567890';
+    const writeText = installClipboardMock();
+
+    mockUseWallet.mockReturnValue(createWalletState({ address }));
+
+    const { unmount } = render(<WalletConnectButton />);
+
+    const copyButton = screen.getByRole('button', { name: 'Copy address to clipboard' });
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getButtonIconPath(copyButton)).toBe(COPIED_ICON_PATH);
+
+    // Unmount before timer fires
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    unmount();
+
+    // Advance past the reset timer
+    // (Should not cause errors even though component is unmounted)
+    expect(() => {
+      act(() => {
+        jest.advanceTimersByTime(1600);
+      });
+    }).not.toThrow();
+  });
+
   it('has no accessibility violations in the connected state', async () => {
     jest.useRealTimers();
     mockUseWallet.mockReturnValue(createWalletState({
       address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
     }));
     installClipboardMock();
+
+    await testA11y(<WalletConnectButton />);
+
+    jest.useFakeTimers();
+  });
+
+  it('has no accessibility violations when clipboard write fails', async () => {
+    jest.useRealTimers();
+    const writeText = jest.fn().mockRejectedValue(new Error('Write failed'));
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    mockUseWallet.mockReturnValue(createWalletState({
+      address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+    }));
 
     await testA11y(<WalletConnectButton />);
 
