@@ -323,7 +323,7 @@ describe('WalletConnectButton', () => {
 
   it('cleans up timer on unmount to prevent state updates', async () => {
     const address = '0xABCDEF1234567890';
-    const writeText = installClipboardMock();
+    installClipboardMock();
 
     mockUseWallet.mockReturnValue(createWalletState({ address }));
 
