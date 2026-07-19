@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { PreferencesProvider } from '@/lib/preferences';
@@ -59,6 +61,7 @@ describe('ToastProvider', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('Milestone released');
     expect(screen.getByLabelText('Notifications')).toHaveTextContent('Funds are on the way.');
+    expect(screen.getByLabelText('Notifications')).toHaveAttribute('aria-atomic', 'false');
     expect(screen.getByText(/Milestone released\. Funds are on the way\./i)).toHaveAttribute('aria-live', 'polite');
   });
 
