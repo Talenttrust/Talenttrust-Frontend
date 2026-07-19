@@ -561,27 +561,33 @@ describe('WalletContext – error toast surfacing', () => {
   it('sets inline error state on failure regardless of toast', async () => {
     renderAll();
 
-    // Mock setTimeout to throw an error
-    const spy = jest.spyOn(global, 'setTimeout').mockImplementationOnce((fn) => {
-      try {
-        fn();
-      } catch (_e) {
-        // Error will be caught by connect()
-      }
-      return 0 as unknown as ReturnType<typeof setTimeout>;
+    // Make the internal Promise reject so connect()'s catch block fires.
+    // We spy on the global Promise constructor and make the next `new Promise`
+    // call reject immediately instead of resolving after the timeout.
+    const originalPromise = global.Promise;
+    let callCount = 0;
+    const PromiseSpy = new Proxy(originalPromise, {
+      construct(Target, args) {
+        callCount++;
+        if (callCount === 1) {
+          // First `new Promise` inside connect() — reject it
+          return new Target((_resolve: unknown, reject: (err: Error) => void) => {
+            reject(new Error('Simulated wallet failure'));
+          });
+        }
+        // All other Promise constructions behave normally
+        return new Target(...(args as [unknown]));
+      },
     });
+    global.Promise = PromiseSpy as unknown as PromiseConstructor;
 
     await act(async () => {
       screen.getByTestId('connect').click();
     });
 
-    spy.mockRestore();
+    global.Promise = originalPromise;
 
-    await act(async () => {
-      jest.runAllTimers();
-    });
-
-    // Inline error must be set
+    // Inline error must be set by the catch block in connect()
     expect(screen.getByTestId('inline-error').textContent).toBe('Failed to connect wallet');
   });
 });
