@@ -97,6 +97,67 @@ describe('WalletContext persistence', () => {
 
       expect(isValidStellarAddress(screen.getByTestId('address').textContent)).toBe(true);
     });
+
+    it('clears error at the start of each connect() call', async () => {
+      renderWithProviders(<WalletConsumer />);
+
+      // First connect
+      await act(async () => {
+        screen.getByTestId('connect-btn').click();
+      });
+
+      expect(screen.getByTestId('error')).toHaveTextContent('No error');
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      // Second connect — error should still be null
+      await act(async () => {
+        screen.getByTestId('connect-btn').click();
+      });
+
+      expect(screen.getByTestId('error')).toHaveTextContent('No error');
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      expect(screen.getByTestId('error')).toHaveTextContent('No error');
+    });
+
+    it('does not reject — the returned Promise always resolves', async () => {
+      const { result } = (() => {
+        let capturedConnect: (() => Promise<void>) | undefined;
+
+        function Capture() {
+          capturedConnect = useWallet().connect;
+          return null;
+        }
+
+        render(
+          <PreferencesProvider>
+            <ToastProvider>
+              <WalletProvider idleTimeout={0}>
+                <Capture />
+              </WalletProvider>
+            </ToastProvider>
+          </PreferencesProvider>
+        );
+
+        return { result: capturedConnect! };
+      })();
+
+      let resolved = false;
+      await act(async () => {
+        result().then(() => {
+          resolved = true;
+        });
+        jest.advanceTimersByTime(1000);
+      });
+
+      expect(resolved).toBe(true);
+    });
   });
 
   describe('disconnect()', () => {
@@ -121,6 +182,91 @@ describe('WalletContext persistence', () => {
       });
 
       expect(screen.getByTestId('address')).toHaveTextContent('No address');
+    });
+
+    it('is a no-op when called without a prior connect (address stays null)', async () => {
+      renderWithProviders(<WalletConsumer />);
+
+      expect(screen.getByTestId('address')).toHaveTextContent('No address');
+
+      await act(async () => {
+        screen.getByTestId('disconnect-btn').click();
+      });
+
+      expect(screen.getByTestId('address')).toHaveTextContent('No address');
+      expect(screen.getByTestId('error')).toHaveTextContent('No error');
+      expect(screen.getByTestId('is-connecting')).toHaveTextContent('Not connecting');
+    });
+
+    it('does not affect isConnecting state', async () => {
+      renderWithProviders(<WalletConsumer />);
+
+      await act(async () => {
+        screen.getByTestId('connect-btn').click();
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      await act(async () => {
+        screen.getByTestId('disconnect-btn').click();
+      });
+
+      expect(screen.getByTestId('is-connecting')).toHaveTextContent('Not connecting');
+    });
+
+    it('does not affect error state', async () => {
+      renderWithProviders(<WalletConsumer />);
+
+      await act(async () => {
+        screen.getByTestId('connect-btn').click();
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      await act(async () => {
+        screen.getByTestId('disconnect-btn').click();
+      });
+
+      expect(screen.getByTestId('error')).toHaveTextContent('No error');
+    });
+  });
+
+  describe('reconnect after disconnect', () => {
+    it('allows connect() to be called again after disconnect and populates address', async () => {
+      renderWithProviders(<WalletConsumer />);
+
+      // Connect
+      await act(async () => {
+        screen.getByTestId('connect-btn').click();
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      expect(screen.getByTestId('address')).toHaveTextContent(MOCKED_STELLAR_ADDRESS);
+
+      // Disconnect
+      await act(async () => {
+        screen.getByTestId('disconnect-btn').click();
+      });
+
+      expect(screen.getByTestId('address')).toHaveTextContent('No address');
+
+      // Reconnect
+      await act(async () => {
+        screen.getByTestId('connect-btn').click();
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      expect(screen.getByTestId('address')).toHaveTextContent(MOCKED_STELLAR_ADDRESS);
     });
   });
 
@@ -286,16 +432,60 @@ describe('useWallet() outside provider', () => {
 
     consoleError.mockRestore();
   });
+
+  it('thrown error is an instance of Error', () => {
+    let caughtError: unknown;
+
+    function Capture() {
+      try {
+        useWallet();
+      } catch (err) {
+        caughtError = err;
+      }
+      return null;
+    }
+
+    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    render(<Capture />);
+    consoleError.mockRestore();
+
+    expect(caughtError).toBeInstanceOf(Error);
+  });
 });
 
 // ---------------------------------------------------------------------------
-// Toast error surfacing tests
+// WalletContextType field presence
 // ---------------------------------------------------------------------------
+describe('WalletContextType field presence', () => {
+  it('exposes all documented fields: address, isConnecting, error, connect, disconnect', () => {
+    let ctx: ReturnType<typeof useWallet> | undefined;
 
-/**
- * Wraps WalletProvider with a mocked connect() that always throws so we can
- * assert that showError is called on failure without relying on the mock timer.
- */
+    function Capture() {
+      ctx = useWallet();
+      return null;
+    }
+
+    render(
+      <PreferencesProvider>
+        <ToastProvider>
+          <WalletProvider idleTimeout={0}>
+            <Capture />
+          </WalletProvider>
+        </ToastProvider>
+      </PreferencesProvider>
+    );
+
+    expect(ctx).toBeDefined();
+    expect(ctx).toHaveProperty('address');
+    expect(ctx).toHaveProperty('isConnecting');
+    expect(ctx).toHaveProperty('error');
+    expect(ctx).toHaveProperty('connect');
+    expect(ctx).toHaveProperty('disconnect');
+    expect(typeof ctx!.connect).toBe('function');
+    expect(typeof ctx!.disconnect).toBe('function');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Toast error surfacing tests
 // ---------------------------------------------------------------------------
@@ -304,7 +494,7 @@ describe('useWallet() outside provider', () => {
  * NOTE: The error surfacing tests that mock setTimeout to throw are skipped
  * because errors thrown inside setTimeout callbacks don't propagate correctly
  * through Jest's fake timer implementation to the Promise's catch handler.
- * 
+ *
  * The error handling code in WalletContext.tsx is tested indirectly through:
  * - Integration tests with real timers
  * - Manual QA testing with actual wallet failures
@@ -369,28 +559,29 @@ describe('WalletContext – error toast surfacing', () => {
   });
 
   it('sets inline error state on failure regardless of toast', async () => {
-  renderAll();
+    renderAll();
 
-  // Mock setTimeout to throw an error
-  const spy = jest.spyOn(global, 'setTimeout').mockImplementationOnce((fn) => {
-    try {
-      fn();
-    } catch (e) {
-      // Error will be caught by connect()
-    }
-    return 0 as unknown as ReturnType<typeof setTimeout>;
+    // Mock setTimeout to throw an error
+    const spy = jest.spyOn(global, 'setTimeout').mockImplementationOnce((fn) => {
+      try {
+        fn();
+      } catch (_e) {
+        // Error will be caught by connect()
+      }
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    });
+
+    await act(async () => {
+      screen.getByTestId('connect').click();
+    });
+
+    spy.mockRestore();
+
+    await act(async () => {
+      jest.runAllTimers();
+    });
+
+    // Inline error must be set
+    expect(screen.getByTestId('inline-error').textContent).toBe('Failed to connect wallet');
   });
-
-  await act(async () => {
-    screen.getByTestId('connect').click();
-  });
-
-  spy.mockRestore();
-
-  await act(async () => {
-    jest.runAllTimers();
-  });
-
-  // Inline error must be set
-  expect(screen.getByTestId('inline-error').textContent).toBe('Failed to connect wallet');
-});});
+});
