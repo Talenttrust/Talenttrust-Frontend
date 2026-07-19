@@ -367,4 +367,30 @@ describe('WalletContext – error toast surfacing', () => {
     // Inline error should remain empty
     expect(screen.getByTestId('inline-error').textContent).toBe('');
   });
-});
+
+  it('sets inline error state on failure regardless of toast', async () => {
+  renderAll();
+
+  // Mock setTimeout to throw an error
+  const spy = jest.spyOn(global, 'setTimeout').mockImplementationOnce((fn) => {
+    try {
+      fn();
+    } catch (e) {
+      // Error will be caught by connect()
+    }
+    return 0 as unknown as ReturnType<typeof setTimeout>;
+  });
+
+  await act(async () => {
+    screen.getByTestId('connect').click();
+  });
+
+  spy.mockRestore();
+
+  await act(async () => {
+    jest.runAllTimers();
+  });
+
+  // Inline error must be set
+  expect(screen.getByTestId('inline-error').textContent).toBe('Failed to connect wallet');
+});});
