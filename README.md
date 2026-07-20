@@ -298,3 +298,17 @@ MIT
 
 ## Domain Types
 Centralized domain types (Contract, Milestone, Reputation) are defined and re-exported from src/types/domain.ts to ensure strict type safety across pages and components.
+
+## Documentation Index
+
+The repository contains the following core documentation in the `docs/` folder:
+
+- **[Data Model](docs/data-model.md)**: Details the persistence API, `AppData` shape, and update operations for contracts and milestones.
+- **[Preferences](docs/preferences.md)**: Explains the `PreferencesProvider`, theme hydration, safe storage, and currency formatting.
+- **[Wallet Session](docs/contexts/wallet-session.md)**: Covers the session lifecycle, storage keys, and inactivity auto-disconnect safeguard.
+- **[Stellar Address](docs/stellar-address.md)**: Covers the address validation and truncation helpers.
+- **[Error Reporting](docs/error-reporting.md)**: Outlines the error reporting mechanisms.
+- **[Persistence](docs/persistence.md)**: Discusses the client-side persistence strategies.
+- **[Security Headers](docs/security-headers.md)**: Explains the security headers configured for the app.
+- **[Copywriting Guide](docs/COPYWRITING_GUIDE.md)**: Guidelines for writing user-facing copy and Open Graph/Twitter previews.
+- **[Implementation Archive](docs/archive/)**: Historical implementation notes, PR descriptions, and build fixes consolidated for reference.
