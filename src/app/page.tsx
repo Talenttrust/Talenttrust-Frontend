@@ -64,7 +64,7 @@ export default function Home() {
           Accessible toast feedback now supports transient success and error states, including screen reader announcements for critical wallet and payout events.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-8 w-full max-w-md text-left" noValidate>
+        <form onSubmit={handleSubmit} className="mt-8 w-full max-w-md text-left" noValidate aria-label="Sign in">
           <ErrorSummary errors={errors} />
 
           <div className="space-y-4">
