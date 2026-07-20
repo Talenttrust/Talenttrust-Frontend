@@ -1,12 +1,18 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
 import MilestonesList from '../../components/MilestonesList';
 import MilestoneFilter, { type MilestoneStatusFilter } from '../../components/milestones/MilestoneFilter';
-import { listMilestones } from '@/lib/repository';
+import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
+import { listMilestones, saveMilestone } from '@/lib/repository';
 import type { Milestone } from '@/types/domain';
 
+/**
+ * Sample milestones shown when the user has not yet created any of their own.
+ * Acts as a demo / onboarding scaffold; replaced by real persisted data once
+ * the first milestone is saved via `saveMilestone`.
+ */
 const SAMPLE_MILESTONES: Milestone[] = [
   {
     id: '1',
@@ -51,36 +57,56 @@ const SAMPLE_MILESTONES: Milestone[] = [
 ];
 
 /**
- * Loads milestones from the persisted repository after the client mounts.
+ * Reads persisted milestones from the repository after the client mounts.
  *
- * Reading `localStorage` only on the client avoids hydration mismatches during
- * Next.js prerendering. When no milestones have been saved yet, the page keeps
- * the existing sample-data experience as a fallback.
- *
- * @returns Persisted milestones when available, otherwise `SAMPLE_MILESTONES`.
+ * Deferring the `localStorage` read to client-side avoids hydration mismatches
+ * during Next.js server prerendering. When no milestones have been saved yet,
+ * falls back to `SAMPLE_MILESTONES` so the demo experience remains intact.
  */
 function loadMilestonesFromRepository(): Milestone[] {
-  const persistedMilestones = listMilestones();
-
-  return persistedMilestones.length > 0 ? persistedMilestones : SAMPLE_MILESTONES;
+  const persisted = listMilestones();
+  return persisted.length > 0 ? persisted : SAMPLE_MILESTONES;
 }
 
 const MilestonesPage: React.FC = () => {
   const [milestones, setMilestones] = useState<Milestone[]>(SAMPLE_MILESTONES);
   const [statusFilter, setStatusFilter] = useState<MilestoneStatusFilter>('All');
+  const [showForm, setShowForm] = useState(false);
 
+  // Rehydrate from localStorage after the client mounts to avoid SSR mismatches.
   useEffect(() => {
     setMilestones(loadMilestonesFromRepository());
   }, []);
 
   const filtered = useMemo(() => {
     if (statusFilter === 'All') return milestones;
-    return milestones.filter((milestone) => milestone.status === statusFilter);
+    return milestones.filter((m) => m.status === statusFilter);
   }, [milestones, statusFilter]);
 
-  const handleAddMilestone = () => {
-    console.log('Add milestone');
-  };
+  /**
+   * Opens the milestone creation modal.
+   */
+  const handleAddMilestone = useCallback(() => {
+    setShowForm(true);
+  }, []);
+
+  /**
+   * Persists the new milestone, refreshes state from the repository, then
+   * closes the form.
+   */
+  const handleSubmitMilestone = useCallback((milestone: Milestone) => {
+    saveMilestone(milestone);
+    // Re-read from storage so the list reflects the persisted state exactly.
+    setMilestones(listMilestones());
+    setShowForm(false);
+  }, []);
+
+  /**
+   * Closes the milestone creation modal without saving.
+   */
+  const handleCancelForm = useCallback(() => {
+    setShowForm(false);
+  }, []);
 
   return (
     <main className="min-h-screen p-8">
@@ -96,11 +122,21 @@ const MilestonesPage: React.FC = () => {
         />
       ) : (
         <>
-          <MilestoneFilter
-            selected={statusFilter}
-            onChange={setStatusFilter}
-            resultCount={filtered.length}
-          />
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <MilestoneFilter
+              selected={statusFilter}
+              onChange={setStatusFilter}
+              resultCount={filtered.length}
+            />
+            <button
+              type="button"
+              onClick={handleAddMilestone}
+              className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            >
+              Add Milestone
+            </button>
+          </div>
+
           {filtered.length === 0 ? (
             <EmptyState
               illustration="milestones"
@@ -113,6 +149,13 @@ const MilestonesPage: React.FC = () => {
             <MilestonesList milestones={filtered} />
           )}
         </>
+      )}
+
+      {showForm && (
+        <MilestoneCreationForm
+          onSubmit={handleSubmitMilestone}
+          onCancel={handleCancelForm}
+        />
       )}
     </main>
   );
