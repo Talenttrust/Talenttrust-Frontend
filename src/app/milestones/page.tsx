@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import EmptyState from '../../components/EmptyState';
 import MilestonesList from '../../components/MilestonesList';
 import MilestoneFilter, { type MilestoneStatusFilter } from '../../components/milestones/MilestoneFilter';
@@ -70,8 +71,22 @@ function loadMilestonesFromRepository(): Milestone[] {
 
 const MilestonesPage: React.FC = () => {
   const [milestones, setMilestones] = useState<Milestone[]>(SAMPLE_MILESTONES);
-  const [statusFilter, setStatusFilter] = useState<MilestoneStatusFilter>('All');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const validStatuses: MilestoneStatusFilter[] = ['All','Pending','Completed','Paid','Disputed'];
+  const getInitialStatus = (): MilestoneStatusFilter => {
+    const param = searchParams.get('status');
+    return param && validStatuses.includes(param as MilestoneStatusFilter) ? (param as MilestoneStatusFilter) : 'All';
+  };
+  const [statusFilter, setStatusFilter] = useState<MilestoneStatusFilter>(getInitialStatus());
   const [showForm, setShowForm] = useState(false);
+
+  // Sync filter to URL without adding history entries
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('status', statusFilter);
+    router.replace(`?${params.toString()}`);
+  }, [statusFilter, router, searchParams]);
 
   // Rehydrate from localStorage after the client mounts to avoid SSR mismatches.
   useEffect(() => {

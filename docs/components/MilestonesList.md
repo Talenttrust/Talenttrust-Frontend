@@ -39,3 +39,11 @@ Run tests with:
 ```bash
 npx jest src/components/__tests__/MilestonesList.test.tsx
 ```
+
+## URL Status Filtering
+
+The milestones page synchronizes the active status filter with the URL query parameter `?status=`.
+
+- **Initial State**: Read from the `?status=` URL query parameter using `useSearchParams`. Defaults to `'All'` if omitted or invalid.
+- **Filter Changes**: When a user selects a filter option, `router.replace` updates the URL query string without creating extra history entries.
+- **Accessibility**: Preserves the `aria-live` announcement for screen readers on filter change.
