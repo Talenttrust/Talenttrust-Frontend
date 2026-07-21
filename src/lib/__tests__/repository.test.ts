@@ -408,60 +408,11 @@ describe('corrupt data handling', () => {
 // ===========================================================================
 // 6. SSR CONTEXT ISOLATION (window is undefined)
 // ===========================================================================
-
-describe('SSR context isolation', () => {
-  let originalWindow: typeof globalThis.window;
-
-  beforeEach(() => {
-    // Stash the real window reference
-    originalWindow = global.window;
-  });
-
-  afterEach(() => {
-    // Restore window so subsequent tests are unaffected
-    global.window = originalWindow;
-  });
-
-  it('listContracts returns [] without throwing when window is undefined', () => {
-    // @ts-expect-error — intentionally simulating SSR environment
-    delete global.window;
-    expect(() => listContracts()).not.toThrow();
-    expect(listContracts()).toEqual([]);
-  });
-
-  it('listMilestones returns [] without throwing when window is undefined', () => {
-    // @ts-expect-error — intentionally simulating SSR environment
-    delete global.window;
-    expect(() => listMilestones()).not.toThrow();
-    expect(listMilestones()).toEqual([]);
-  });
-
-  it('saveContract does not throw when window is undefined', () => {
-    // @ts-expect-error — intentionally simulating SSR environment
-    delete global.window;
-    expect(() => saveContract(contractA)).not.toThrow();
-  });
-
-  it('saveMilestone does not throw when window is undefined', () => {
-    // @ts-expect-error — intentionally simulating SSR environment
-    delete global.window;
-    expect(() => saveMilestone(milestoneA)).not.toThrow();
-  });
-
-  it('data saved before SSR simulation is not affected after window is restored', () => {
-    saveContract(contractA);
-
-    // @ts-expect-error — intentionally simulating SSR environment
-    delete global.window;
-    // Call must not throw
-    listContracts();
-
-    // Restore window
-    global.window = originalWindow;
-    // Original data is still intact
-    expect(listContracts()).toEqual([contractA]);
-  });
-});
+//
+// True "no window" SSR tests live in repository.ssr.test.ts under the `node`
+// test environment. jest-environment-jsdom 30 made the global `window` a
+// non-configurable accessor, so `delete global.window` can no longer be used
+// to simulate SSR from within this jsdom-environment file.
 
 // ===========================================================================
 // 7. WRITE FAILURE RESILIENCE
@@ -581,33 +532,9 @@ describe('clearAppData', () => {
     expect(() => clearAppData()).not.toThrow();
   });
 
-  describe('SSR context', () => {
-    let originalWindow: typeof globalThis.window;
-
-    beforeEach(() => {
-      originalWindow = global.window;
-    });
-
-    afterEach(() => {
-      global.window = originalWindow;
-    });
-
-    it('returns false without throwing when window is undefined', () => {
-      // @ts-expect-error — intentionally simulating SSR environment
-      delete global.window;
-      expect(() => clearAppData()).not.toThrow();
-      expect(clearAppData()).toBe(false);
-    });
-
-    it('does not call the error reporter in SSR context', () => {
-      // @ts-expect-error — intentionally simulating SSR environment
-      delete global.window;
-      clearAppData();
-      // Reporter should not be called; the SSR guard short-circuits before
-      // any storage access.
-      expect(mockReporter).not.toHaveBeenCalled();
-    });
-  });
+  // SSR ("no window") behaviour for clearAppData is covered in
+  // repository.ssr.test.ts (see the note above the removed "SSR context
+  // isolation" describe for why).
 });
 
 // ===========================================================================
@@ -777,34 +704,8 @@ describe('clearByPrefix', () => {
     expect(removed).toBe(1);
   });
 
-  // -------------------------------------------------------------------------
-  // SSR context
-  // -------------------------------------------------------------------------
-
-  describe('SSR context', () => {
-    let originalWindow: typeof globalThis.window;
-
-    beforeEach(() => {
-      originalWindow = global.window;
-    });
-
-    afterEach(() => {
-      global.window = originalWindow;
-    });
-
-    it('returns 0 without throwing when window is undefined', () => {
-      // @ts-expect-error — intentionally simulating SSR environment
-      delete global.window;
-      expect(() => clearByPrefix('talenttrust_')).not.toThrow();
-      expect(clearByPrefix('talenttrust_')).toBe(0);
-    });
-
-    it('does not call the error reporter in SSR context', () => {
-      // @ts-expect-error — intentionally simulating SSR environment
-      delete global.window;
-      clearByPrefix('talenttrust_');
-      expect(mockReporter).not.toHaveBeenCalled();
-    });
-  });
+  // SSR ("no window") behaviour for clearByPrefix is covered in
+  // repository.ssr.test.ts (see the note above the removed "SSR context
+  // isolation" describe for why).
 });
 

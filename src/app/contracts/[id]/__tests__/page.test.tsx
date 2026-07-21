@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import ContractDetailPage from '../page';
 import * as contractResolver from '@/lib/contractResolver';
-import { upsertContract } from '@/lib/repository';
+import { upsertContract, listMilestonesByContract } from '@/lib/repository';
 import { useWallet } from '@/contexts/WalletContext';
 import { ToastProvider } from '@/components/toast/toast-provider';
 import userEvent from '@testing-library/user-event';
@@ -19,10 +19,12 @@ jest.mock('next/navigation', () => ({
 jest.mock('@/lib/contractResolver');
 jest.mock('@/lib/repository', () => ({
   upsertContract: jest.fn(),
+  listMilestonesByContract: jest.fn(() => []),
 }));
 
 const mockedResolveContractData = jest.mocked(contractResolver.resolveContractData);
 const mockedUpsertContract = jest.mocked(upsertContract);
+const mockedListMilestonesByContract = jest.mocked(listMilestonesByContract);
 const mockedUseWallet = useWallet as jest.MockedFunction<typeof useWallet>;
 
 const contractData: contractResolver.ContractData = {
@@ -93,6 +95,7 @@ describe('ContractDetailPage', () => {
     jest.clearAllMocks();
     mockedResolveContractData.mockResolvedValue(contractData);
     mockedUpsertContract.mockReturnValue(true);
+    mockedListMilestonesByContract.mockReturnValue([]);
     mockedUseWallet.mockReturnValue({
       address: '0x123',
       isConnecting: false,
@@ -331,6 +334,64 @@ describe('currency pass-through', () => {
     // usePreferences — we assert the progressbar is present and that the page
     // did not hardcode any currency symbol strings ("$" coming from USD format).
     expect(pageSource).not.toMatch(/\$1,500/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Repository-linked milestone merging (contractId)
+// ---------------------------------------------------------------------------
+
+describe('repository milestone linking', () => {
+  it('queries listMilestonesByContract with the current contract id', async () => {
+    await renderPage('123');
+
+    await waitFor(() => {
+      expect(mockedListMilestonesByContract).toHaveBeenCalledWith('123');
+    });
+  });
+
+  it('renders a persisted milestone linked via contractId alongside the resolved milestones', async () => {
+    mockedListMilestonesByContract.mockReturnValue([
+      {
+        id: 'ms-persisted-1',
+        title: 'Persisted milestone',
+        status: 'Pending',
+        payout: 900,
+        currency: 'USD',
+        contractId: '123',
+      },
+    ]);
+
+    await renderPage('123');
+
+    await waitFor(() => {
+      expect(screen.getByText('Persisted milestone')).toBeInTheDocument();
+    });
+    // Resolver milestones are still present alongside the persisted one.
+    expect(screen.getByText('Kickoff and scope approval')).toBeInTheDocument();
+    expect(screen.getByText('4 total')).toBeInTheDocument();
+  });
+
+  it('lets a persisted milestone override a resolver milestone that shares the same id', async () => {
+    mockedListMilestonesByContract.mockReturnValue([
+      {
+        id: 'ms-1',
+        title: 'Kickoff and scope approval (updated)',
+        status: 'Paid',
+        payout: 1500,
+        currency: 'USD',
+        contractId: '123',
+      },
+    ]);
+
+    await renderPage('123');
+
+    await waitFor(() => {
+      expect(screen.getByText('Kickoff and scope approval (updated)')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Kickoff and scope approval')).not.toBeInTheDocument();
+    // No duplicate row was added — still 3 total milestones.
+    expect(screen.getByText('3 total')).toBeInTheDocument();
   });
 });
 

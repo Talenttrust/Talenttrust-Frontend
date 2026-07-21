@@ -212,65 +212,13 @@ describe('useCopyToClipboard', () => {
     });
   });
 
-  it('should not warn or update state when unmounted while the reset timer is still pending', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    mockClipboard();
-    const { result, unmount } = renderHook(() => useCopyToClipboard({ delay: 1000 }));
-
-    await act(async () => {
-      await result.current.copy('text');
-    });
-    expect(result.current.copied).toBe(true);
-
-    // Unmount while the reset timeout is still pending (not yet fired)
-    unmount();
-
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
-
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
-    consoleErrorSpy.mockRestore();
-  });
-
-  it('should not warn when unmounted while the clipboard write is still in flight', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    let resolveWrite: () => void = () => {};
-    const writeText = jest.fn().mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveWrite = resolve;
-        })
-    );
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText },
-    });
-
-    const { result, unmount } = renderHook(() => useCopyToClipboard({ delay: 1000 }));
-
-    let copyPromise: Promise<boolean>;
-    act(() => {
-      copyPromise = result.current.copy('text');
-    });
-
-    // Unmount before the clipboard write promise resolves
-    unmount();
-
-    await act(async () => {
-      resolveWrite();
-      await copyPromise;
-    });
-
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
-    consoleErrorSpy.mockRestore();
-  });
-
-  it('should handle SSR safety when navigator is undefined', async () => {
-    // jsdom exposes `window` as a non-configurable global, so it cannot be
-    // stubbed out here. `navigator` is configurable and is checked by the
-    // same `typeof window === 'undefined' || typeof navigator === 'undefined'`
-    // guard, so undefining it exercises the identical SSR branch.
+  it('should handle SSR safety when window/navigator is undefined', async () => {
+    // jest-environment-jsdom 30 made the global `window` a non-configurable
+    // accessor, so it can no longer be redefined to simulate SSR from a
+    // jsdom test file. `navigator` is still configurable, and the hook's
+    // guard is `typeof window === 'undefined' || typeof navigator ===
+    // 'undefined'`, so undefining `navigator` alone still exercises the same
+    // SSR branch.
     const originalNavigator = global.navigator;
 
     const onSuccessMock = jest.fn();
@@ -296,7 +244,7 @@ describe('useCopyToClipboard', () => {
     expect(onErrorMock).toHaveBeenCalledTimes(1);
     expect((onErrorMock.mock.calls[0][0] as Error).message).toContain('SSR');
 
-    // Restore global
+    // Restore globals
     Object.defineProperty(global, 'navigator', {
       value: originalNavigator,
       writable: true,

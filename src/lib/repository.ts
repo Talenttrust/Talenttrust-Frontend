@@ -217,6 +217,28 @@ export function listMilestones(): Milestone[] {
 }
 
 /**
+ * Returns every persisted milestone whose `contractId` matches the given
+ * `contractId`.
+ *
+ * Milestones saved without a `contractId` (e.g. legacy records, or ones
+ * created outside a contract context) are never matched, since `undefined`
+ * cannot equal a caller-supplied `contractId` string.
+ *
+ * @param contractId - The parent contract id to filter milestones by.
+ * @returns A new array of `Milestone` objects belonging to `contractId`
+ *   (may be empty).
+ *
+ * @example
+ * ```ts
+ * const milestones = listMilestonesByContract('contract-123');
+ * // → [{ id: 'ms-1', contractId: 'contract-123', ... }, ...]
+ * ```
+ */
+export function listMilestonesByContract(contractId: string): Milestone[] {
+  return readStore().milestones.filter((milestone) => milestone.contractId === contractId);
+}
+
+/**
  * Appends a milestone to the persisted list.
  *
  * The write is additive — existing contracts and other milestones are

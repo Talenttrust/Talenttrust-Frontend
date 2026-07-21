@@ -25,6 +25,13 @@ export interface MilestoneCreationFormProps {
   onSubmit: (milestone: Milestone) => void;
   /** Called when the user cancels out of the form without saving. */
   onCancel: () => void;
+  /**
+   * Id of the parent contract this milestone is being created for. When
+   * supplied (i.e. the form is opened from a contract detail context),
+   * it is stamped onto the constructed `Milestone` so
+   * `listMilestonesByContract` can later resolve it back to that contract.
+   */
+  contractId?: string;
 }
 
 /**
@@ -49,6 +56,7 @@ export interface MilestoneCreationFormProps {
 export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
   onSubmit,
   onCancel,
+  contractId,
 }) => {
   const [title, setTitle] = useState('');
   const [payout, setPayout] = useState('');
@@ -110,11 +118,12 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
         payout: parseFloat(payout),
         currency: currency.trim(),
         dueDate: dueDate.trim() || undefined,
+        contractId,
       };
 
       onSubmit(milestone);
     },
-    [title, payout, currency, status, dueDate, validateForm, onSubmit],
+    [title, payout, currency, status, dueDate, contractId, validateForm, onSubmit],
   );
 
   const getFieldError = (fieldId: string): string | undefined =>

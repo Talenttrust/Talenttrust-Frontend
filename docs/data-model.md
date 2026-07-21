@@ -17,6 +17,11 @@ interface AppData {
 
 The constituent types (`Contract` and `Milestone`) are strictly defined in `src/types/domain.ts` and represent the canonical structure used throughout the frontend components.
 
+### Linking milestones to a parent contract
+`Milestone` carries an optional `contractId?: string` field (defined alongside the rest of the shape in `src/components/MilestonesList.tsx`) that associates a milestone with the `Contract` it belongs to. The field is optional so existing milestones created without a contract context (e.g. the standalone [Milestones Page](../src/app/milestones/page.tsx) flow) remain valid.
+
+`MilestoneCreationForm` (`src/components/milestones/MilestoneCreationForm.tsx`) accepts an optional `contractId` prop; when a caller renders the form from a contract detail context and passes that contract's id, the constructed `Milestone` is stamped with it on submit so it can later be resolved via `listMilestonesByContract`.
+
 ## SSR Safety & Resilience
 The repository is designed to be fully safe for Server-Side Rendering (SSR) in Next.js:
 - **`window` existence checks**: All access to `localStorage` is guarded by verifying that `typeof window !== 'undefined'`. This ensures Next.js server builds and prerendering processes do not crash.
@@ -61,6 +66,14 @@ const milestones = listMilestones();
 ```
 *Consumed by: [Milestones Page](../src/app/milestones/page.tsx)* (which implements a fallback to sample data when the repository is empty).
 
+#### `listMilestonesByContract(contractId: string): Milestone[]`
+Returns every persisted milestone whose `contractId` matches the given `contractId`. Milestones saved without a `contractId` (legacy records, or ones created outside a contract context) never match, since `undefined` cannot equal a supplied `contractId` string — including when an empty string is passed.
+```typescript
+import { listMilestonesByContract } from '@/lib/repository';
+const milestones = listMilestonesByContract('contract-123');
+```
+*Consumed by: [Contract Detail Page](../src/app/contracts/[id]/page.tsx)*, which merges these with the milestones returned by `resolveContractData` (de-duplicated by `id`, persisted records taking precedence) before rendering `MilestonesList` and feeding the combined list into `useContractProgress`.
+
 #### `saveMilestone(milestone: Milestone): void`
 Appends a milestone to the persisted list.
 ```typescript
@@ -72,6 +85,7 @@ saveMilestone({
   payout: 1000,
   currency: 'USD',
   dueDate: 'Jun 1, 2025',
+  contractId: 'contract-123',
 });
 ```
 
