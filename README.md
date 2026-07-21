@@ -33,6 +33,20 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run lint` | Run ESLint             |
 | `npm test`    | Run Jest tests           |
 
+## Documentation Index
+
+This repository keeps user-facing and implementation notes inside the `docs/` folder. Key documentation includes:
+
+- `docs/components/Accessibility.md` — Accessibility testing, a11y helpers, and issue #383 notes
+- `docs/components/ReputationPage.md` — Reputation page implementation and rendering states
+- `docs/data-model.md` — Data model and persistence guide
+- `docs/persistence.md` — Persistence API and local storage patterns
+- `docs/preferences.md` — Preferences provider and currency/locale helpers
+- `docs/contexts/wallet-session.md` — Wallet session lifecycle and idle disconnect guidance
+- `docs/implementation/ISSUE_383_IMPLEMENTATION.md` — Folded implementation notes for issue #383
+
+If you find other implementation notes in the repository root, they have been consolidated into `docs/` where appropriate. Remove or ignore remaining one-off files.
+
 ## Architecture
 
 The project is built on Next.js App Router. The UI layer shares components, whilst global state is handled via an ordered provider stack.
