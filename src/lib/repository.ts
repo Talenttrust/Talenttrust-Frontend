@@ -51,7 +51,13 @@ const EMPTY_DATA: AppData = { contracts: [], milestones: [] };
  * Returns `true` when code is running inside a real browser environment.
  * Guards against Next.js SSR / build-time execution where `window` is absent.
  */
-function isBrowser(): boolean {
+/**
+ * Returns `true` when code is running inside a real browser environment.
+ * Guards against Next.js SSR / build-time execution where `window` is absent.
+ *
+ * Exported for testing — use `jest.spyOn` in SSR simulation tests.
+ */
+export function isBrowser(): boolean {
   return typeof window !== 'undefined';
 }
 
