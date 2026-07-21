@@ -403,7 +403,7 @@ All states pass axe-core with zero violations.
 ## FormField – Tested Guarantees (issue #90)
 
 **Component:** `src/components/FormField.tsx`
-**Test file:** `src/components/__tests__/FormField.test.tsx`
+**Test files:** `src/components/__tests__/FormField.test.tsx`, `src/components/__tests__/FormFieldRequired.test.tsx`
 
 ### Accessibility Prop Injection & Contracts
 
@@ -414,11 +414,12 @@ To ensure robust accessibility structure without requiring boilerplate, `FormFie
 | `id` | Passes the outer `id` prop | Always injected (links with visual `<label htmlFor={id}>`) |
 | `aria-describedby` | Space-separated string of `"{id}-error"` and/or `"{id}-helper"` | Appended if `error` and/or `helperText` are provided; omitted if neither is present |
 | `aria-invalid` | `"true"` or `"false"` | `"true"` if `error` is present, `"false"` otherwise |
+| `aria-required` | `"true"` or `"false"` | `"true"` if `required` is true, `"false"` otherwise |
 | `className` | Merged existing classes with `border-red-500 focus:ring-red-500 focus:border-red-500` | Error classes are only appended if `error` is present; child's original className is always preserved |
 
 ### Accessibility Elements and Roles
 
-- **Required Marker**: If `required` is true, a visual `*` character is added to the label element and marked with `aria-hidden="true"` to prevent screen readers from reading it redundantly or confusingly.
+- **Required Marker & Semantics**: If `required` is true, a visual `*` character (non-color-only cue) is added to the label element and marked with `aria-hidden="true"` to prevent screen readers from reading it redundantly or confusingly (avoiding stray asterisk announcements). The cloned input child also receives `aria-required="true"`, ensuring screen readers announce the field requirement directly and semantically upon focus.
 - **Helper text**: Renders as a `<p>` element with `id={id-helper}`.
 - **Error message**: Renders as a `<p>` element with `id={id-error}` and carrying the **`role="alert"`** attribute to prompt immediate assistive technology notifications.
 

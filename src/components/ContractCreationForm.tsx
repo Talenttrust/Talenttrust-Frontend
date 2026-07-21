@@ -280,6 +280,7 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
                     label="Label"
                     id={`party-label-${index}`}
                     error={getFieldError(`party-label-${index}`)}
+                    required
                   >
                     <input
                       type="text"
@@ -295,6 +296,7 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
                     id={`party-address-${index}`}
                     error={getFieldError(`party-address-${index}`)}
                     helperText="56-character address starting with G"
+                    required
                   >
                     <input
                       type="text"

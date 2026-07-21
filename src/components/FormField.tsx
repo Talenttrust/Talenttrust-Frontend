@@ -49,11 +49,20 @@ export const FormField: React.FC<FormFieldProps> = ({
     .filter(Boolean)
     .join(' ');
 
+  // Detect if the field is required via FormField prop or child element attributes
+  const isRequired = !!(
+    required ||
+    (children.props as any).required ||
+    (children.props as any)['aria-required'] === 'true' ||
+    (children.props as any)['aria-required'] === true
+  );
+
   // Inject accessibility props into the child element
   const child = React.cloneElement(children, {
     id,
     'aria-describedby': describedBy || undefined,
     'aria-invalid': error ? 'true' : 'false',
+    'aria-required': isRequired ? 'true' : undefined,
     className: `${(children.props as any).className || ''} ${
       error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''
     }`.trim(),
@@ -66,7 +75,7 @@ export const FormField: React.FC<FormFieldProps> = ({
         className="block text-sm font-medium text-gray-700 mb-1"
       >
         {label}
-        {required && (
+        {isRequired && (
           <span className="text-red-500 ml-1" aria-hidden="true">
             *
           </span>
