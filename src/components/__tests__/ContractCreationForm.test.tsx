@@ -1,7 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { ContractCreationForm } from '../ContractCreationForm';
+import {
+  ContractCreationForm,
+  MAX_CONTRACT_NAME_LENGTH,
+  MAX_PARTY_LABEL_LENGTH,
+} from '../ContractCreationForm';
 import * as stellarAddress from '@/lib/stellarAddress';
 
 // Mock the stellarAddress module
@@ -298,6 +302,33 @@ describe('ContractCreationForm', () => {
       expect(submittedContract.contractName).toBe('Website Redesign');
     });
 
+    it('normalizes control characters and whitespace before submitting text fields', async () => {
+      render(<ContractCreationForm {...defaultProps} />);
+
+      fireEvent.change(screen.getByLabelText(/contract name/i), {
+        target: { value: '  Website\u0000\n  Redesign  ' },
+      });
+      fireEvent.change(screen.getByLabelText(/total value/i), { target: { value: '5000' } });
+
+      const partyLabels = screen.getAllByPlaceholderText(/e\.g\., client, freelancer/i);
+      const partyAddresses = screen.getAllByPlaceholderText(/GXXXXXXXXXX/i);
+      fireEvent.change(partyLabels[0], { target: { value: '  Client\u0007  Team ' } });
+      fireEvent.change(partyAddresses[0], { target: { value: VALID_ADDRESS } });
+      fireEvent.change(partyLabels[1], { target: { value: ' Freelancer ' } });
+      fireEvent.change(partyAddresses[1], { target: { value: VALID_ADDRESS } });
+
+      fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
+
+      await waitFor(() => expect(mockOnSubmit).toHaveBeenCalledTimes(1));
+      expect(mockOnSubmit.mock.calls[0][0]).toMatchObject({
+        contractName: 'Website Redesign',
+        parties: [
+          { label: 'Client Team', address: VALID_ADDRESS },
+          { label: 'Freelancer', address: VALID_ADDRESS },
+        ],
+      });
+    });
+
     it('filters out empty parties when submitting', async () => {
       render(<ContractCreationForm {...defaultProps} />);
 
@@ -414,6 +445,41 @@ describe('ContractCreationForm', () => {
         const contractNameInput = screen.getByLabelText(/contract name/i);
         expect(contractNameInput.className).toContain('border-red-500');
       });
+    });
+  });
+
+  describe('Text length validation', () => {
+    it('rejects an over-length contract name instead of truncating it', async () => {
+      render(<ContractCreationForm {...defaultProps} />);
+
+      fireEvent.change(screen.getByLabelText(/contract name/i), {
+        target: { value: 'a'.repeat(MAX_CONTRACT_NAME_LENGTH + 1) },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
+
+      await waitFor(() => {
+        expect(screen.getAllByText(
+          `Contract name must be no more than ${MAX_CONTRACT_NAME_LENGTH} characters`,
+        )[0]).toBeInTheDocument();
+      });
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+    });
+
+    it('rejects an over-length party label instead of truncating it', async () => {
+      render(<ContractCreationForm {...defaultProps} />);
+      const partyLabels = screen.getAllByPlaceholderText(/e\.g\., client, freelancer/i);
+      const partyAddresses = screen.getAllByPlaceholderText(/GXXXXXXXXXX/i);
+      fireEvent.change(partyLabels[0], { target: { value: 'a'.repeat(MAX_PARTY_LABEL_LENGTH + 1) } });
+      fireEvent.change(partyAddresses[0], { target: { value: VALID_ADDRESS } });
+
+      fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
+
+      await waitFor(() => {
+        expect(screen.getAllByText(
+          `Party 1 label must be no more than ${MAX_PARTY_LABEL_LENGTH} characters`,
+        )[0]).toBeInTheDocument();
+      });
+      expect(mockOnSubmit).not.toHaveBeenCalled();
     });
   });
 

@@ -3,6 +3,20 @@
 This project sets HTTP response headers via the `headers()` function in
 `next.config.js`.  The headers are applied to every route.
 
+## User-supplied record text
+
+Contract names, party labels, and milestone titles are normalised at form
+validation before they are saved to browser storage. `sanitizeUserText` removes
+control characters, trims and collapses whitespace, and applies a length cap.
+The forms validate the cleaned, unbounded value first, so input longer than the
+cap is rejected with a field error rather than being silently truncated.
+
+| Field | Maximum cleaned length |
+|---|---:|
+| Contract name | 200 characters |
+| Party label | 100 characters |
+| Milestone title | 200 characters |
+
 ## Login form throttling
 
 The home page login form (`src/app/page.tsx`) uses a client-side attempt
