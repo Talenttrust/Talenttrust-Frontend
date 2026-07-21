@@ -16,6 +16,7 @@
  */
 
 import {
+  isBrowser,
   listContracts,
   saveContract,
   upsertContract,
@@ -87,6 +88,16 @@ function seedRaw(value: string) {
 beforeEach(() => {
   window.localStorage.clear();
   jest.restoreAllMocks();
+});
+
+// ===========================================================================
+// 0. isBrowser SSR GUARD
+// ===========================================================================
+
+describe('isBrowser', () => {
+  it('returns true when window is defined (browser environment)', () => {
+    expect(isBrowser()).toBe(true);
+  });
 });
 
 // ===========================================================================
@@ -408,11 +419,60 @@ describe('corrupt data handling', () => {
 // ===========================================================================
 // 6. SSR CONTEXT ISOLATION (window is undefined)
 // ===========================================================================
-//
-// True "no window" SSR tests live in repository.ssr.test.ts under the `node`
-// test environment. jest-environment-jsdom 30 made the global `window` a
-// non-configurable accessor, so `delete global.window` can no longer be used
-// to simulate SSR from within this jsdom-environment file.
+
+describe('SSR context isolation', () => {
+  // Note: The original SSR tests used `delete global.window` to simulate SSR,
+  // but in Jest 30 / jsdom `global.window` is a non-configurable property.
+  // Instead of modifying globals, we mock localStorage to throw, which exercises
+  // the error-recovery path (catch blocks) and verifies functions never throw.
+  // The SSR guard (isBrowser) is tested directly in the 'isBrowser' unit test below.
+
+  function mockStorageUnavailable() {
+    jest.spyOn(window.localStorage, 'getItem').mockImplementation(() => {
+      throw new Error('localStorage unavailable (SSR)');
+    });
+    jest.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('localStorage unavailable (SSR)');
+    });
+    jest.spyOn(window.localStorage, 'removeItem').mockImplementation(() => {
+      throw new Error('localStorage unavailable (SSR)');
+    });
+  }
+
+  it('listContracts returns [] without throwing when storage is unavailable', () => {
+    mockStorageUnavailable();
+    expect(() => listContracts()).not.toThrow();
+    expect(listContracts()).toEqual([]);
+  });
+
+  it('listMilestones returns [] without throwing when storage is unavailable', () => {
+    mockStorageUnavailable();
+    expect(() => listMilestones()).not.toThrow();
+    expect(listMilestones()).toEqual([]);
+  });
+
+  it('saveContract does not throw when storage is unavailable', () => {
+    mockStorageUnavailable();
+    expect(() => saveContract(contractA)).not.toThrow();
+  });
+
+  it('saveMilestone does not throw when storage is unavailable', () => {
+    mockStorageUnavailable();
+    expect(() => saveMilestone(milestoneA)).not.toThrow();
+  });
+
+  it('data saved before SSR simulation is not affected after window is restored', () => {
+    saveContract(contractA);
+
+    mockStorageUnavailable();
+    // Call must not throw
+    listContracts();
+
+    jest.restoreAllMocks();
+    // Original data is still intact
+    expect(listContracts()).toEqual([contractA]);
+  });
+});
 
 // ===========================================================================
 // 7. WRITE FAILURE RESILIENCE
@@ -532,9 +592,15 @@ describe('clearAppData', () => {
     expect(() => clearAppData()).not.toThrow();
   });
 
-  // SSR ("no window") behaviour for clearAppData is covered in
-  // repository.ssr.test.ts (see the note above the removed "SSR context
-  // isolation" describe for why).
+  describe('SSR context', () => {
+    it('returns false and does not throw when storage.removeItem throws', () => {
+      jest.spyOn(window.localStorage, 'removeItem').mockImplementation(() => {
+        throw new DOMException('Not available');
+      });
+      expect(() => clearAppData()).not.toThrow();
+      expect(clearAppData()).toBe(false);
+    });
+  });
 });
 
 // ===========================================================================
@@ -704,8 +770,23 @@ describe('clearByPrefix', () => {
     expect(removed).toBe(1);
   });
 
-  // SSR ("no window") behaviour for clearByPrefix is covered in
-  // repository.ssr.test.ts (see the note above the removed "SSR context
-  // isolation" describe for why).
+  // -------------------------------------------------------------------------
+  // SSR context
+  // -------------------------------------------------------------------------
+
+  describe('SSR context', () => {
+    it('returns 0 without throwing when storage is unavailable', () => {
+      // Mock localStorage.key to be empty (simulating SSR)
+      jest.spyOn(window.localStorage, 'length', 'get').mockReturnValue(0);
+      expect(() => clearByPrefix('talenttrust_')).not.toThrow();
+      expect(clearByPrefix('talenttrust_')).toBe(0);
+    });
+
+    it('does not call the error reporter when storage is unavailable', () => {
+      jest.spyOn(window.localStorage, 'length', 'get').mockReturnValue(0);
+      clearByPrefix('talenttrust_');
+      expect(mockReporter).not.toHaveBeenCalled();
+    });
+  });
 });
 

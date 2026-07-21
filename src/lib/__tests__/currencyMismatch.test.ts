@@ -103,4 +103,25 @@ describe('findCurrencyMismatches', () => {
     const result = findCurrencyMismatches('USD', milestones);
     expect(result).toEqual(['ms-1', 'ms-2', 'ms-3']);
   });
+
+  describe('mutation guard', () => {
+    it('does not mutate the input milestones array', () => {
+      const milestones: Milestone[] = [
+        mkMilestone({ id: 'ms-1', currency: 'USD' }),
+        mkMilestone({ id: 'ms-2', currency: 'EUR' }),
+      ];
+      const snapshot = [...milestones];
+      findCurrencyMismatches('USD', milestones);
+      expect(milestones).toEqual(snapshot);
+    });
+
+    it('does not mutate milestone objects within the input array', () => {
+      const milestones: Milestone[] = [
+        mkMilestone({ id: 'ms-1', currency: 'USD' }),
+      ];
+      const originalCurrency = milestones[0].currency;
+      findCurrencyMismatches('usd', milestones);
+      expect(milestones[0].currency).toBe(originalCurrency);
+    });
+  });
 });
