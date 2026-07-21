@@ -6,3 +6,20 @@ out/
 *.log
 .DS_Store
 coverage/
+
+# Build and test outputs
+*.txt
+build-out.txt
+build_check.txt
+build_output.txt
+jest-full-output.txt
+jest-run-output.txt
+jest-run.txt
+lint-out.txt
+lint-output.txt
+next-build.txt
+single-jest.txt
+test-out.txt
+test-shell-output.txt
+test_check.txt
+IMPLEMENTATION_SUMMARY.txt

@@ -200,6 +200,57 @@ The homepage contains an accessible, fully validated sign-in form:
   - `aria-describedby` pointing to the helper text and error message paragraph elements so screen readers read the context when targeting the inputs.
 - **Success notification**: Upon valid submission, the `useToast` hook triggers a success notification instead of standard browser alerts.
 
+## Documentation Index
+
+Comprehensive guides and references for TalentTrust Frontend are organized in the `docs/` directory:
+
+### Core Guides
+- **[Data Model & Persistence](docs/data-model.md)** — Complete overview of the API, `AppData` shape, and update operations for client-side persistence.
+- **[Preferences Provider](docs/preferences.md)** — User-level settings, theme hydration, storage behavior, and `formatAmount` configuration.
+- **[Wallet Session Management](docs/contexts/wallet-session.md)** — Session lifecycle, idle auto-disconnect, storage keys, and inactivity events.
+- **[Error Reporting](docs/error-reporting.md)** — Error handling patterns and diagnostics.
+
+### Feature Implementation Guides
+- **[Implementation Guides](docs/IMPLEMENTATION_GUIDES.md)** — Complete reference for major features:
+  - Reputation Page implementation with three rendering states
+  - Reputation Score Meter (accessible numeric meter)
+  - Contract Creation Form validation and persistence
+  - Status and coverage details for each feature
+
+### Security & Dependency Management
+- **[Security and Dependency Updates](docs/SECURITY_AND_DEPENDENCIES.md)** — Critical vulnerability fixes, upgrade strategy (Next.js 14 → 15, React 18 → 19), and breaking changes mitigation.
+
+### Component & System Documentation
+- **[Toast System API](docs/Toast.md)** — Global notification system, hooks, configuration, accessibility features, and usage examples.
+- **[Copywriting Guide](docs/COPYWRITING_GUIDE.md)** — Guidelines for clear, inclusive, and accessible user-facing text.
+
+### Component-Specific Docs
+- [ReputationPage](docs/components/ReputationPage.md)
+- [ReputationProfile](docs/components/ReputationProfile.md)
+- [ContractCreationForm](docs/components/ContractCreationForm.md)
+- [ContractDetail](docs/components/ContractDetail.md)
+- [ContractProgress](docs/components/ContractProgress.md)
+- [ContractSummary](docs/components/ContractSummary.md)
+- [ActionPanel](docs/components/ActionPanel.md)
+- [HeaderActions](docs/components/HeaderActions.md)
+- [MilestonesList](docs/components/MilestonesList.md)
+- [Navbar](docs/components/Navbar.md)
+- [StatusBadge](docs/components/StatusBadge.md)
+- [EmptyState](docs/components/EmptyState.md)
+- [NotFound](docs/components/NotFound.md)
+- [SettingsPanel](docs/components/SettingsPanel.md)
+- [Preferences](docs/components/Preferences.md)
+- [WalletConnectButton](docs/components/WalletConnectButton.md)
+- [WalletContext](docs/components/WalletContext.md)
+- [Accessibility](docs/components/Accessibility.md)
+
+### Hook & Utility Documentation
+- [useCopyToClipboard](docs/hooks/useCopyToClipboard.md)
+- [useMediaQuery](docs/hooks/useMediaQuery.md)
+- [Currency Mismatch Handling](docs/lib/currencyMismatch.md)
+- [Milestone Status Tally](docs/lib/milestoneStatusTally.md)
+- [Stellar Address Reference](docs/stellar-address.md)
+
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
