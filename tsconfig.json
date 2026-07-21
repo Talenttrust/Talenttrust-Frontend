@@ -42,6 +42,7 @@
     "jest.setup.js",
     "**/*.test.ts",
     "**/*.test.tsx",
+    "src/test-utils/**",
     ".next/types/test",
     ".next/types/test/**/*"
   ],
