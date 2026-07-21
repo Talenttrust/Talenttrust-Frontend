@@ -13,9 +13,27 @@ import { MilestonesListSkeleton } from '@/components/MilestonesListSkeleton';
 import SafeBoundary from '@/components/SafeBoundary';
 import { resolveContractData, ContractData } from '@/lib/contractResolver';
 import { useToast } from '@/components/toast/toast-provider';
-import { upsertContract } from '@/lib/repository';
+import { upsertContract, listMilestonesByContract } from '@/lib/repository';
 import { isValidContractId } from '@/lib/validateContractId';
-import type { Contract } from '@/types/domain';
+import type { Contract, Milestone } from '@/types/domain';
+
+/**
+ * Merges the contract's resolved milestones with any milestones persisted in
+ * the repository under the same `contractId`, de-duplicating by `id`.
+ *
+ * Persisted records take precedence over resolver records that share an id,
+ * since the repository holds the most recently edited state.
+ *
+ * @param baseMilestones - Milestones returned by `resolveContractData`.
+ * @param contractId - The contract id to filter persisted milestones by.
+ * @returns The merged, de-duplicated milestone list for this contract.
+ */
+function mergeContractMilestones(baseMilestones: Milestone[], contractId: string): Milestone[] {
+  const merged = new Map<string, Milestone>();
+  baseMilestones.forEach((milestone) => merged.set(milestone.id, milestone));
+  listMilestonesByContract(contractId).forEach((milestone) => merged.set(milestone.id, milestone));
+  return Array.from(merged.values());
+}
 
 interface ContractDetailPageProps {
   params: Promise<{ id: string }>;
@@ -23,6 +41,7 @@ interface ContractDetailPageProps {
 
 const ContractDetailPageContent = ({ id }: { id: string }) => {
   const [contractData, setContractData] = useState<ContractData | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPersistingStatus, setIsPersistingStatus] = useState(false);
@@ -117,6 +136,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
 
         if (isMountedRef.current) {
           setContractData(data);
+          setMilestones(mergeContractMilestones(data.milestones, id));
         }
       } catch (error) {
         if (isMountedRef.current) {
@@ -208,7 +228,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
                   currency={contractData.currency}
                   status={contractData.status}
                   createdAt={contractData.createdAt}
-                  milestoneCount={contractData.milestones.length}
+                  milestoneCount={milestones.length}
                 />
               ) : null}
             </SafeBoundary>
@@ -217,7 +237,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
               {isLoading ? (
                 <ContractProgressSkeleton />
               ) : contractData ? (
-                <ContractProgress milestones={contractData.milestones} />
+                <ContractProgress milestones={milestones} />
               ) : null}
             </SafeBoundary>
 
@@ -225,7 +245,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
               {isLoading ? (
                 <MilestonesListSkeleton />
               ) : contractData ? (
-                <MilestonesList milestones={contractData.milestones} contractCurrency={contractData.currency} />
+                <MilestonesList milestones={milestones} contractCurrency={contractData.currency} />
               ) : null}
             </SafeBoundary>
           </div>

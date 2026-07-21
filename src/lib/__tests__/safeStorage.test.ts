@@ -45,17 +45,10 @@ describe("safeStorage", () => {
     expect(window.localStorage.getItem("test-key")).toBeNull();
   });
 
-  it("degrades to in-memory fallback in SSR (no window)", () => {
-    // Delete window to simulate SSR
-    // @ts-ignore
-    delete global.window;
-
-    jest.isolateModules(() => {
-      const { setItem: ssrSet, getItem: ssrGet } = require("../safeStorage");
-      expect(ssrSet("ssr-key", "ssr-val")).toBe(true);
-      expect(ssrGet("ssr-key")).toBe("ssr-val");
-    });
-  });
+  // "degrades to in-memory fallback in SSR (no window)" moved to
+  // safeStorage.ssr.test.ts under the `node` test environment: jsdom 30 made
+  // the global `window` a non-configurable accessor, so `delete
+  // global.window` can no longer simulate SSR from within this jsdom file.
 
   it("degrades to in-memory fallback when localStorage is disabled (throws on access)", () => {
     // Simulate disabled storage by throwing on localStorage access

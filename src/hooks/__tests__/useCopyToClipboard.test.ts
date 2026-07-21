@@ -213,9 +213,14 @@ describe('useCopyToClipboard', () => {
   });
 
   it('should handle SSR safety when window/navigator is undefined', async () => {
-    const originalWindow = global.window;
+    // jest-environment-jsdom 30 made the global `window` a non-configurable
+    // accessor, so it can no longer be redefined to simulate SSR from a
+    // jsdom test file. `navigator` is still configurable, and the hook's
+    // guard is `typeof window === 'undefined' || typeof navigator ===
+    // 'undefined'`, so undefining `navigator` alone still exercises the same
+    // SSR branch.
     const originalNavigator = global.navigator;
-    
+
     const onSuccessMock = jest.fn();
     const onErrorMock = jest.fn();
 
@@ -223,11 +228,6 @@ describe('useCopyToClipboard', () => {
       useCopyToClipboard({ onSuccess: onSuccessMock, onError: onErrorMock })
     );
 
-    Object.defineProperty(global, 'window', {
-      value: undefined,
-      writable: true,
-      configurable: true,
-    });
     Object.defineProperty(global, 'navigator', {
       value: undefined,
       writable: true,
@@ -244,11 +244,6 @@ describe('useCopyToClipboard', () => {
     expect((onErrorMock.mock.calls[0][0] as Error).message).toContain('SSR');
 
     // Restore globals
-    Object.defineProperty(global, 'window', {
-      value: originalWindow,
-      writable: true,
-      configurable: true,
-    });
     Object.defineProperty(global, 'navigator', {
       value: originalNavigator,
       writable: true,

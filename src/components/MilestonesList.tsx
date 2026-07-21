@@ -12,6 +12,8 @@ export type Milestone = {
   payout: number;
   currency: string;
   dueDate?: string;
+  /** Id of the parent `Contract` this milestone belongs to, when known. */
+  contractId?: string;
 };
 
 export type MilestonesListProps = {
