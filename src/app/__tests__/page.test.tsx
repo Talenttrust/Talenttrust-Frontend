@@ -5,6 +5,7 @@ import Home from '../page';
 import { PreferencesProvider } from '@/lib/preferences';
 import { ToastProvider } from '@/components/toast/toast-provider';
 import { assertNoA11yViolations } from '@/test-utils/a11y';
+import { safeStorage } from '@/lib/safeStorage';
 
 // Mock wallet is already mocked in jest.setup.js
 // Mock next/navigation if needed (not needed for this test
@@ -20,6 +21,11 @@ function renderHome() {
 }
 
 describe('Home Page Login Form', () => {
+  beforeEach(() => {
+    safeStorage.resetCache();
+    window.localStorage.clear();
+  });
+
   it('has no a11y violations', async () => {
     const { container } = renderHome();
     await assertNoA11yViolations(container);

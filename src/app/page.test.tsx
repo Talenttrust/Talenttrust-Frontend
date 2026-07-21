@@ -5,6 +5,7 @@ import { ToastProvider } from '@/components/toast/toast-provider';
 import { PreferencesProvider } from '@/lib/preferences';
 import { testA11y } from '@/test-utils/a11y';
 import userEvent from '@testing-library/user-event';
+import { safeStorage } from '@/lib/safeStorage';
 
 
 const renderWithProviders = (ui: React.ReactElement) => {
@@ -18,6 +19,10 @@ const renderWithProviders = (ui: React.ReactElement) => {
 };
 
 describe('Home', () => {
+  beforeEach(() => {
+    safeStorage.resetCache();
+    window.localStorage.clear();
+  });
   it('renders TalentTrust heading as h2 (not h1, since layout provides header)', () => {
     renderWithProviders(<Home />);
     const heading = screen.getByRole('heading', { name: /TalentTrust/i });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ToastDemo } from '@/components/toast/toast-demo';
 import { FormField } from '@/components/FormField';
 import { ErrorSummary } from '@/components/ErrorSummary';
@@ -10,21 +10,68 @@ import {
   MAX_PASSWORD_LENGTH,
   validateLogin,
 } from '@/lib/validateLogin';
+import {
+  getRemainingCooldownMs,
+  recordAttempt,
+  resetThrottle,
+} from '@/lib/loginThrottle';
 
 export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ fieldId: string; message: string }[]>([]);
+  const [cooldownRemainingMs, setCooldownRemainingMs] = useState(0);
+  const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { showSuccess } = useToast();
+
+  const clearCooldownInterval = () => {
+    if (cooldownIntervalRef.current !== null) {
+      clearInterval(cooldownIntervalRef.current);
+      cooldownIntervalRef.current = null;
+    }
+  };
+
+  const startCooldownCountdown = () => {
+    clearCooldownInterval();
+    const tick = () => {
+      const remaining = getRemainingCooldownMs();
+      if (remaining <= 0) {
+        setCooldownRemainingMs(0);
+        clearCooldownInterval();
+        return;
+      }
+      setCooldownRemainingMs(remaining);
+    };
+    tick();
+    cooldownIntervalRef.current = setInterval(tick, 250);
+  };
+
+  useEffect(() => {
+    const remaining = getRemainingCooldownMs();
+    if (remaining > 0) {
+      startCooldownCountdown();
+    }
+    return clearCooldownInterval;
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // `validateLogin` trims email and enforces both length ceilings, so a
-    // pasted value that exceeds the cap is rejected before any auth call.
+
+    if (cooldownRemainingMs > 0) return;
+
+    recordAttempt();
+    const remaining = getRemainingCooldownMs();
+    if (remaining > 0) {
+      startCooldownCountdown();
+    }
+
     const newErrors = validateLogin(email, password);
     setErrors(newErrors);
 
     if (newErrors.length === 0) {
+      resetThrottle();
+      setCooldownRemainingMs(0);
+      clearCooldownInterval();
       showSuccess({
         title: 'Form submitted successfully!',
       });
@@ -32,6 +79,8 @@ export default function Home() {
   };
 
   const getError = (fieldId: string) => errors.find((e) => e.fieldId === fieldId)?.message;
+  const cooldownSecs = Math.ceil(cooldownRemainingMs / 1000);
+  const isCooldown = cooldownRemainingMs > 0;
 
   return (
     /**
@@ -109,10 +158,21 @@ export default function Home() {
 
           <button
             type="submit"
-            className="mt-6 w-full rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400 shadow-md"
+            disabled={isCooldown}
+            className="mt-6 w-full rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400 shadow-md disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Sign In
+            {isCooldown ? `Wait ${cooldownSecs}s` : 'Sign In'}
           </button>
+
+          {isCooldown && (
+            <div
+              aria-live="polite"
+              aria-atomic="true"
+              className="sr-only"
+            >
+              Please wait {cooldownSecs} seconds before trying to sign in again.
+            </div>
+          )}
         </form>
 
         <ToastDemo />

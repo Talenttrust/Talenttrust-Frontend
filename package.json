@@ -41,7 +41,15 @@
     "jest-cli": "^30.4.2",
     "jest-environment-jsdom": "^30.4.0",
     "tailwindcss": "^4.3.2",
-    "typescript": "^6.0.3"
+    "typescript": "^5.7.3"
+  },
+  "overrides": {
+    "@typescript-eslint/eslint-plugin": {
+      "typescript": "$typescript"
+    },
+    "@typescript-eslint/parser": {
+      "typescript": "$typescript"
+    }
   },
   "license": "MIT"
 }
