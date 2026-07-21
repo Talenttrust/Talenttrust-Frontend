@@ -1,4 +1,4 @@
-# Walkthrough - Reputation Level Legend & ActionPanel Hotfix
+# Walkthrough - Reputation Level Legend, ActionPanel Hotfix, and Milestone Component Docs
 
 We have implemented an accessible reputation level legend that maps score ranges to named levels on the `ReputationProfile` page and component. We also repaired merge conflict issues in the `ActionPanel` dispute flow to make the entire repository build and test suite green.
 
@@ -20,6 +20,8 @@ We have implemented an accessible reputation level legend that maps score ranges
 ### 4. Documentation
 - Documented the design, bands mapping, calculations, and accessibility implementation details in [docs/components/ReputationPage.md](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/docs/components/ReputationPage.md).
 - Documented the toast system's behavioral contract (quiet mode, eviction order, action button, accessibility) in [docs/components/toast.md](file:///c:/Users/Hp/Desktop/16Grantfox/Talenttrust-Frontend/docs/components/toast.md).
+- Documented the milestone creation modal contract, validation rules, slug-plus-timestamp id scheme, `onCancel` behavior, and parent persistence expectations in [docs/components/MilestoneCreationForm.md](./components/MilestoneCreationForm.md).
+- Documented the milestone status filter props, `Active` status support, radiogroup semantics, `aria-live` result count, and `resultCount={filtered.length}` requirement in [docs/components/MilestoneFilter.md](./components/MilestoneFilter.md).
 
 ### 5. Hotfix: ActionPanel & Dispute Form Restore
 - Resolved merge conflict corruption in [src/components/ActionPanel.tsx](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/components/ActionPanel.tsx) to correctly render the inline dispute form and its validation state.
