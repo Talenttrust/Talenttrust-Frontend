@@ -7,6 +7,7 @@ import ReputationProfile from '@/components/ReputationProfile';
 import EmptyState from '@/components/EmptyState';
 import StatusBadge from '@/components/StatusBadge';
 import { ToastProvider, useToast } from '@/components/toast/toast-provider';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 describe('a11y: MilestonesList', () => {
   it('empty list has no violations', async () => {
@@ -576,5 +577,23 @@ describe('a11y: prefers-reduced-motion — toast panels', () => {
     // not deferred behind an animation frame, so it snaps into view.
     const toastPanel = container.querySelector('[role="alert"]');
     expect(toastPanel).toBeInTheDocument();
+  });
+});
+
+describe('a11y: Breadcrumbs', () => {
+  it('single crumb has no violations', async () => {
+    await testA11y(<Breadcrumbs items={[{ label: 'Dashboard', href: '/' }]} />);
+  });
+
+  it('multi-crumb trail with a current page has no violations', async () => {
+    await testA11y(
+      <Breadcrumbs
+        items={[
+          { label: 'Dashboard', href: '/' },
+          { label: 'Contracts', href: '/contracts' },
+          { label: 'Contract #42' },
+        ]}
+      />,
+    );
   });
 });

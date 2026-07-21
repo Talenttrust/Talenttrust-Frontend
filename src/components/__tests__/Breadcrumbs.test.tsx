@@ -140,6 +140,37 @@ describe('Breadcrumbs — separators', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Focus ring
+// ---------------------------------------------------------------------------
+
+describe('Breadcrumbs — focus ring', () => {
+  it('applies the theme-token focus ring to ancestor links', () => {
+    render(<Breadcrumbs items={THREE_CRUMBS} />);
+    const dashboardLink = screen.getByRole('link', { name: 'Dashboard' });
+
+    expect(dashboardLink.className).toContain('focus-visible:ring-2');
+    expect(dashboardLink.className).toContain('focus-visible:ring-[var(--ring)]');
+    expect(dashboardLink.className).toContain('focus-visible:ring-offset-2');
+  });
+
+  it('does not use a hardcoded outline color for the focus ring', () => {
+    // Regression guard: outline-blue-500 doesn't match --ring in light mode
+    // (#2563eb) and was never theme-aware for dark mode either.
+    render(<Breadcrumbs items={THREE_CRUMBS} />);
+    const dashboardLink = screen.getByRole('link', { name: 'Dashboard' });
+
+    expect(dashboardLink.className).not.toContain('outline-blue-500');
+  });
+
+  it('applies the focus ring to every ancestor link, not just the first', () => {
+    render(<Breadcrumbs items={THREE_CRUMBS} />);
+    const contractsLink = screen.getByRole('link', { name: 'Contracts' });
+
+    expect(contractsLink.className).toContain('focus-visible:ring-[var(--ring)]');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Dynamic label (contract id interpolation)
 // ---------------------------------------------------------------------------
 
@@ -176,5 +207,18 @@ describe('Breadcrumbs — dynamic labels', () => {
     expect(within(nav).getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
     expect(within(nav).getByRole('link', { name: 'Contracts' })).toBeInTheDocument();
     expect(within(nav).getByText('Contract #99')).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('falls back to "/" for an ancestor crumb with no href', () => {
+    render(
+      <Breadcrumbs
+        items={[
+          { label: 'Untitled' },
+          { label: 'Current' },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole('link', { name: 'Untitled' })).toHaveAttribute('href', '/');
   });
 });
