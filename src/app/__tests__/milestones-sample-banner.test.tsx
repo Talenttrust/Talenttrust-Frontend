@@ -16,7 +16,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import MilestonesPage, {
@@ -60,17 +60,19 @@ async function renderPage() {
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
+  window.localStorage.clear();
   // Default: empty repository → sample fallback active
   mockedListMilestones.mockReturnValue([]);
   // Default: banner has NOT been dismissed
-  getItemSpy.mockReturnValue(null);
-  setItemSpy.mockReturnValue(true);
+  getItemSpy.mockImplementation((key) => window.localStorage.getItem(key));
+  setItemSpy.mockImplementation((key, val) => { window.localStorage.setItem(key, val); return true; });
   jest.useFakeTimers();
 });
 
 afterEach(() => {
   jest.clearAllMocks();
   jest.useRealTimers();
+  window.localStorage.clear();
 });
 
 // ===========================================================================

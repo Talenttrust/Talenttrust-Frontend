@@ -82,7 +82,7 @@ const getActionButtons = (status: ActionPanelProps['status']) => {
   return ['View Summary'];
 };
 
-type ConfirmAction = 'submit' | 'release' | null;
+type ConfirmAction = keyof typeof CONFIRM_COPY | null;
 
 const CONFIRM_COPY = {
   submit: {
@@ -531,6 +531,7 @@ const ActionPanel = ({
         description={confirmAction && confirmAction in CONFIRM_COPY ? CONFIRM_COPY[confirmAction as keyof typeof CONFIRM_COPY].description : ''}
         confirmLabel={confirmAction && confirmAction in CONFIRM_COPY ? CONFIRM_COPY[confirmAction as keyof typeof CONFIRM_COPY].confirmLabel : 'Confirm'}
         cancelLabel="Cancel"
+        tone={confirmAction === 'release' || confirmAction === 'dispute' ? 'destructive' : 'default'}
         onConfirm={handleConfirm}
         onCancel={handleCancel}
       />

@@ -126,7 +126,7 @@ describe('ContractDetailPage', () => {
 
     await user.click(releaseButton);
 
-    const dialog = screen.getByRole('dialog', { name: /confirm release funds/i });
+    const dialog = screen.getByRole('alertdialog', { name: /confirm release funds/i });
     expect(within(dialog).getByRole('button', { name: /cancel/i })).toHaveFocus();
 
     await user.click(within(dialog).getByRole('button', { name: /^release funds$/i }));
@@ -459,7 +459,7 @@ describe('existing contract detail page behaviour', () => {
     expect(disputeButton).toBeDisabled();
 
     await user.click(releaseButton);
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(mockedUpsertContract).not.toHaveBeenCalled();
   });
 
@@ -470,7 +470,7 @@ describe('existing contract detail page behaviour', () => {
     await renderPage();
 
     await user.click(await screen.findByRole('button', { name: /release funds to the contractor/i }));
-    await user.click(within(screen.getByRole('dialog', { name: /confirm release funds/i })).getByRole('button', { name: /^release funds$/i }));
+    await user.click(within(screen.getByRole('alertdialog', { name: /confirm release funds/i })).getByRole('button', { name: /^release funds$/i }));
 
     await waitFor(() => {
       expect(mockedUpsertContract).toHaveBeenCalledTimes(1);

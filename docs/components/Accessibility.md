@@ -558,3 +558,39 @@ To verify reduced-motion behavior:
 5. Hover over interactive elements — state changes should be instant, not gradual
 
 All automated tests pass with zero axe violations under reduced-motion conditions.
+
+---
+
+## ConfirmDialog – Accessible Confirmation Dialog (`alertdialog` vs `dialog`) (issue #439)
+
+**Component:** `src/components/ConfirmDialog.tsx`
+**Test file:** `src/components/__tests__/ConfirmDialog.test.tsx`
+
+### Accessibility Features & ARIA Contracts
+
+The `ConfirmDialog` component implements WAI-ARIA modal dialog accessibility patterns to ensure full screen-reader and keyboard compatibility.
+
+| Attribute / Feature | Implementation Detail | Purpose |
+|-------------------|----------------------|---------|
+| `role` | `role="alertdialog"` when `tone="destructive"`; `role="dialog"` for default/non-destructive tone | Instructs assistive technology whether the modal contains a high-priority destructive alert requiring urgent user attention. |
+| `tone` prop | `tone?: "default" \| "destructive"` | Explicitly designates confirmation severity. Action components like `ActionPanel` set `tone="destructive"` for irreversible actions (e.g. fund releases or disputes). |
+| `aria-labelledby` | Bound to `h2` heading via `useId()` generated ID | Programmatically links the dialog title to the container for automatic screen-reader announcement upon focus. |
+| `aria-describedby` | Bound to description `<p>` via `useId()` generated ID | Programmatically links the detailed description message so assistive technology reads the prompt when the dialog opens. |
+| `aria-modal="true"` | Present on dialog container | Signals to screen readers that content beneath the overlay is modal and inert. |
+| Background Isolation | Sets `aria-hidden="true"` and `inert` on non-dialog background elements while open | Prevents screen readers or virtual cursors from escaping the modal context into background DOM content. Restores previous states on close/unmount. |
+| Focus Management & Trapping | Moves focus to Cancel button on mount; traps `Tab` / `Shift+Tab` inside; closes on `Escape` key | Satisfies WCAG 2.1 SC 2.4.3 (Focus Order) and SC 2.1.1 (Keyboard Navigation). |
+
+### Usage Example
+
+```tsx
+<ConfirmDialog
+  isOpen={isOpen}
+  title="Release Contract Funds"
+  description="Are you sure you want to release funds to the contractor? This action cannot be undone."
+  confirmLabel="Release Funds"
+  cancelLabel="Cancel"
+  tone="destructive"
+  onConfirm={handleRelease}
+  onCancel={handleClose}
+/>
+```
