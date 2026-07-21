@@ -1,3 +1,31 @@
+import fs from 'fs';
+import path from 'path';
+
+describe('Repository documentation metadata', () => {
+  const root = path.resolve(__dirname, '..', '..', '..');
+
+  test('README contains Documentation Index', () => {
+    const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+    expect(readme).toMatch(/Documentation Index/);
+  });
+
+  test('Key docs exist under docs/', () => {
+    const docs = [
+      'docs/components/Accessibility.md',
+      'docs/components/ReputationPage.md',
+      'docs/data-model.md',
+      'docs/persistence.md',
+      'docs/preferences.md',
+      'docs/contexts/wallet-session.md',
+      'docs/implementation/ISSUE_383_IMPLEMENTATION.md',
+    ];
+
+    for (const d of docs) {
+      const p = path.join(root, d);
+      expect(fs.existsSync(p)).toBe(true);
+    }
+  });
+});
 import { metadata } from '../layout';
 
 describe('root metadata', () => {
