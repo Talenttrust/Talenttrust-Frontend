@@ -3,7 +3,7 @@
 ## Summary
 Successfully implemented full end-to-end screen reader accessibility for the TalentTrust home page sign-in form, meeting WCAG 2.1 AA standards.
 
-**GitHub Issue:** https://github.com/Talenttrust/Talenttrust-Frontend/issues/383
+**GitHub Issue:** https://github.com/Ebenezer199914/Talenttrust-Frontend/issues/383
 **Branch:** `a11y/383-home-landmarks`
 
 ---

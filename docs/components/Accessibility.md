@@ -244,7 +244,7 @@ Per WCAG guidelines, every page (including error fallback layouts) must have a d
 # Accessibility: Dark-theme color contrast audit
 
 **Issue:** a11y/theming-27 — Improve dark-theme color contrast across themed components
-**Scope:** `Talenttrust/Talenttrust-Frontend`
+**Scope:** `Ebenezer199914/Talenttrust-Frontend`
 **Standard:** WCAG 2.1 AA — 4.5:1 for normal text, 3:1 for large text (≥18pt regular or ≥14pt bold) and UI component boundaries.
 
 ## Method
