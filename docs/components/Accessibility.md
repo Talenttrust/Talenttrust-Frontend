@@ -205,3 +205,13 @@ AA outright if either value drifted even slightly in a future change.
   named in this issue are no longer present in the rendered output, and
   that the new CSS-variable-based classes are, as a regression guard for
   this specific fix.
+
+  ## ReputationProfile
+
+`ReputationProfile` renders one of three states based on `score` and `history`, and the following guarantees are now covered by automated tests in `ReputationProfile.test.tsx`:
+
+- **No reputation** — when `score` is `undefined`/`null`, the component shows "No reputation yet" and "Pending" rather than any numeric value.
+- **Score of `0` is treated as a real score**, not the "no reputation" state — `0` is a valid, earned reputation value and renders as `0`.
+- **Partial state** — when a score exists but `history` is empty, the "Partial reputation data" banner and the "Private by default" pill are shown, and the score/level still render normally.
+- **Full history** — each `ReputationEvent` in `history` renders as its own list item, and the pill reads "Visible".
+- **Accessibility** — the profile heading is exposed to screen readers via an `sr-only` heading tied to the section via `aria-labelledby`; the score and level values are each associated with their labels via `aria-labelledby`. The full-history render is verified violation-free with `jest-axe`.
