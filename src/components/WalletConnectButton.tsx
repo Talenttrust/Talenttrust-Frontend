@@ -1,19 +1,48 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useWallet } from '@/contexts/WalletContext';
+import { useToast } from '@/components/toast/toast-provider';
 import { truncateAddress } from '@/lib/truncateAddress';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 
 export const WalletConnectButton = () => {
   const { address, isConnecting, error, connect, disconnect } = useWallet();
-  const [copied, setCopied] = useState(false);
+  const { showError } = useToast();
 
+  const { copied, copy } = useCopyToClipboard({
+    delay: 2000,
+    onError: (err) => {
+      if (err instanceof Error && err.message.includes('supported')) {
+        showError({
+          title: 'Copy not supported',
+          description: 'Your browser does not support clipboard access. Please copy the address manually.',
+        });
+      } else {
+        showError({
+          title: 'Copy failed',
+          description: 'Unable to copy the address to your clipboard. Please try again.',
+        });
+      }
+    },
+  });
+
+  /**
+   * Copies the connected wallet address to the system clipboard.
+   *
+   * Guards against environments where the Clipboard API is unavailable
+   * (insecure contexts, older browsers, or denied permissions) and wraps
+   * the async write in a try/catch so failures surface as user-visible
+   * error toasts rather than unhandled promise rejections.
+   *
+   * - Sets `copied = true` **only** when the write actually succeeds,
+   *   reverting to `false` after 2 seconds.
+   * - On any failure, triggers an error toast via `showError` without
+   *   logging sensitive address data to the console.
+   */
   const handleCopy = async () => {
-    if (address) {
-      await navigator.clipboard.writeText(address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    if (!address) return;
+    await copy(address);
   };
 
   if (error) {
@@ -82,7 +111,15 @@ export const WalletConnectButton = () => {
     >
       {isConnecting ? (
         <>
-          <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          {/* animate-spin is halted by the @media (prefers-reduced-motion: reduce)
+              rule in globals.css. The SVG remains visible as a static loading
+              indicator so the connecting state is still perceivable without motion. */}
+          <svg
+            className="h-4 w-4 animate-spin"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>

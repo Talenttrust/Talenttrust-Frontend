@@ -1,20 +1,46 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import EmptyState from '../../components/EmptyState';
+import { ContractCreationForm } from '../../components/ContractCreationForm';
+import { listContracts, saveContract } from '@/lib/repository';
+import type { Contract } from '@/types/domain';
 
 const ContractsPage: React.FC = () => {
-  const contracts: any[] = []; // Assume empty for now
+  // Initialise from localStorage on first render; subsequent saves trigger
+  // a state update so the list reflects newly added items immediately.
+  const [contracts, setContracts] = useState<Contract[]>(() => listContracts());
+  const [showForm, setShowForm] = useState(false);
 
-  const handleCreateContract = () => {
-    // TODO: Implement create contract logic
-    console.log('Create contract');
-  };
+  /**
+   * Opens the contract creation form modal.
+   */
+  const handleCreateContract = useCallback(() => {
+    setShowForm(true);
+  }, []);
+
+  /**
+   * Handles form submission by persisting the contract and refreshing the list.
+   */
+  const handleSubmitContract = useCallback((contract: Contract) => {
+    saveContract(contract);
+    // Re-read storage so the component reflects the persisted state.
+    setContracts(listContracts());
+    setShowForm(false);
+  }, []);
+
+  /**
+   * Closes the contract creation form modal.
+   */
+  const handleCancelForm = useCallback(() => {
+    setShowForm(false);
+  }, []);
 
   return (
     <main className="min-h-screen p-8">
       <h1 className="text-2xl font-bold mb-6">Contracts</h1>
-      {contracts.length === 0 ? (
+
+      {!showForm && contracts.length === 0 && (
         <EmptyState
           illustration="contracts"
           title="No contracts found"
@@ -22,12 +48,45 @@ const ContractsPage: React.FC = () => {
           actionLabel="Create Contract"
           onAction={handleCreateContract}
         />
-      ) : (
-        // TODO: Render contracts list
-        <div>Contracts list</div>
+      )}
+
+      {!showForm && contracts.length > 0 && (
+        <>
+          <div className="mb-4 flex justify-end">
+            <button
+              type="button"
+              onClick={handleCreateContract}
+              className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            >
+              Create Contract
+            </button>
+          </div>
+          {/* TODO: Replace with a proper ContractSummary list component. */}
+          <ul className="space-y-4">
+            {contracts.map((contract, idx) => (
+              <li
+                key={`${contract.contractName}-${idx}`}
+                className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <p className="font-semibold text-slate-900">{contract.contractName}</p>
+                <p className="text-sm text-slate-500">
+                  {contract.status} · Created {contract.createdAt}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {showForm && (
+        <ContractCreationForm
+          onSubmit={handleSubmitContract}
+          onCancel={handleCancelForm}
+        />
       )}
     </main>
   );
 };
 
 export default ContractsPage;
+

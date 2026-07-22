@@ -1,12 +1,13 @@
 import { render, RenderOptions } from '@testing-library/react';
 import { axe } from 'jest-axe';
 import React from 'react';
+import { expect } from '@jest/globals';
 
 export { axe };
 
 export async function assertNoA11yViolations(container: HTMLElement) {
   const results = await axe(container);
-  expect(results).toHaveNoViolations();
+  expect(results.violations).toHaveLength(0);
 }
 
 export function renderWithA11y(ui: React.ReactElement, options?: RenderOptions) {

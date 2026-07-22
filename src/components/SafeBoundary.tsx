@@ -1,6 +1,8 @@
 'use client';
 
 import React, { Component, ReactNode } from 'react';
+import Link from 'next/link';
+import { reportError } from '../lib/errorReporter';
 
 interface Props {
   children: ReactNode;
@@ -18,10 +20,8 @@ export default class SafeBoundary extends Component<Props, State> {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, info: React.ErrorInfo) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('[SafeBoundary]', error, info.componentStack);
-    }
+  componentDidCatch(error: Error, _info: React.ErrorInfo) {
+    reportError(error, 'SafeBoundary');
   }
 
   reset = () => this.setState({ hasError: false });
@@ -42,12 +42,12 @@ export default class SafeBoundary extends Component<Props, State> {
             >
               Retry
             </button>
-            <a
+            <Link
               href="/"
               className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-100 transition-colors"
             >
               Go Home
-            </a>
+            </Link>
           </div>
         </div>
       );

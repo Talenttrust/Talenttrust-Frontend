@@ -1,0 +1,71 @@
+# .github/dependabot.yml
+#
+# Proactive dependency management for TalentTrust-Frontend.
+#
+# Strategy overview
+# -----------------
+# Two complementary layers keep dependencies safe and current:
+#
+#   1. PROACTIVE (this file) — Dependabot opens weekly PRs for npm packages
+#      and GitHub Actions pins. Minor/patch updates are grouped to reduce
+#      PR noise; major bumps are always separate so breaking changes can be
+#      assessed individually.
+#
+#   2. REACTIVE (ci.yml) — Every PR, including those from Dependabot, must
+#      pass the full CI pipeline: lint → build → test → npm audit. Any new
+#      high/critical advisory introduced by an update blocks the merge.
+#
+# Auto-merge is intentionally disabled. All Dependabot PRs must pass CI and
+# receive human approval before merging.
+
+version: 2
+
+updates:
+
+  # ---------------------------------------------------------------------------
+  # npm ecosystem — application and dev dependencies
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/"           # package.json is at the repo root
+    schedule:
+      interval: "weekly"
+      day: "monday"          # open PRs at the start of the work week
+    open-pull-requests-limit: 10
+
+    # Apply a consistent label so PRs are easy to filter in the GitHub UI.
+    labels:
+      - "dependencies"
+
+    # Group minor and patch updates into a single PR per update cycle.
+    # This keeps the PR queue manageable while still surfacing every change.
+    # Major updates are deliberately excluded from the group so each one
+    # gets its own PR and can be reviewed for breaking changes in isolation.
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+    # Commit message prefix for easy identification in the git log.
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(dev-deps)"
+      include: "scope"
+
+  # ---------------------------------------------------------------------------
+  # github-actions ecosystem — keeps workflow action pins up to date
+  # (e.g. actions/checkout, actions/setup-node)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"           # workflow files are under .github/workflows/
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+
+    labels:
+      - "dependencies"
+
+    commit-message:
+      prefix: "chore(actions)"
+      include: "scope"
