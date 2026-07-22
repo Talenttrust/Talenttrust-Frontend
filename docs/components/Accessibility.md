@@ -561,36 +561,74 @@ All automated tests pass with zero axe violations under reduced-motion condition
 
 ---
 
-## ConfirmDialog – Accessible Confirmation Dialog (`alertdialog` vs `dialog`) (issue #439)
+## Breadcrumbs — Nav Landmark, aria-current, and Focus Ring (issue #440)
 
-**Component:** `src/components/ConfirmDialog.tsx`
-**Test file:** `src/components/__tests__/ConfirmDialog.test.tsx`
+**Component:** `src/components/Breadcrumbs.tsx`
+**Test file:** `src/components/__tests__/Breadcrumbs.test.tsx`, plus two `jest-axe` states in `src/components/__tests__/a11y.test.tsx`
 
-### Accessibility Features & ARIA Contracts
+### What was already correct
 
-The `ConfirmDialog` component implements WAI-ARIA modal dialog accessibility patterns to ensure full screen-reader and keyboard compatibility.
+Most of this issue's requirements were already implemented when the issue was
+filed: the trail is wrapped in `<nav aria-label="Breadcrumb">` containing an
+`<ol>`, the final crumb renders as non-interactive text with
+`aria-current="page"` instead of a link, and the `/` separators between
+crumbs are marked `aria-hidden="true"`. The one gap was the focus ring on
+the ancestor `<Link>` crumbs.
 
-| Attribute / Feature | Implementation Detail | Purpose |
-|-------------------|----------------------|---------|
-| `role` | `role="alertdialog"` when `tone="destructive"`; `role="dialog"` for default/non-destructive tone | Instructs assistive technology whether the modal contains a high-priority destructive alert requiring urgent user attention. |
-| `tone` prop | `tone?: "default" \| "destructive"` | Explicitly designates confirmation severity. Action components like `ActionPanel` set `tone="destructive"` for irreversible actions (e.g. fund releases or disputes). |
-| `aria-labelledby` | Bound to `h2` heading via `useId()` generated ID | Programmatically links the dialog title to the container for automatic screen-reader announcement upon focus. |
-| `aria-describedby` | Bound to description `<p>` via `useId()` generated ID | Programmatically links the detailed description message so assistive technology reads the prompt when the dialog opens. |
-| `aria-modal="true"` | Present on dialog container | Signals to screen readers that content beneath the overlay is modal and inert. |
-| Background Isolation | Sets `aria-hidden="true"` and `inert` on non-dialog background elements while open | Prevents screen readers or virtual cursors from escaping the modal context into background DOM content. Restores previous states on close/unmount. |
-| Focus Management & Trapping | Moves focus to Cancel button on mount; traps `Tab` / `Shift+Tab` inside; closes on `Escape` key | Satisfies WCAG 2.1 SC 2.4.3 (Focus Order) and SC 2.1.1 (Keyboard Navigation). |
+### Problem found
 
-### Usage Example
+The ancestor links used a hardcoded `focus-visible:outline-blue-500`
+(Tailwind's fixed `blue-500`, `#3b82f6`) rather than the app's `--ring`
+theme token. Two issues with that:
+
+1. **Wrong color in light mode.** Light mode's own `--ring` token is
+   `#2563eb`, not `blue-500`. The hardcoded class happened to render the
+   *dark*-mode ring color even when the theme was light.
+2. **Not theme-aware.** Every other focus-visible ring in this codebase that
+   follows the current convention (`MilestonesList.tsx`,
+   `toast-provider.tsx`, `SettingsPanel.tsx`) uses
+   `focus-visible:ring-[var(--ring)]` so the color swaps with
+   `[data-theme='dark']`. The hardcoded class didn't, so it was already
+   inconsistent with the rest of the app even before considering contrast.
+
+### Fix
+
+Replaced the hardcoded outline with the same pattern used elsewhere:
 
 ```tsx
-<ConfirmDialog
-  isOpen={isOpen}
-  title="Release Contract Funds"
-  description="Are you sure you want to release funds to the contractor? This action cannot be undone."
-  confirmLabel="Release Funds"
-  cancelLabel="Cancel"
-  tone="destructive"
-  onConfirm={handleRelease}
-  onCancel={handleClose}
-/>
+className="... rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
 ```
+
+### Contrast verification
+
+Breadcrumbs are only mounted on the contract detail page
+(`src/app/contracts/[id]/page.tsx`), inside a card with a **hardcoded
+`bg-white`** container that does not vary with `[data-theme]`. That matters
+for this specific check: the ring's *color* is theme-aware (`--ring` swaps
+value), but the *background it's drawn against* does not swap, so both
+themes' ring colors were checked against the same white card rather than
+against `--background`.
+
+| Theme | `--ring` value | Rendered against | Ratio |
+|---|---|---|---|
+| Light | `#2563eb` | white card (`#ffffff`) | 5.17:1 ✅ |
+| Dark | `#3b82f6` | white card (`#ffffff`) — card itself isn't theme-aware | 3.68:1 ✅ |
+
+Both clear the WCAG 2.1 non-text contrast minimum of 3:1 (SC 1.4.11), computed
+with the same relative-luminance method used elsewhere in this document.
+Dark mode has noticeably less headroom (3.68:1 vs. a 3:1 floor) than light
+mode, entirely because the card background doesn't adapt to the theme —
+flagging this since it's the kind of narrow-margin pairing this document
+has previously called out as worth tracking. Making the contract-detail
+card itself theme-aware is a separate, larger change (it touches the whole
+page, not just this component) and is out of scope for this issue.
+
+### Testing
+
+- `Breadcrumbs.test.tsx` — structure/ARIA (nav landmark, `<ol>`, one `<li>`
+  per crumb), link generation, `aria-current` placement, separator
+  `aria-hidden`, dynamic labels, and three new focus-ring assertions: the
+  token classes are present on every ancestor link, and the old
+  `outline-blue-500` class is confirmed absent (regression guard).
+- `a11y.test.tsx` — `jest-axe` audit for a single-crumb trail and a
+  three-crumb trail with a current page, both zero violations.
