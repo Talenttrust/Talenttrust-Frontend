@@ -106,9 +106,9 @@ describe('ActionPanel', () => {
     expect(onSubmitMilestone).toHaveBeenCalledTimes(1);
     expect(mockShowSuccess).toHaveBeenCalledWith(expect.objectContaining({ title: 'Milestone submitted' }));
 
-    // Release Funds → ConfirmDialog
+    // Release Funds → ConfirmDialog (tone="destructive" -> alertdialog)
     fireEvent.click(screen.getByRole('button', { name: /release funds/i }));
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /release funds/i }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /release funds/i }));
     expect(onReleaseFunds).toHaveBeenCalledTimes(1);
 
     // Dispute → inline form
@@ -327,12 +327,12 @@ describe('ActionPanel', () => {
 
     fireEvent.click(releaseFunds);
     fireEvent.click(
-      within(screen.getByRole('dialog', { name: /confirm release funds/i })).getByRole('button', {
+      within(screen.getByRole('alertdialog', { name: /confirm release funds/i })).getByRole('button', {
         name: /cancel/i,
       }),
     );
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(releaseFunds).toHaveFocus();
   });
 
@@ -420,9 +420,9 @@ describe('focus restoration after dialog close', () => {
 
     const releaseFundsBtn = screen.getByRole('button', { name: /release funds to the contractor/i });
     await user.click(releaseFundsBtn);
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /cancel/i }));
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /cancel/i }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(releaseFundsBtn).toHaveFocus();
   });
 
@@ -463,9 +463,9 @@ describe('focus restoration after dialog close', () => {
 
     const releaseFundsBtn = screen.getByRole('button', { name: /release funds to the contractor/i });
     await user.click(releaseFundsBtn);
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /release funds/i }));
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /release funds/i }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(releaseFundsBtn).toHaveFocus();
   });
 
@@ -542,7 +542,7 @@ describe('focus restoration after dialog close', () => {
 
     // Open from Release Funds, cancel → focus back to Release Funds
     await user.click(releaseFundsBtn);
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /cancel/i }));
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /cancel/i }));
     expect(releaseFundsBtn).toHaveFocus();
     expect(disputeBtn).not.toHaveFocus();
 
