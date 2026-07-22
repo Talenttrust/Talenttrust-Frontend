@@ -12,6 +12,8 @@ export function sanitizeUserText(value: string, maxLength: number): string {
   }
 
   return value
+    // Stripping C0/C1 control characters is the purpose of this function.
+    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
     .trim()
     .replace(/\s+/g, ' ')
