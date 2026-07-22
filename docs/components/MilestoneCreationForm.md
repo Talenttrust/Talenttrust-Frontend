@@ -97,13 +97,41 @@ function MilestonesPage() {
 }
 ```
 
-## Testing Notes
+## Testing
 
-When adding or changing behavior, cover:
+The dedicated test suite lives at:
 
-- Required title, payout, and currency validation.
-- Positive numeric payout validation.
-- Successful submission payload shape, including trimmed strings and optional due date handling.
-- The slug-plus-timestamp id shape. Mock `Date.now()` for deterministic assertions.
-- The `onCancel` contract.
-- Dialog and error-summary accessibility attributes.
+```
+src/components/__tests__/MilestoneCreationForm.test.tsx
+```
+
+### Test coverage areas
+
+| Area | What is verified |
+|------|-----------------|
+| **Rendering** | Dialog present, all field labels, accessible `role="dialog"` / `aria-modal` / `aria-labelledby`, default `currency=USD`, default `status=Pending`, no `ErrorSummary` on initial render |
+| **Required-field validation** | Empty form shows errors for title and payout; whitespace-only title; whitespace-only payout; `onSubmit` never called on invalid submit |
+| **Payout validation** | Non-numeric string rejected; zero rejected; negative number rejected; valid decimal accepted; `onSubmit` not called on invalid payout |
+| **Currency validation** | Empty currency string produces "Currency is required" error; all four currency options selectable |
+| **ID generation** | Slug derived from title (lowercased, hyphenated); two submissions with the same title produce different ids (via `jest.useFakeTimers` + `advanceTimersByTime`); slug strips leading/trailing hyphens; slug contains only `[a-z0-9-]` characters |
+| **Successful submission** | Correct `Milestone` shape returned; strings trimmed; blank `dueDate` becomes `undefined`; `contractId` forwarded when supplied, `undefined` when omitted; errors cleared on valid resubmit |
+| **Cancel behaviour** | `onCancel` fires exactly once; `onSubmit` never fires on cancel; cancel button has `type="button"` |
+| **ErrorSummary / a11y** | `role="alert"` present after invalid submit; `tabIndex="-1"` on summary; anchor links target field IDs (`#milestone-title`, `#milestone-payout`); `aria-invalid="true"` on failing inputs; `border-red-500` error styling applied |
+| **Status field** | All five status options selectable; chosen status included in submission payload |
+
+### Running the tests
+
+```bash
+npm test -- --testPathPattern=MilestoneCreationForm
+```
+
+To check coverage for the component specifically:
+
+```bash
+npm test -- --coverage --collectCoverageFrom='src/components/milestones/MilestoneCreationForm.tsx' --testPathPattern=MilestoneCreationForm
+```
+
+### Mocking guidance
+
+- **`Date.now()`** — Use `jest.useFakeTimers()` and `jest.advanceTimersByTime(1)` between submissions to assert that two ids with the same title slug are distinct.
+- No external modules are mocked; the component has no third-party dependencies beyond React and the shared `FormField` / `ErrorSummary` components which are exercised directly.
