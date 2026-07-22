@@ -20,13 +20,17 @@ This component eliminates duplicated status styling logic that previously existe
 
 ## Status Types
 
-The component supports the following status types:
+Each status renders an icon + label token so meaning is never conveyed by color alone (WCAG 1.4.1).
 
-- **Active** - Emerald theme (`bg-emerald-100 text-emerald-800`)
-- **Completed** - Sky theme (`bg-sky-100 text-sky-800`)
-- **Disputed** - Rose theme (`bg-rose-100 text-rose-800`)
-- **Pending** - Amber theme (`bg-amber-100 text-amber-800`)
-- **Paid** - Emerald theme (`bg-emerald-100 text-emerald-800`)
+| Status    | Icon | Color token                  |
+|-----------|------|------------------------------|
+| Active    | ▶    | `--status-success-*`         |
+| Completed | ✓    | `--status-info-*`            |
+| Disputed  | ⚠    | `--status-error-*`           |
+| Pending   | ⏳   | `--status-warning-*`         |
+| Paid      | ✔    | `--status-success-*`         |
+
+Icons are rendered in a child `<span aria-hidden="true">` so screen readers only announce the label text.
 
 ## Usage Examples
 
@@ -120,6 +124,5 @@ Both components now import `StatusBadge` and the shared `StatusType` type, ensur
 
 Potential improvements for future iterations:
 - Configurable badge sizes (small, medium, large)
-- Icon support for status-specific icons
 - Additional status types as business requirements evolve
 - Animation transitions on status changes

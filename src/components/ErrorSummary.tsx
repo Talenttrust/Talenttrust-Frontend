@@ -5,7 +5,7 @@ interface ErrorSummaryProps {
 }
 
 /**
- * A component that displays a summary of all validation errors at the top of a form.
+ * A component that displays a summary of all validation errors at the top of a form
  * It provides anchor links to the invalid fields for better navigation.
  */
 export const ErrorSummary: React.FC<ErrorSummaryProps> = ({ errors }) => {

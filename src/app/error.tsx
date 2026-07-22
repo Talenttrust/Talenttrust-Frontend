@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
+import { reportError } from '../lib/errorReporter';
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -9,9 +11,7 @@ interface ErrorProps {
 
 export default function GlobalError({ error, reset }: ErrorProps) {
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('[Error Boundary]', error);
-    }
+    reportError(error, 'Error Boundary');
   }, [error]);
 
   return (
@@ -30,12 +30,12 @@ export default function GlobalError({ error, reset }: ErrorProps) {
           >
             Try Again
           </button>
-          <a
+          <Link
             href="/"
             className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-colors"
           >
             Go Home
-          </a>
+          </Link>
           <a
             href="mailto:support@talenttrust.io"
             className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-colors"

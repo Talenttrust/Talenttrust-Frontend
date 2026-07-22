@@ -2,6 +2,14 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import StatusBadge, { StatusType } from '../StatusBadge';
 
+const STATUS_ICONS: Record<StatusType, string> = {
+  Active:    '▶',
+  Completed: '✓',
+  Disputed:  '⚠',
+  Pending:   '⏳',
+  Paid:      '✔',
+};
+
 describe('StatusBadge', () => {
   describe('rendering', () => {
     it('renders the status text', () => {
@@ -17,6 +25,24 @@ describe('StatusBadge', () => {
         expect(screen.getByText(status)).toBeInTheDocument();
         unmount();
       });
+    });
+
+    it('renders an icon for each status', () => {
+      const statuses: StatusType[] = ['Active', 'Completed', 'Disputed', 'Pending', 'Paid'];
+
+      statuses.forEach((status) => {
+        const { container, unmount } = render(<StatusBadge status={status} />);
+        const iconSpan = container.querySelector('span[aria-hidden="true"]');
+        expect(iconSpan).toBeInTheDocument();
+        expect(iconSpan?.textContent).toBe(STATUS_ICONS[status]);
+        unmount();
+      });
+    });
+
+    it('icon span has aria-hidden="true"', () => {
+      const { container } = render(<StatusBadge status="Active" />);
+      const iconSpan = container.querySelector('span[aria-hidden="true"]');
+      expect(iconSpan).toHaveAttribute('aria-hidden', 'true');
     });
   });
 

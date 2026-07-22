@@ -1,39 +1,249 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef } from 'react';
+import { useToast } from '@/components/toast/toast-provider';
+import { getItem, setItem, removeItem } from '@/lib/safeStorage';
+import { usePreferences } from '@/lib/preferences';
 
+/**
+ * Shape of the value exposed by {@link WalletContext}.
+ *
+ * Consumed exclusively through the {@link useWallet} hook; do not read from
+ * `WalletContext` directly.
+ */
 export type WalletContextType = {
+  /**
+   * The connected Stellar public key (G-address), or `null` when no wallet
+   * is connected. The value is rehydrated from `localStorage` on mount so it
+   * survives page refreshes without requiring a fresh `connect()` call.
+   *
+   * @example "GAAQ…DZ7H"
+   */
   address: string | null;
+
+  /**
+   * `true` while a connection attempt is in progress (i.e. between the
+   * `connect()` call and its resolution). Use this to disable the connect
+   * button and show a loading indicator.
+   */
   isConnecting: boolean;
+
+  /**
+   * Human-readable error message from the most recent failed `connect()`
+   * attempt, or `null` when no error is present. Cleared automatically at the
+   * start of each new `connect()` call.
+   *
+   * Known values (exported as named constants):
+   * - {@link FREIGHTER_NOT_INSTALLED} – browser extension absent.
+   * - {@link USER_REJECTED} – user dismissed the approval prompt.
+   */
   error: string | null;
+
+  /**
+   * Initiates a wallet connection sequence.
+   *
+   * **Current implementation (mock):** waits 1 second via `setTimeout`, then
+   * sets `address` to the hard-coded {@link MOCKED_STELLAR_ADDRESS} constant
+   * and persists it in `localStorage`. No real wallet extension is contacted.
+   *
+   * **Intended implementation:** will call the Freighter browser-extension API
+   * (`window.freighter.requestAccess()`), validate the returned public key,
+   * and persist it. Tracked in the pending Freighter integration milestone.
+   *
+   * Sets `isConnecting` to `true` for the duration of the attempt and resets
+   * it in the `finally` block regardless of outcome.
+   *
+   * @returns A `Promise` that resolves when the attempt completes (success or
+   *   failure). The promise never rejects; errors are surfaced through the
+   *   `error` field instead.
+   */
   connect: () => Promise<void>;
+
+  /**
+   * Terminates the active wallet session.
+   *
+   * Clears `address` in state, removes the persisted key from `localStorage`,
+   * and cancels any running inactivity-timeout timer.
+   */
   disconnect: () => void;
 };
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-export function WalletProvider({ children }: { children: ReactNode }) {
+export const FREIGHTER_NOT_INSTALLED = 'Freighter wallet is not installed. Please install the Freighter browser extension.';
+export const USER_REJECTED = 'User rejected the connection request.';
+export const MOCKED_STELLAR_ADDRESS = 'GAAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQDZ7H';
+
+/**
+ * Provides global wallet connection state to the React tree.
+ *
+ * ## Placement
+ * Rendered inside `src/app/layout.tsx`, wrapping the entire application so
+ * every page and component can access wallet state without prop-drilling:
+ *
+ * ```
+ * <PreferencesProvider>
+ *   <ToastProvider>
+ *     <WalletProvider>   ← here
+ *       {children}
+ *     </WalletProvider>
+ *   </ToastProvider>
+ * </PreferencesProvider>
+ * ```
+ *
+ * ## Exposed context fields
+ * | Field          | Type                  | Description                                      |
+ * |----------------|-----------------------|--------------------------------------------------|
+ * | `address`      | `string \| null`      | Connected Stellar public key; `null` if none.    |
+ * | `isConnecting` | `boolean`             | `true` while a connection attempt is in flight.  |
+ * | `error`        | `string \| null`      | Last connection error message, or `null`.        |
+ * | `connect`      | `() => Promise<void>` | Initiates a connection attempt (currently mock). |
+ * | `disconnect`   | `() => void`          | Clears session state and storage.                |
+ *
+ * ## Idle auto-disconnect
+ * When `idleTimeout` is a positive number, the provider listens for pointer,
+ * keyboard, visibility, and touch events. If no activity is detected within
+ * `idleTimeout` milliseconds, `disconnect()` is called automatically and a
+ * toast notification is shown. Pass `0` (the default) to disable this feature.
+ *
+ * @param children    - React subtree that requires wallet context.
+ * @param idleTimeout - Inactivity duration in milliseconds before
+ *                      auto-disconnect. Defaults to `0` (disabled).
+ */
+
+export function WalletProvider({
+  children,
+  idleTimeout: propIdleTimeout,
+}: {
+  children: ReactNode;
+  idleTimeout?: number;
+}) {
+  const { preferences } = usePreferences();
+  const idleTimeout = propIdleTimeout !== undefined ? propIdleTimeout : preferences.idleDisconnectMs;
+
   const [address, setAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Safely obtain toast functions; fallback to no-ops if provider is absent
+  // (e.g. during unit tests that render WalletProvider without ToastProvider).
+  const useSafeToast = () => {
+    try {
+      return useToast();
+    } catch {
+      return { showSuccess: () => {}, showError: () => {} };
+    }
+  };
+  const { showSuccess, showError } = useSafeToast();
 
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const STORAGE_KEY = 'wallet_connected_address';
+
+
+
+  const disconnect = useCallback(() => {
+    setAddress(null);
+    removeItem(STORAGE_KEY);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  /** Reset the inactivity timer */
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    if (address && idleTimeout > 0) {
+      timerRef.current = setTimeout(() => {
+        disconnect();
+        showSuccess({
+          title: 'Session expired',
+          description: 'You have been disconnected due to inactivity.',
+        });
+      }, idleTimeout);
+    }
+  }, [address, idleTimeout, disconnect, showSuccess]);
+
+  // Rehydrate address from storage on mount (client only)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = getItem(STORAGE_KEY);
+    if (stored) {
+      setAddress(stored);
+    }
+  }, []);
+
+  // Idle auto‑disconnect handling
+  useEffect(() => {
+    if (typeof window === 'undefined' || !address || idleTimeout <= 0) {
+      return;
+    }
+    const events = ['pointermove', 'keydown', 'visibilitychange', 'mousedown', 'touchstart'];
+    const handleActivity = () => resetTimer();
+    events.forEach(e => window.addEventListener(e, handleActivity, { passive: true }));
+    resetTimer();
+    return () => {
+      events.forEach(e => window.removeEventListener(e, handleActivity));
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [address, idleTimeout, resetTimer]);
+
+  /**
+   * Initiates a wallet connection attempt.
+   *
+   * ⚠️  MOCK IMPLEMENTATION — real Freighter integration pending.
+   *
+   * Steps performed by the current mock:
+   *   1. Sets `isConnecting` to `true` and clears any previous `error`.
+   *   2. Waits exactly **1 second** via `setTimeout` to simulate network /
+   *      extension latency (no real wallet API is called).
+   *   3. Sets `address` to the hard-coded {@link MOCKED_STELLAR_ADDRESS}
+   *      constant and persists it to `localStorage` under `wallet_connected_address`.
+   *   4. Resets `isConnecting` to `false` in the `finally` block.
+   *
+   * Intended behaviour (post-integration):
+   *   1. Guard against SSR (`typeof window === 'undefined'`).
+   *   2. Detect Freighter via `window.freighter`; surface
+   *      {@link FREIGHTER_NOT_INSTALLED} if absent.
+   *   3. Call `window.freighter.requestAccess()`; map a user-rejection to
+   *      {@link USER_REJECTED}.
+   *   4. Validate and persist the returned Stellar public key.
+   */
   const connect = useCallback(async () => {
     setIsConnecting(true);
     setError(null);
     try {
-      // Mocking wallet connection delay
+      // ── MOCK: simulates a 1-second connection delay. ──────────────────────
+      // Replace this block with the real Freighter requestAccess() call when
+      // the Freighter integration milestone is implemented.
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      // Mocked address
-      setAddress('0x71C7656EC7ab88b098defB751B7401B5f6d8976F');
-    } catch (err) {
-      setError('Failed to connect wallet');
+      // ── MOCK: hard-coded Stellar G-address for UI development only. ───────
+      // Replace with the public key returned by window.freighter.getPublicKey()
+      // once the real wallet integration is in place.
+      setAddress(MOCKED_STELLAR_ADDRESS);
+      setItem(STORAGE_KEY, MOCKED_STELLAR_ADDRESS);
+    } catch (_err) {
+      const message = 'Failed to connect wallet';
+      /**
+       * Set inline error state so button-level consumers can render it.
+       * The toast below provides an assertive screen-reader announcement;
+       * avoid duplicating the message in aria-live regions by keeping a
+       * single source-of-truth in the toast system.
+       */
+      setError(message);
+      /**
+       * Surface the failure via the toast system so screen-reader users
+       * receive an assertive `role="alert"` announcement in addition to
+       * the inline error rendered by consuming components.
+       */
+      showError({
+        title: 'Wallet connection failed',
+        description: message,
+      });
     } finally {
       setIsConnecting(false);
     }
-  }, []);
-
-  const disconnect = useCallback(() => {
-    setAddress(null);
   }, []);
 
   return (
@@ -43,6 +253,27 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Accesses the wallet connection context from any client component.
+ *
+ * Returns the full {@link WalletContextType} value: the connected Stellar
+ * address, connection-in-progress flag, last error string, and the
+ * `connect` / `disconnect` actions.
+ *
+ * **Safety guard:** throws an `Error` with a descriptive message if called
+ * outside of a `<WalletProvider>` subtree. This makes misconfigured trees
+ * fail fast and visibly during development rather than silently reading
+ * `undefined`.
+ *
+ * @example
+ * ```tsx
+ * const { address, isConnecting, connect, disconnect, error } = useWallet();
+ * ```
+ *
+ * @returns The current {@link WalletContextType} value.
+ * @throws {Error} `"useWallet must be used within a WalletProvider"` when the
+ *   hook is called outside of a `<WalletProvider>`.
+ */
 export function useWallet() {
   const context = useContext(WalletContext);
   if (context === undefined) {

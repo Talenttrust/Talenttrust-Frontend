@@ -15,6 +15,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { preferences, updatePreference } = usePreferences();
   const panelRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Focus management effect for modal dialog accessibility.
+   * - Sets initial focus to the close button when dialog opens
+   * - Implements focus trapping to prevent focus from leaving the dialog
+   * - Handles Tab key wrapping from last to first element
+   * - Handles Shift+Tab wrapping from first to last element
+   * - Closes dialog on Escape key press
+   */
   useEffect(() => {
     if (!isOpen) return;
     const panel = panelRef.current;
