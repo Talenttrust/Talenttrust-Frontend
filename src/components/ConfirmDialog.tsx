@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
+import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
 
 /** Props for the ConfirmDialog component */
 export interface ConfirmDialogProps {
@@ -40,40 +41,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelBtnRef = useRef<HTMLButtonElement>(null);
 
-  const FOCUSABLE_SELECTORS =
-    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-  useEffect(() => {
-    if (!isOpen) return;
-    // Move focus to cancel button on open
-    cancelBtnRef.current?.focus();
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onCancel();
-        return;
-      }
-      if (e.key === 'Tab') {
-        const panel = dialogRef.current;
-        if (!panel) return;
-        const focusable = Array.from(
-          panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS)
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onCancel]);
+  useDialogFocusTrap({
+    isOpen,
+    dialogRef,
+    initialFocusRef: cancelBtnRef,
+    onEscape: onCancel,
+  });
 
   if (!isOpen) return null;
 

@@ -558,3 +558,35 @@ To verify reduced-motion behavior:
 5. Hover over interactive elements — state changes should be instant, not gradual
 
 All automated tests pass with zero axe violations under reduced-motion conditions.
+
+---
+
+## Shared modal focus trap
+
+Modal dialogs use the shared `useDialogFocusTrap` hook in
+`src/hooks/useDialogFocusTrap.ts`. This hook contains the keyboard mechanism
+originally used inline by `ConfirmDialog`, so dialog components do not create
+slightly different focus-trap implementations.
+
+The hook receives refs for the dialog container and its initial-focus target,
+plus the dialog's Escape callback. While the dialog is open it:
+
+1. Moves focus to the configured initial element.
+2. Wraps `Tab` from the last enabled focusable element to the first.
+3. Wraps `Shift+Tab` from the first enabled focusable element to the last.
+4. Prevents the default Escape action and invokes the supplied close callback.
+5. Optionally captures and restores the element that had focus immediately
+   before the dialog opened.
+
+`ConfirmDialog` now consumes this shared hook while continuing to let its
+owning action component restore focus, preserving its existing public
+behavior. `MilestoneCreationForm` enables the hook's `restoreFocus` option:
+focus initially lands on the Title field, remains inside the modal while
+tabbing, Escape calls `onCancel`, and every unmount/close path restores focus
+to the button that opened the form.
+
+Regression coverage lives in
+`src/components/__tests__/MilestoneDialogFocus.test.tsx`. It covers initial
+focus, forward and backward wrapping, Escape, Cancel and parent-controlled
+closing, successful submission, a single enabled focus target, missing or
+empty dialog containers, and repeated open/close cycles.
