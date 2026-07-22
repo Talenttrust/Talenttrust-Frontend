@@ -1,20 +1,18 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import EmptyState from '../../components/EmptyState';
 import MilestonesList from '../../components/MilestonesList';
 import MilestoneFilter, { type MilestoneStatusFilter } from '../../components/milestones/MilestoneFilter';
 import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
 import { listMilestones, saveMilestone } from '@/lib/repository';
+import { getItem, setItem } from '@/lib/safeStorage';
 import type { Milestone } from '@/types/domain';
 
-/**
- * Sample milestones shown when the user has not yet created any of their own.
- * Acts as a demo / onboarding scaffold; replaced by real persisted data once
- * the first milestone is saved via `saveMilestone`.
- */
-const SAMPLE_MILESTONES: Milestone[] = [
+export const SAMPLE_DISMISSED_KEY = 'talenttrust-milestones-sample-dismissed';
+
+export const SAMPLE_MILESTONES: Milestone[] = [
   {
     id: '1',
     title: 'Project Kickoff & Discovery',
@@ -57,18 +55,6 @@ const SAMPLE_MILESTONES: Milestone[] = [
   },
 ];
 
-/**
- * Reads persisted milestones from the repository after the client mounts.
- *
- * Deferring the `localStorage` read to client-side avoids hydration mismatches
- * during Next.js server prerendering. When no milestones have been saved yet,
- * falls back to `SAMPLE_MILESTONES` so the demo experience remains intact.
- */
-function loadMilestonesFromRepository(): Milestone[] {
-  const persisted = listMilestones();
-  return persisted.length > 0 ? persisted : SAMPLE_MILESTONES;
-}
-
 const VALID_STATUSES: MilestoneStatusFilter[] = ['All', 'Pending', 'Completed', 'Paid', 'Disputed'];
 
 function getValidStatus(param: string | null): MilestoneStatusFilter {
@@ -79,8 +65,10 @@ function getValidStatus(param: string | null): MilestoneStatusFilter {
 
 const MilestonesContent: React.FC = () => {
   const [milestones, setMilestones] = useState<Milestone[]>(SAMPLE_MILESTONES);
+  const [isDismissed, setIsDismissed] = useState<boolean>(false);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const startFromScratchRef = useRef<HTMLButtonElement | null>(null);
 
   const initialStatus = getValidStatus(searchParams.get('status'));
   const [statusFilter, setStatusFilter] = useState<MilestoneStatusFilter>(initialStatus);
@@ -104,35 +92,55 @@ const MilestonesContent: React.FC = () => {
 
   // Rehydrate from localStorage after the client mounts to avoid SSR mismatches.
   useEffect(() => {
-    setMilestones(loadMilestonesFromRepository());
+    const persisted = listMilestones();
+    if (persisted.length > 0) {
+      setMilestones(persisted);
+      setIsDismissed(true);
+    } else {
+      try {
+        const dismissed = getItem(SAMPLE_DISMISSED_KEY) === 'true';
+        setIsDismissed(dismissed);
+      } catch {
+        setIsDismissed(true);
+      }
+      setMilestones(SAMPLE_MILESTONES);
+    }
   }, []);
 
-  const filtered = useMemo(() => {
-    if (statusFilter === 'All') return milestones;
-    return milestones.filter((m) => m.status === statusFilter);
-  }, [milestones, statusFilter]);
+  const handleDismissSampleBanner = useCallback(() => {
+    try {
+      setItem(SAMPLE_DISMISSED_KEY, 'true');
+    } catch {
+      // safeStorage failure resilience
+    }
+    setIsDismissed(true);
+    setMilestones([]);
+    setTimeout(() => {
+      startFromScratchRef.current?.focus();
+    }, 0);
+  }, []);
 
-  /**
-   * Opens the milestone creation modal.
-   */
+  const isUsingSampleData = milestones === SAMPLE_MILESTONES;
+  const showSampleBanner = isUsingSampleData && !isDismissed;
+  const displayMilestones = isUsingSampleData && isDismissed ? [] : milestones;
+
+  const filtered = useMemo(() => {
+    if (statusFilter === 'All') return displayMilestones;
+    return displayMilestones.filter((m) => m.status === statusFilter);
+  }, [displayMilestones, statusFilter]);
+
   const handleAddMilestone = useCallback(() => {
     setShowForm(true);
   }, []);
 
-  /**
-   * Persists the new milestone, refreshes state from the repository, then
-   * closes the form.
-   */
   const handleSubmitMilestone = useCallback((milestone: Milestone) => {
     saveMilestone(milestone);
-    // Re-read from storage so the list reflects the persisted state exactly.
-    setMilestones(listMilestones());
+    const persisted = listMilestones();
+    setMilestones(persisted);
+    setIsDismissed(true);
     setShowForm(false);
   }, []);
 
-  /**
-   * Closes the milestone creation modal without saving.
-   */
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
   }, []);
@@ -141,7 +149,44 @@ const MilestonesContent: React.FC = () => {
     <main className="min-h-screen p-8">
       <h1 className="text-2xl font-bold mb-6">Milestones</h1>
 
-      {milestones.length === 0 ? (
+      {showSampleBanner && (
+        <div
+          data-testid="sample-data-banner"
+          role="status"
+          aria-label="Sample data notice"
+          className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-4 shadow-sm"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-blue-900">
+                You're viewing sample data
+              </p>
+              <p className="mt-1 text-sm text-blue-700">
+                These are example milestones to help you get started.
+              </p>
+              <button
+                ref={startFromScratchRef}
+                data-testid="start-from-scratch-btn"
+                type="button"
+                onClick={handleDismissSampleBanner}
+                className="mt-3 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              >
+                Start from scratch
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={handleDismissSampleBanner}
+              aria-label="Dismiss sample data notice"
+              className="text-blue-500 hover:text-blue-700"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {displayMilestones.length === 0 ? (
         <EmptyState
           illustration="milestones"
           title="No milestones tracked"

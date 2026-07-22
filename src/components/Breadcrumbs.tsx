@@ -66,7 +66,7 @@ const Breadcrumbs = ({ items }: BreadcrumbsProps) => {
                 // Ancestor: linked crumb
                 <Link
                   href={item.href ?? '/'}
-                  className="truncate max-w-[16rem] transition hover:text-slate-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 rounded-sm"
+                  className="truncate max-w-[16rem] transition hover:text-slate-900 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
                 >
                   {item.label}
                 </Link>

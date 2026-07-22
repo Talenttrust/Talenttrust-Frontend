@@ -4,7 +4,10 @@ import React, { useState, useCallback, FormEvent, useRef } from 'react';
 import { FormField } from '@/components/FormField';
 import { ErrorSummary } from '@/components/ErrorSummary';
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
+import { sanitizeUserText } from '@/lib/sanitizeUserText';
 import type { Milestone } from '@/types/domain';
+
+export const MAX_MILESTONE_TITLE_LENGTH = 200;
 
 /** Status options available when creating a milestone. */
 const STATUS_OPTIONS: Milestone['status'][] = [
@@ -76,8 +79,15 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
   const validateForm = useCallback((): Array<{ fieldId: string; message: string }> => {
     const errs: Array<{ fieldId: string; message: string }> = [];
 
-    if (!title.trim()) {
+    const sanitizedTitle = sanitizeUserText(title, MAX_MILESTONE_TITLE_LENGTH);
+    const unboundedTitle = sanitizeUserText(title, Number.MAX_SAFE_INTEGER);
+    if (!sanitizedTitle) {
       errs.push({ fieldId: 'milestone-title', message: 'Title is required' });
+    } else if (unboundedTitle.length > MAX_MILESTONE_TITLE_LENGTH) {
+      errs.push({
+        fieldId: 'milestone-title',
+        message: `Title must be no more than ${MAX_MILESTONE_TITLE_LENGTH} characters`,
+      });
     }
 
     const numericPayout = parseFloat(payout);
@@ -108,8 +118,8 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
       if (validationErrors.length > 0) return;
 
       // Generate a stable id from title slug + current timestamp
-      const slug = title
-        .trim()
+      const sanitizedTitle = sanitizeUserText(title, MAX_MILESTONE_TITLE_LENGTH);
+      const slug = sanitizedTitle
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
@@ -117,7 +127,7 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
 
       const milestone: Milestone = {
         id,
-        title: title.trim(),
+        title: sanitizedTitle,
         status,
         payout: parseFloat(payout),
         currency: currency.trim(),

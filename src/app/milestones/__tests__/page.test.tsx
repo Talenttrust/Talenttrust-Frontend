@@ -5,6 +5,16 @@ import MilestonesPage from '../page';
 import { listMilestones } from '@/lib/repository';
 import type { Milestone } from '@/types/domain';
 
+const mockSearchParams = {
+  get: jest.fn(() => null),
+  toString: jest.fn(() => ''),
+};
+
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => mockSearchParams,
+  useRouter: () => ({ replace: jest.fn(), push: jest.fn(), prefetch: jest.fn() }),
+}));
+
 jest.mock('@/lib/repository', () => ({
   listMilestones: jest.fn(),
 }));
@@ -33,10 +43,13 @@ const persistedMilestones: Milestone[] = [
 describe('MilestonesPage', () => {
   beforeEach(() => {
     mockedListMilestones.mockReturnValue([]);
+    window.localStorage.clear();
+    mockSearchParams.get.mockReturnValue(null);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    window.localStorage.clear();
   });
 
   it('renders persisted milestones from the repository after client load', async () => {
@@ -69,6 +82,10 @@ describe('MilestonesPage', () => {
 
     render(<MilestonesPage />);
 
+    await waitFor(() => {
+      expect(screen.getByText('Repository Review')).toBeInTheDocument();
+    });
+
     const group = screen.getByRole('radiogroup', { name: /filter milestones by status/i });
     expect(group).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'All' })).toBeChecked();
@@ -78,9 +95,11 @@ describe('MilestonesPage', () => {
 
     await user.click(screen.getByRole('radio', { name: 'Completed' }));
 
-    expect(screen.getByText('Repository Review')).toBeInTheDocument();
-    expect(screen.queryByText('Repository Kickoff')).not.toBeInTheDocument();
-    expect(screen.getByText(/showing 1 completed milestone/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Repository Review')).toBeInTheDocument();
+      expect(screen.queryByText('Repository Kickoff')).not.toBeInTheDocument();
+      expect(screen.getByText(/showing 1 completed milestone/i)).toBeInTheDocument();
+    });
   });
 
   it('shows the filter empty state when persisted milestones do not match the selected status', async () => {
@@ -89,13 +108,18 @@ describe('MilestonesPage', () => {
 
     render(<MilestonesPage />);
 
-    await screen.findAllByText('Repository Kickoff');
+    await waitFor(() => {
+      expect(screen.getByText('Repository Review')).toBeInTheDocument();
+    });
+
     await user.click(screen.getByRole('radio', { name: 'Paid' }));
 
-    expect(screen.getByText('No milestones match this filter')).toBeInTheDocument();
-    expect(
-      screen.getByText(/there are no paid milestones at the moment/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/showing 0 paid milestones/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('No milestones match this filter')).toBeInTheDocument();
+      expect(
+        screen.getByText(/there are no paid milestones at the moment/i),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/showing 0 paid milestones/i)).toBeInTheDocument();
+    });
   });
 });
