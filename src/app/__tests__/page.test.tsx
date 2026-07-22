@@ -7,7 +7,7 @@ import { ToastProvider } from '@/components/toast/toast-provider';
 import { assertNoA11yViolations } from '@/test-utils/a11y';
 import { safeStorage } from '@/lib/safeStorage';
 
-// Mock wallet is already mocked in jest.setup.js
+// Mock wallet is already mocked in jest.setup.ts
 // Mock next/navigation if needed (not needed for this test
 
 function renderHome() {
