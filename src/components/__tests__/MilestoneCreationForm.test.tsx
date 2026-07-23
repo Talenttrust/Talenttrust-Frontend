@@ -294,8 +294,10 @@ describe('MilestoneCreationForm', () => {
     });
 
     it('produces unique ids for two submissions with the same title', async () => {
-      // Advance fake timers to ensure Date.now() returns distinct values
-      jest.useFakeTimers();
+      // Mock Date.now() to ensure it returns distinct values for each submission
+      const dateSpy = jest.spyOn(Date, 'now')
+        .mockReturnValueOnce(1000)
+        .mockReturnValueOnce(2000);
 
       const onSubmit1 = jest.fn();
       const onSubmit2 = jest.fn();
@@ -309,9 +311,6 @@ describe('MilestoneCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /add milestone/i }));
       await waitFor(() => expect(onSubmit1).toHaveBeenCalledTimes(1));
       unmount1();
-
-      // Advance time so Date.now() returns a different value
-      jest.advanceTimersByTime(5);
 
       // Second render + submit
       render(
@@ -327,7 +326,7 @@ describe('MilestoneCreationForm', () => {
 
       expect(id1).not.toBe(id2);
 
-      jest.useRealTimers();
+      dateSpy.mockRestore();
     });
 
     it('id slug strips leading and trailing hyphens', async () => {
