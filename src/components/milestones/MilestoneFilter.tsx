@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 /**
  * The set of statuses a user can filter milestones by.
@@ -17,6 +17,8 @@ const FILTER_OPTIONS: MilestoneStatusFilter[] = [
   'Paid',
   'Disputed',
 ];
+
+export const MILESTONE_ANNOUNCEMENT_DELAY_MS = 300;
 
 export interface MilestoneFilterProps {
   /** The currently active filter. */
@@ -54,6 +56,29 @@ export interface MilestoneFilterProps {
  * ```
  */
 const MilestoneFilter = ({ selected, onChange, resultCount }: MilestoneFilterProps) => {
+  const [announcement, setAnnouncement] = useState('');
+  const previousResult = useRef({ selected, resultCount });
+
+  useEffect(() => {
+    const previous = previousResult.current;
+
+    if (previous.selected === selected && previous.resultCount === resultCount) {
+      return;
+    }
+
+    previousResult.current = { selected, resultCount };
+    setAnnouncement('');
+
+    const timeoutId = window.setTimeout(() => {
+      const milestoneLabel = resultCount === 1 ? 'milestone' : 'milestones';
+      const filterLabel = selected === 'All' ? `all ${resultCount}` : `${resultCount} ${selected.toLowerCase()}`;
+
+      setAnnouncement(`Showing ${filterLabel} ${milestoneLabel}`);
+    }, MILESTONE_ANNOUNCEMENT_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [resultCount, selected]);
+
   return (
     <div className="mb-6">
       <fieldset>
@@ -100,9 +125,7 @@ const MilestoneFilter = ({ selected, onChange, resultCount }: MilestoneFilterPro
         aria-live="polite"
         aria-atomic="true"
       >
-        {selected === 'All'
-          ? `Showing all ${resultCount} milestone${resultCount !== 1 ? 's' : ''}`
-          : `Showing ${resultCount} ${selected.toLowerCase()} milestone${resultCount !== 1 ? 's' : ''}`}
+        {announcement}
       </p>
     </div>
   );
