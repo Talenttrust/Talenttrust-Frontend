@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import MilestonesList from '../MilestonesList';
 import type { Milestone } from '../MilestonesList';
@@ -214,6 +215,21 @@ describe('MilestonesList', () => {
       // Focus should shift to the scroll container
       const region = container.querySelector('.max-h-\\[calc\\(100vh-260px\\)\\]');
       expect(document.activeElement).toBe(region);
+    });
+
+    it('dismisses the reminder with the keyboard and keeps focus in the list', async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const milestones: Milestone[] = [
+        { id: '1', title: 'Due Soon', status: 'Pending', payout: 500, currency: 'USD', dueDate: 'May 15, 2026' },
+      ];
+      const { container } = render(<MilestonesList milestones={milestones} />);
+      const dismissButton = screen.getByRole('button', { name: 'Dismiss reminder' });
+
+      dismissButton.focus();
+      await user.keyboard('{Enter}');
+
+      expect(screen.queryByRole('button', { name: 'Dismiss reminder' })).not.toBeInTheDocument();
+      expect(document.activeElement).toBe(scrollRegion(container));
     });
   });
 
