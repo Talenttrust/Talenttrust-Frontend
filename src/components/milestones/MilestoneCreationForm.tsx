@@ -4,6 +4,7 @@ import React, { useState, useCallback, FormEvent } from 'react';
 import { FormField } from '@/components/FormField';
 import { ErrorSummary } from '@/components/ErrorSummary';
 import { sanitizeUserText } from '@/lib/sanitizeUserText';
+import { useFormSubmit } from '@/hooks/useFormSubmit';
 import type { Milestone } from '@/types/domain';
 
 export const MAX_MILESTONE_TITLE_LENGTH = 200;
@@ -104,7 +105,7 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
    * Handles form submission: validates, then calls `onSubmit` with the
    * constructed `Milestone` object on success.
    */
-  const handleSubmit = useCallback(
+  const handleRawSubmit = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
 
@@ -135,6 +136,8 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
     },
     [title, payout, currency, status, dueDate, contractId, validateForm, onSubmit],
   );
+
+  const handleSubmit = useFormSubmit(handleRawSubmit, 'MilestoneCreationForm');
 
   const getFieldError = (fieldId: string): string | undefined =>
     errors.find((e) => e.fieldId === fieldId)?.message;

@@ -4,6 +4,18 @@ import '@testing-library/jest-dom';
 import { MilestoneCreationForm } from '../milestones/MilestoneCreationForm';
 import type { Milestone } from '@/types/domain';
 
+const mockShowError = jest.fn();
+jest.mock('@/components/toast/toast-provider', () => ({
+  useToast: jest.fn(() => ({
+    showSuccess: jest.fn(),
+    showError: mockShowError,
+  })),
+}));
+
+jest.mock('@/lib/errorReporter', () => ({
+  reportError: jest.fn(),
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -434,6 +446,29 @@ describe('MilestoneCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /add milestone/i }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Unexpected Error Handling
+  // -------------------------------------------------------------------------
+  describe('Unexpected Error Handling', () => {
+    it('catches asynchronous unexpected errors during submission and displays a global error toast', async () => {
+      const errorMockOnSubmit = jest.fn().mockRejectedValue(new Error('Network error'));
+      renderForm({ onSubmit: errorMockOnSubmit });
+
+      const submitBtn = fillValidForm('Network Test', '1000');
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(errorMockOnSubmit).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockShowError).toHaveBeenCalledWith({
+        title: 'An unexpected error occurred',
+        description: 'Network error',
+      });
+      expect(screen.queryByRole('alert', { name: /there is a problem/i })).not.toBeInTheDocument();
     });
   });
 

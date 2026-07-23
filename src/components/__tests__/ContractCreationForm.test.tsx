@@ -13,6 +13,18 @@ jest.mock('@/lib/stellarAddress', () => ({
   isValidStellarAddress: jest.fn(),
 }));
 
+const mockShowError = jest.fn();
+jest.mock('@/components/toast/toast-provider', () => ({
+  useToast: jest.fn(() => ({
+    showSuccess: jest.fn(),
+    showError: mockShowError,
+  })),
+}));
+
+jest.mock('@/lib/errorReporter', () => ({
+  reportError: jest.fn(),
+}));
+
 describe('ContractCreationForm', () => {
   const mockOnSubmit = jest.fn();
   const mockOnCancel = jest.fn();
@@ -363,6 +375,43 @@ describe('ContractCreationForm', () => {
 
       const submittedContract = mockOnSubmit.mock.calls[0][0];
       expect(submittedContract.parties).toHaveLength(2);
+      expect(mockShowError).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Unexpected Error Handling', () => {
+    it('catches synchronous unexpected errors during submission and displays a global error toast', async () => {
+      const errorMockOnSubmit = jest.fn(() => {
+        throw new Error('Database connection failed');
+      });
+
+      render(<ContractCreationForm {...defaultProps} onSubmit={errorMockOnSubmit} />);
+
+      // Fill in valid contract details
+      fireEvent.change(screen.getByLabelText(/contract name/i), { target: { value: 'Test Contract' } });
+      fireEvent.change(screen.getByLabelText(/total value/i), { target: { value: '1000' } });
+      
+      const partyLabels = screen.getAllByPlaceholderText(/e\.g\., client, freelancer/i);
+      const partyAddresses = screen.getAllByPlaceholderText(/GXXXXXXXXXX/i);
+      fireEvent.change(partyLabels[0], { target: { value: 'Client' } });
+      fireEvent.change(partyAddresses[0], { target: { value: VALID_ADDRESS } });
+      fireEvent.change(partyLabels[1], { target: { value: 'Freelancer' } });
+      fireEvent.change(partyAddresses[1], { target: { value: VALID_ADDRESS } });
+
+      fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
+
+      await waitFor(() => {
+        expect(errorMockOnSubmit).toHaveBeenCalledTimes(1);
+      });
+
+      // Verify that the error toast was triggered
+      expect(mockShowError).toHaveBeenCalledWith({
+        title: 'An unexpected error occurred',
+        description: 'Database connection failed',
+      });
+
+      // Validation error summary should not be shown
+      expect(screen.queryByRole('alert', { name: /there is a problem/i })).not.toBeInTheDocument();
     });
   });
 
