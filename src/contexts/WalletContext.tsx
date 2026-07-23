@@ -5,6 +5,9 @@ import { useToast } from '@/components/toast/toast-provider';
 import { getItem, setItem, removeItem } from '@/lib/safeStorage';
 import { usePreferences } from '@/lib/preferences';
 
+/** Debounce delay (ms) before flushing a live-region announcement. */
+export const ANNOUNCE_DEBOUNCE_MS = 300;
+
 /**
  * Shape of the value exposed by {@link WalletContext}.
  *
@@ -75,6 +78,104 @@ export const USER_REJECTED = 'User rejected the connection request.';
 export const MOCKED_STELLAR_ADDRESS = 'GAAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQDZ7H';
 
 /**
+ * WalletAnnouncer — internal component that announces wallet state transitions
+ * to assistive technologies through a polite ARIA live region.
+ *
+ * ## Behaviour
+ * - **No mount or rehydration announcement** — the first render and the
+ *   subsequent localStorage-rehydration update are both intentionally silent,
+ *   so screen-reader users are not interrupted when the page loads (even when
+ *   it has a pre-existing session restored from `localStorage`).
+ * - **Debounced** — rapid successive address changes (e.g. connect → reconnect
+ *   within a short interval) are collapsed into a single announcement after
+ *   {@link ANNOUNCE_DEBOUNCE_MS} ms of quiet, preventing queue spam.
+ * - **Polite priority** — uses `aria-live="polite"` so the announcement waits
+ *   for the user's current utterance to finish rather than interrupting it.
+ * - **Atomic** — `aria-atomic="true"` ensures assistive tech reads the full
+ *   announcement string, not just the changed portion.
+ *
+ * ## Announcement copy
+ * | Transition          | Announcement                              |
+ * |---------------------|-------------------------------------------|
+ * | `null` → address    | `"Wallet connected."`                     |
+ * | address → `null`    | `"Wallet disconnected."`                  |
+ * | address → address   | `"Wallet address changed."` (edge case)   |
+ *
+ * This component is rendered inside `WalletContext.Provider` so it can
+ * consume `useWallet()` and react to context changes without prop-drilling.
+ *
+ * @param hydratedRef - Ref set to `true` by `WalletProvider` once the initial
+ *   `localStorage` rehydration effect has run.  Announcements are suppressed
+ *   until this flag is `true` so that restoring a pre-existing session on
+ *   page load does not trigger a spurious "Wallet connected." announcement.
+ *
+ * @internal Not exported; only used inside {@link WalletProvider}.
+ */
+function WalletAnnouncer({ hydratedRef }: { hydratedRef: React.MutableRefObject<boolean> }) {
+  const { address } = useWallet();
+  const [announcement, setAnnouncement] = useState('');
+
+  // Remember the previous address to compute the transition direction.
+  const prevAddressRef = useRef(address);
+  // Debounce timer handle.
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const prev = prevAddressRef.current;
+    prevAddressRef.current = address;
+
+    // Suppress announcements until the provider's hydration effect has run.
+    // This silences both the initial mount (address = null) and the immediate
+    // rehydration update (null → stored address).
+    if (!hydratedRef.current) return;
+
+    // Nothing changed — nothing to announce.
+    if (prev === address) return;
+
+    // Compute announcement string for this transition.
+    let message: string;
+    if (!prev && address) {
+      message = 'Wallet connected.';
+    } else if (prev && !address) {
+      message = 'Wallet disconnected.';
+    } else {
+      // address → different address (unlikely in practice, but handle it)
+      message = 'Wallet address changed.';
+    }
+
+    // Debounce: cancel any pending timer and restart.
+    if (debounceRef.current !== null) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      setAnnouncement(message);
+      debounceRef.current = null;
+    }, ANNOUNCE_DEBOUNCE_MS);
+  }, [address, hydratedRef]);
+
+  // Clean up debounce timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current !== null) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <span
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label="Wallet status updates"
+      className="sr-only"
+    >
+      {announcement}
+    </span>
+  );
+}
+
+/**
  * Provides global wallet connection state to the React tree.
  *
  * ## Placement
@@ -138,9 +239,16 @@ export function WalletProvider({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const STORAGE_KEY = 'wallet_connected_address';
 
-
-
-  const disconnect = useCallback(() => {
+  /**
+   * Tracks whether the initial localStorage rehydration effect has run.
+   * Set to `true` synchronously *inside* the rehydration effect (before
+   * `setAddress`) so that `WalletAnnouncer` can distinguish the boot-time
+   * address restoration (silent) from a subsequent user-driven connect.
+   *
+   * Using a `ref` (not `state`) deliberately: we do not want an extra render
+   * cycle — the value is consumed only by `WalletAnnouncer`'s effect guard.
+   */
+  const hydratedRef = useRef(false);  const disconnect = useCallback(() => {
     setAddress(null);
     removeItem(STORAGE_KEY);
     if (timerRef.current) {
@@ -172,6 +280,15 @@ export function WalletProvider({
     if (stored) {
       setAddress(stored);
     }
+    // Mark hydration complete.  This must happen *after* the potential
+    // setAddress call so that WalletAnnouncer's effect — which runs after
+    // this one due to child-before-parent effect ordering — still sees
+    // hydratedRef.current === false during the rehydration update.
+    // We schedule it as a microtask to run after all synchronous effects in
+    // this batch (including the child WalletAnnouncer's effect) have fired.
+    Promise.resolve().then(() => {
+      hydratedRef.current = true;
+    });
   }, []);
 
   // Idle auto‑disconnect handling
@@ -248,6 +365,7 @@ export function WalletProvider({
 
   return (
     <WalletContext.Provider value={{ address, isConnecting, error, connect, disconnect }}>
+      <WalletAnnouncer hydratedRef={hydratedRef} />
       {children}
     </WalletContext.Provider>
   );
