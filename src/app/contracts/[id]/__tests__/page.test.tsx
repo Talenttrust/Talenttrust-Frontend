@@ -408,6 +408,10 @@ describe('existing contract detail page behaviour', () => {
         screen.getByRole('complementary', { name: /what would you like to do/i }),
       ).toBeInTheDocument();
     });
+
+    expect(
+      screen.getByRole('status', { name: 'Contract status updates' }),
+    ).toBeEmptyDOMElement();
   });
 
   it('persists the confirmed dispute flow and reflects the disputed status in the page', async () => {
@@ -431,6 +435,9 @@ describe('existing contract detail page behaviour', () => {
     });
 
     expect(within(getContractSummarySection()).getByLabelText('Status: Disputed')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Contract status updates' })).toHaveTextContent(
+      'Contract status changed to Disputed.',
+    );
     expect(screen.queryByRole('button', { name: /release funds to the contractor/i })).not.toBeInTheDocument();
     expect(await screen.findByText('Dispute opened')).toBeInTheDocument();
   });
