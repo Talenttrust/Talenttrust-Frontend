@@ -402,12 +402,11 @@ describe('ContractCreationForm', () => {
 
       await waitFor(() => {
         expect(errorMockOnSubmit).toHaveBeenCalledTimes(1);
-      });
-
-      // Verify that the error toast was triggered
-      expect(mockShowError).toHaveBeenCalledWith({
-        title: 'An unexpected error occurred',
-        description: 'Database connection failed',
+        // Verify that the error toast was triggered
+        expect(mockShowError).toHaveBeenCalledWith({
+          title: 'An unexpected error occurred',
+          description: 'Database connection failed',
+        });
       });
 
       // Validation error summary should not be shown

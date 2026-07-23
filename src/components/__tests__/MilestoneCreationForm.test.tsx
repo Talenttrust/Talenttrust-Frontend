@@ -462,12 +462,12 @@ describe('MilestoneCreationForm', () => {
 
       await waitFor(() => {
         expect(errorMockOnSubmit).toHaveBeenCalledTimes(1);
+        expect(mockShowError).toHaveBeenCalledWith({
+          title: 'An unexpected error occurred',
+          description: 'Network error',
+        });
       });
 
-      expect(mockShowError).toHaveBeenCalledWith({
-        title: 'An unexpected error occurred',
-        description: 'Network error',
-      });
       expect(screen.queryByRole('alert', { name: /there is a problem/i })).not.toBeInTheDocument();
     });
   });
