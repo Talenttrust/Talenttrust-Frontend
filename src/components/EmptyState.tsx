@@ -92,7 +92,6 @@ const EmptyState: React.FC<EmptyStateProps> = ({
               type="button"
               onClick={onAction}
               className="rounded-md bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-800 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-900"
-              aria-label={actionLabel}
             >
               {actionLabel}
             </button>
@@ -102,7 +101,6 @@ const EmptyState: React.FC<EmptyStateProps> = ({
               type="button"
               onClick={onSecondaryAction}
               className="rounded-md border border-gray-400 bg-white px-4 py-2.5 text-sm font-semibold text-gray-950 transition-colors hover:border-gray-600 hover:bg-gray-50 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-900"
-              aria-label={secondaryActionLabel}
             >
               {secondaryActionLabel}
             </button>
