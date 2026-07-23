@@ -178,7 +178,7 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
         milestoneCount: 0,
       };
 
-      onSubmit(contract);
+      return onSubmit(contract);
     },
     [contractName, totalValue, currency, parties, validateForm, onSubmit]
   );

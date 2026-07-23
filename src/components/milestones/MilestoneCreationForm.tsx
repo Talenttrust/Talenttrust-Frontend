@@ -132,7 +132,7 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
         contractId,
       };
 
-      onSubmit(milestone);
+      return onSubmit(milestone);
     },
     [title, payout, currency, status, dueDate, contractId, validateForm, onSubmit],
   );

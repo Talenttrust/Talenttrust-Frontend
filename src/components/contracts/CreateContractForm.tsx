@@ -92,7 +92,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
 
     saveContract(contract);
     showSuccess({ title: 'Contract created', description: `"${contract.contractName}" has been saved.` });
-    onSuccess(contract);
+    return onSuccess(contract);
   };
 
   const handleSubmit = useFormSubmit(handleRawSubmit, 'CreateContractForm');
