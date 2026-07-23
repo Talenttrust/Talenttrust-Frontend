@@ -6,7 +6,7 @@ import { ToastProvider } from '@/components/toast/toast-provider';
 import { PreferencesProvider } from '@/lib/preferences';
 import { getItem, setItem, removeItem } from '@/lib/safeStorage';
 
-const { WalletProvider, useWallet, MOCKED_STELLAR_ADDRESS } = jest.requireActual('../WalletContext');
+const { WalletProvider, useWallet, MOCKED_STELLAR_ADDRESS, ANNOUNCE_DEBOUNCE_MS } = jest.requireActual('../WalletContext');
 
 // Mock safeStorage
 jest.mock('@/lib/safeStorage', () => ({
@@ -289,7 +289,11 @@ describe('WalletContext persistence', () => {
       });
 
       expect(screen.getByTestId('address')).toHaveTextContent('No address');
-      expect(screen.getByRole('status')).toHaveTextContent('Session expired');
+      // Use getAllByRole because the WalletAnnouncer also renders a role="status"
+      // live region; we want the toast notification specifically.
+      const statusRegions = screen.getAllByRole('status');
+      const sessionExpiredRegion = statusRegions.find(el => el.textContent?.includes('Session expired'));
+      expect(sessionExpiredRegion).toBeTruthy();
     });
 
     it('resets the timer on user activity', async () => {
@@ -589,5 +593,259 @@ describe('WalletContext – error toast surfacing', () => {
 
     // Inline error must be set by the catch block in connect()
     expect(screen.getByTestId('inline-error').textContent).toBe('Failed to connect wallet');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WalletAnnouncer live-region tests  (issue #532)
+// ---------------------------------------------------------------------------
+
+/**
+ * Helpers shared across WalletAnnouncer tests.
+ *
+ * `renderAnnouncer` renders a full WalletProvider tree (including the built-in
+ * WalletAnnouncer) together with a minimal consumer that exposes buttons to
+ * drive connect / disconnect.  Fake timers are assumed by every test in this
+ * suite — each `describe` block sets them up in `beforeEach`.
+ */
+function WalletDriverConsumer() {
+  const { connect, disconnect } = useWallet();
+  return (
+    <>
+      <button data-testid="driver-connect" onClick={connect}>Connect</button>
+      <button data-testid="driver-disconnect" onClick={disconnect}>Disconnect</button>
+    </>
+  );
+}
+
+const renderAnnouncer = (idleTimeout = 0) =>
+  render(
+    <PreferencesProvider>
+      <ToastProvider>
+        <WalletProvider idleTimeout={idleTimeout}>
+          <WalletDriverConsumer />
+        </WalletProvider>
+      </ToastProvider>
+    </PreferencesProvider>
+  );
+
+/** Advance fake timers past the debounce window */
+const flushDebounce = () =>
+  act(() => {
+    jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS + 50);
+  });
+
+describe('WalletAnnouncer – live-region announcements (issue #532)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    (getItem as jest.Mock).mockReturnValue(null);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  // ── Structural / a11y attributes ──────────────────────────────────────────
+
+  it('renders a live region with role="status", aria-live="polite", and aria-atomic="true"', () => {
+    renderAnnouncer();
+    const region = document.querySelector('[aria-live="polite"]');
+    expect(region).toBeInTheDocument();
+    expect(region).toHaveAttribute('role', 'status');
+    expect(region).toHaveAttribute('aria-atomic', 'true');
+  });
+
+  it('live region has aria-label "Wallet status updates"', () => {
+    renderAnnouncer();
+    const region = document.querySelector('[aria-live="polite"][role="status"]');
+    expect(region).toHaveAttribute('aria-label', 'Wallet status updates');
+  });
+
+  it('live region has sr-only class so it is visually hidden', () => {
+    renderAnnouncer();
+    const region = document.querySelector('[aria-live="polite"][role="status"]');
+    expect(region).toHaveClass('sr-only');
+  });
+
+  // ── No mount announcement ─────────────────────────────────────────────────
+
+  it('does NOT announce on initial mount when no wallet address is present', () => {
+    renderAnnouncer();
+    flushDebounce();
+    const region = document.querySelector('[aria-live="polite"][role="status"]');
+    expect(region?.textContent).toBe('');
+  });
+
+  it('does NOT announce on mount when address is rehydrated from storage', () => {
+    (getItem as jest.Mock).mockReturnValue(MOCKED_STELLAR_ADDRESS);
+    renderAnnouncer();
+    flushDebounce();
+    const region = document.querySelector('[aria-live="polite"][role="status"]');
+    expect(region?.textContent).toBe('');
+  });
+
+  // ── Connect announcement ──────────────────────────────────────────────────
+
+  it('announces "Wallet connected." after a successful connect()', async () => {
+    renderAnnouncer();
+
+    await act(async () => {
+      screen.getByTestId('driver-connect').click();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000); // mock connect delay
+    });
+    flushDebounce();
+
+    const region = document.querySelector('[aria-live="polite"][role="status"]');
+    expect(region?.textContent).toBe('Wallet connected.');
+  });
+
+  // ── Disconnect announcement ───────────────────────────────────────────────
+
+  it('announces "Wallet disconnected." after an explicit disconnect()', async () => {
+    renderAnnouncer();
+
+    // First connect
+    await act(async () => {
+      screen.getByTestId('driver-connect').click();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    flushDebounce();
+
+    // Now disconnect
+    await act(async () => {
+      screen.getByTestId('driver-disconnect').click();
+    });
+    flushDebounce();
+
+    const region = document.querySelector('[aria-live="polite"][role="status"]');
+    expect(region?.textContent).toBe('Wallet disconnected.');
+  });
+
+  it('announces "Wallet disconnected." after idle auto-disconnect', async () => {
+    const IDLE_TIMEOUT = 3000;
+    renderAnnouncer(IDLE_TIMEOUT);
+
+    await act(async () => {
+      screen.getByTestId('driver-connect').click();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000); // mock connect delay
+    });
+    flushDebounce(); // flush "connected" announcement
+
+    // Wait past idle timeout
+    await act(async () => {
+      jest.advanceTimersByTime(IDLE_TIMEOUT);
+    });
+    flushDebounce();
+
+    const region = document.querySelector('[aria-live="polite"][role="status"]');
+    expect(region?.textContent).toBe('Wallet disconnected.');
+  });
+
+  // ── Debounce behaviour ────────────────────────────────────────────────────
+
+  it('does NOT announce before the debounce window elapses', async () => {
+    renderAnnouncer();
+
+    await act(async () => {
+      screen.getByTestId('driver-connect').click();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    // Advance to just before the debounce fires
+    act(() => {
+      jest.advanceTimersByTime(ANNOUNCE_DEBOUNCE_MS - 10);
+    });
+
+    const region = document.querySelector('[aria-live="polite"][role="status"]');
+    expect(region?.textContent).toBe('');
+  });
+
+  it('collapses rapid connect → disconnect into a single "Wallet disconnected." announcement', async () => {
+    renderAnnouncer();
+
+    // Connect
+    await act(async () => {
+      screen.getByTestId('driver-connect').click();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    // Immediately disconnect before the debounce fires
+    await act(async () => {
+      screen.getByTestId('driver-disconnect').click();
+    });
+
+    // Now flush the debounce — only the last state change should surface
+    flushDebounce();
+
+    const region = document.querySelector('[aria-live="polite"][role="status"]');
+    // The last change was disconnect → "Wallet disconnected."
+    expect(region?.textContent).toBe('Wallet disconnected.');
+  });
+
+  it('announces on each connect → disconnect cycle', async () => {
+    renderAnnouncer();
+
+    // First connect
+    await act(async () => {
+      screen.getByTestId('driver-connect').click();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    flushDebounce();
+    expect(document.querySelector('[aria-live="polite"][role="status"]')?.textContent).toBe('Wallet connected.');
+
+    // First disconnect
+    await act(async () => {
+      screen.getByTestId('driver-disconnect').click();
+    });
+    flushDebounce();
+    expect(document.querySelector('[aria-live="polite"][role="status"]')?.textContent).toBe('Wallet disconnected.');
+
+    // Second connect
+    await act(async () => {
+      screen.getByTestId('driver-connect').click();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    flushDebounce();
+    expect(document.querySelector('[aria-live="polite"][role="status"]')?.textContent).toBe('Wallet connected.');
+  });
+
+  // ── Edge cases ────────────────────────────────────────────────────────────
+
+  it('does NOT announce when disconnect() is called with no active session (null → null)', async () => {
+    renderAnnouncer();
+
+    await act(async () => {
+      screen.getByTestId('driver-disconnect').click();
+    });
+    flushDebounce();
+
+    const region = document.querySelector('[aria-live="polite"][role="status"]');
+    expect(region?.textContent).toBe('');
+  });
+
+  it('live region is present and empty at rest (no stale announcements between tests)', () => {
+    renderAnnouncer();
+    const region = document.querySelector('[aria-live="polite"][role="status"]');
+    expect(region).toBeInTheDocument();
+    expect(region?.textContent).toBe('');
+  });
+
+  it('ANNOUNCE_DEBOUNCE_MS is exported and equals 300', () => {
+    expect(ANNOUNCE_DEBOUNCE_MS).toBe(300);
   });
 });
