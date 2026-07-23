@@ -1,10 +1,8 @@
 import React, { createRef } from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { axe, toHaveNoViolations } from 'jest-axe';
+import { assertNoA11yViolations } from '@/test-utils/a11y';
 import BackToTop from '../BackToTop';
-
-expect.extend(toHaveNoViolations);
 
 // jsdom doesn't implement scrollTo/rAF – provide deterministic mocks so we
 // can assert on them and so the component doesn't throw "not implemented".
@@ -199,8 +197,7 @@ describe('BackToTop (window mode)', () => {
       await new Promise((resolve) => window.requestAnimationFrame(resolve));
     });
 
-    const results = await axe(container);
-    expect(results).toHaveNoViolations();
+    await assertNoA11yViolations(container);
   });
 });
 
