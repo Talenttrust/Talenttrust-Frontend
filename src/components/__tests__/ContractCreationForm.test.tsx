@@ -1,6 +1,23 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { ToastProvider } from '@/components/toast/toast-provider';
+
+// Define toast mocks accessible in tests
+const mockShowSuccess = jest.fn();
+const mockShowError = jest.fn();
+
+jest.mock('@/components/toast/toast-provider', () => {
+  const actual = jest.requireActual('@/components/toast/toast-provider');
+  return {
+    ...actual,
+    useToast: jest.fn(() => ({
+      showSuccess: mockShowSuccess,
+      showError: mockShowError,
+    })),
+  };
+});
+
 import {
   ContractCreationForm,
   MAX_CONTRACT_NAME_LENGTH,
@@ -13,13 +30,7 @@ jest.mock('@/lib/stellarAddress', () => ({
   isValidStellarAddress: jest.fn(),
 }));
 
-const mockShowError = jest.fn();
-jest.mock('@/components/toast/toast-provider', () => ({
-  useToast: jest.fn(() => ({
-    showSuccess: jest.fn(),
-    showError: mockShowError,
-  })),
-}));
+
 
 jest.mock('@/lib/errorReporter', () => ({
   reportError: jest.fn(),
@@ -48,7 +59,7 @@ describe('ContractCreationForm', () => {
 
   describe('Rendering', () => {
     it('renders the form with all required fields', () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       expect(screen.getByRole('dialog')).toBeInTheDocument();
       expect(screen.getByLabelText(/contract name/i)).toBeInTheDocument();
@@ -60,14 +71,14 @@ describe('ContractCreationForm', () => {
     });
 
     it('renders with two initial party fields', () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       expect(screen.getByText(/party 1/i)).toBeInTheDocument();
       expect(screen.getByText(/party 2/i)).toBeInTheDocument();
     });
 
     it('has accessible modal attributes', () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       const modal = screen.getByRole('dialog');
       expect(modal).toHaveAttribute('aria-modal', 'true');
@@ -77,7 +88,7 @@ describe('ContractCreationForm', () => {
 
   describe('Form Validation - Missing Fields', () => {
     it('shows validation errors when submitting empty form', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
@@ -96,7 +107,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('validates that contract name is required', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       const contractNameInput = screen.getByLabelText(/contract name/i);
       fireEvent.change(contractNameInput, { target: { value: '   ' } });
@@ -108,7 +119,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('validates that total value is required', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       const totalValueInput = screen.getByLabelText(/total value/i);
       fireEvent.change(totalValueInput, { target: { value: '   ' } });
@@ -122,7 +133,7 @@ describe('ContractCreationForm', () => {
 
   describe('Form Validation - Invalid Data', () => {
     it('validates that total value must be a positive number', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       const totalValueInput = screen.getByLabelText(/total value/i);
       fireEvent.change(totalValueInput, { target: { value: '-100' } });
@@ -134,7 +145,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('validates that total value must be numeric', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       const totalValueInput = screen.getByLabelText(/total value/i);
       fireEvent.change(totalValueInput, { target: { value: 'not-a-number' } });
@@ -146,7 +157,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('validates Stellar address format', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       // Fill in required fields
       fireEvent.change(screen.getByLabelText(/contract name/i), {
@@ -175,7 +186,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('validates that party label is required when address is provided', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       const partyAddresses = screen.getAllByPlaceholderText(/GXXXXXXXXXX/i);
       fireEvent.change(partyAddresses[0], { target: { value: VALID_ADDRESS } });
@@ -188,7 +199,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('validates that party address is required when label is provided', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       const partyLabels = screen.getAllByPlaceholderText(/e\.g\., client, freelancer/i);
       fireEvent.change(partyLabels[0], { target: { value: 'Client' } });
@@ -203,7 +214,7 @@ describe('ContractCreationForm', () => {
 
   describe('Party Management', () => {
     it('allows adding additional parties', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       expect(screen.queryByText(/party 3/i)).not.toBeInTheDocument();
 
@@ -215,7 +226,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('allows removing parties when more than two exist', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       // Add a third party
       fireEvent.click(screen.getByRole('button', { name: /add another party/i }));
@@ -233,7 +244,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('does not show remove button when only two parties exist', () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       expect(screen.queryByRole('button', { name: /remove party/i })).not.toBeInTheDocument();
     });
@@ -241,7 +252,7 @@ describe('ContractCreationForm', () => {
 
   describe('Valid Submission', () => {
     it('submits valid form data successfully', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       // Fill in contract details
       fireEvent.change(screen.getByLabelText(/contract name/i), {
@@ -286,7 +297,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('trims whitespace from input fields', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       fireEvent.change(screen.getByLabelText(/contract name/i), {
         target: { value: '  Website Redesign  ' },
@@ -315,7 +326,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('normalizes control characters and whitespace before submitting text fields', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       fireEvent.change(screen.getByLabelText(/contract name/i), {
         target: { value: '  Website\u0000\n  Redesign  ' },
@@ -342,7 +353,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('filters out empty parties when submitting', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       // Add a third party but leave it empty
       fireEvent.click(screen.getByRole('button', { name: /add another party/i }));
@@ -416,7 +427,7 @@ describe('ContractCreationForm', () => {
 
   describe('Cancel Functionality', () => {
     it('calls onCancel when cancel button is clicked', () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
@@ -426,7 +437,7 @@ describe('ContractCreationForm', () => {
 
   describe('Accessibility', () => {
     it('displays error summary with proper ARIA attributes', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
@@ -438,7 +449,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('links error messages to form fields via IDs', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       const contractNameInput = screen.getByLabelText(/contract name/i);
       expect(contractNameInput).toHaveAttribute('id', 'contractName');
@@ -454,7 +465,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('marks required fields with asterisk and aria attributes', () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       // Required fields should have asterisks
       const contractNameLabel = screen.getByText(/contract name/i).closest('label');
@@ -464,7 +475,7 @@ describe('ContractCreationForm', () => {
 
   describe('Currency Selection', () => {
     it('allows selecting different currencies', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       const currencySelect = screen.getByLabelText(/currency/i);
 
@@ -476,7 +487,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('defaults to USD', () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       const currencySelect = screen.getByLabelText(/currency/i) as HTMLSelectElement;
       expect(currencySelect.value).toBe('USD');
@@ -485,7 +496,7 @@ describe('ContractCreationForm', () => {
 
   describe('Error Field Highlighting', () => {
     it('applies error styling to invalid fields', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
@@ -498,7 +509,7 @@ describe('ContractCreationForm', () => {
 
   describe('Text length validation', () => {
     it('rejects an over-length contract name instead of truncating it', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       fireEvent.change(screen.getByLabelText(/contract name/i), {
         target: { value: 'a'.repeat(MAX_CONTRACT_NAME_LENGTH + 1) },
@@ -514,7 +525,7 @@ describe('ContractCreationForm', () => {
     });
 
     it('rejects an over-length party label instead of truncating it', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
       const partyLabels = screen.getAllByPlaceholderText(/e\.g\., client, freelancer/i);
       const partyAddresses = screen.getAllByPlaceholderText(/GXXXXXXXXXX/i);
       fireEvent.change(partyLabels[0], { target: { value: 'a'.repeat(MAX_PARTY_LABEL_LENGTH + 1) } });
@@ -533,7 +544,7 @@ describe('ContractCreationForm', () => {
 
   describe('Integration with isValidStellarAddress', () => {
     it('calls isValidStellarAddress for each party address', async () => {
-      render(<ContractCreationForm {...defaultProps} />);
+      render(<ToastProvider><ContractCreationForm {...defaultProps} /></ToastProvider>);
 
       fireEvent.change(screen.getByLabelText(/contract name/i), {
         target: { value: 'Test' },

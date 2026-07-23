@@ -1,16 +1,24 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { ToastProvider } from '@/components/toast/toast-provider';
 import { MilestoneCreationForm } from '../milestones/MilestoneCreationForm';
 import type { Milestone } from '@/types/domain';
 
+// Define toast mocks for tests
+const mockShowSuccess = jest.fn();
 const mockShowError = jest.fn();
-jest.mock('@/components/toast/toast-provider', () => ({
-  useToast: jest.fn(() => ({
-    showSuccess: jest.fn(),
-    showError: mockShowError,
-  })),
-}));
+
+jest.mock('@/components/toast/toast-provider', () => {
+  const actual = jest.requireActual('@/components/toast/toast-provider');
+  return {
+    ...actual,
+    useToast: jest.fn(() => ({
+      showSuccess: mockShowSuccess,
+      showError: mockShowError,
+    })),
+  };
+});
 
 jest.mock('@/lib/errorReporter', () => ({
   reportError: jest.fn(),
@@ -27,7 +35,9 @@ function renderForm(
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
   const utils = render(
-    <MilestoneCreationForm onSubmit={onSubmit} onCancel={onCancel} {...overrides} />,
+    <ToastProvider>
+      <MilestoneCreationForm onSubmit={onSubmit} onCancel={onCancel} {...overrides} />
+    </ToastProvider>,
   );
   return { onSubmit, onCancel, ...utils };
 }

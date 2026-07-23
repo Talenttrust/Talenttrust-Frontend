@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import { PreferencesProvider } from '@/contexts/preferences-context';
+import { ToastProvider } from '@/components/toast/toast-provider';
 import { useSearchParams, useRouter } from 'next/navigation';
 import EmptyState from '../../components/EmptyState';
 import MilestonesList from '../../components/MilestonesList';
@@ -92,17 +94,19 @@ const MilestonesContent: React.FC = () => {
 
   // Rehydrate from localStorage after the client mounts to avoid SSR mismatches.
   useEffect(() => {
-    const persisted = listMilestones();
-    if (persisted.length > 0) {
-      setMilestones(persisted);
-      setIsDismissed(true);
-    } else {
-      try {
+    try {
+      const persisted = listMilestones();
+      if (persisted.length > 0) {
+        setMilestones(persisted);
+        setIsDismissed(true);
+      } else {
         const dismissed = getItem(SAMPLE_DISMISSED_KEY) === 'true';
         setIsDismissed(dismissed);
-      } catch {
-        setIsDismissed(true);
+        setMilestones(SAMPLE_MILESTONES);
       }
+    } catch {
+      // safeStorage failure – fallback to sample data with banner hidden
+      setIsDismissed(true);
       setMilestones(SAMPLE_MILESTONES);
     }
   }, []);
@@ -146,92 +150,96 @@ const MilestonesContent: React.FC = () => {
   }, []);
 
   return (
-    <main className="min-h-screen p-8">
-      <h1 className="text-2xl font-bold mb-6">Milestones</h1>
+    <PreferencesProvider>
+      <ToastProvider>
+        <main className="min-h-screen p-8">
+          <h1 className="text-2xl font-bold mb-6">Milestones</h1>
 
-      {showSampleBanner && (
-        <div
-          data-testid="sample-data-banner"
-          role="status"
-          aria-label="Sample data notice"
-          className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-4 shadow-sm"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-blue-900">
-                You're viewing sample data
-              </p>
-              <p className="mt-1 text-sm text-blue-700">
-                These are example milestones to help you get started.
-              </p>
-              <button
-                ref={startFromScratchRef}
-                data-testid="start-from-scratch-btn"
-                type="button"
-                onClick={handleDismissSampleBanner}
-                className="mt-3 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-              >
-                Start from scratch
-              </button>
+          {showSampleBanner && (
+            <div
+              data-testid="sample-data-banner"
+              role="status"
+              aria-label="Sample data notice"
+              className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-4 shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-blue-900">
+                    You're viewing sample data
+                  </p>
+                  <p className="mt-1 text-sm text-blue-700">
+                    These are example milestones to help you get started.
+                  </p>
+                  <button
+                    ref={startFromScratchRef}
+                    data-testid="start-from-scratch-btn"
+                    type="button"
+                    onClick={handleDismissSampleBanner}
+                    className="mt-3 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                  >
+                    Start from scratch
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDismissSampleBanner}
+                  aria-label="Dismiss sample data notice"
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  ×
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={handleDismissSampleBanner}
-              aria-label="Dismiss sample data notice"
-              className="text-blue-500 hover:text-blue-700"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
+          )}
 
-      {displayMilestones.length === 0 ? (
-        <EmptyState
-          illustration="milestones"
-          title="No milestones tracked"
-          description="Track your progress by adding milestones to your contracts. Milestones help you stay organized and ensure timely delivery."
-          actionLabel="Add Milestone"
-          onAction={handleAddMilestone}
-        />
-      ) : (
-        <>
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <MilestoneFilter
-              selected={statusFilter}
-              onChange={setStatusFilter}
-              resultCount={filtered.length}
-            />
-            <button
-              type="button"
-              onClick={handleAddMilestone}
-              className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-            >
-              Add Milestone
-            </button>
-          </div>
-
-          {filtered.length === 0 ? (
+          {displayMilestones.length === 0 ? (
             <EmptyState
               illustration="milestones"
-              title="No milestones match this filter"
-              description={`There are no ${statusFilter.toLowerCase()} milestones at the moment. Try a different filter or add a new milestone.`}
+              title="No milestones tracked"
+              description="Track your progress by adding milestones to your contracts. Milestones help you stay organized and ensure timely delivery."
               actionLabel="Add Milestone"
               onAction={handleAddMilestone}
             />
           ) : (
-            <MilestonesList milestones={filtered} />
-          )}
-        </>
-      )}
+            <>
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <MilestoneFilter
+                  selected={statusFilter}
+                  onChange={setStatusFilter}
+                  resultCount={filtered.length}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddMilestone}
+                  className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                >
+                  Add Milestone
+                </button>
+              </div>
 
-      {showForm && (
-        <MilestoneCreationForm
-          onSubmit={handleSubmitMilestone}
-          onCancel={handleCancelForm}
-        />
-      )}
-    </main>
+              {filtered.length === 0 ? (
+                <EmptyState
+                  illustration="milestones"
+                  title="No milestones match this filter"
+                  description={`There are no ${statusFilter.toLowerCase()} milestones at the moment. Try a different filter or add a new milestone.`}
+                  actionLabel="Add Milestone"
+                  onAction={handleAddMilestone}
+                />
+              ) : (
+                <MilestonesList milestones={filtered} />
+              )}
+            </>
+          )}
+
+          {showForm && (
+            <MilestoneCreationForm
+              onSubmit={handleSubmitMilestone}
+              onCancel={handleCancelForm}
+            />
+          )}
+        </main>
+      </ToastProvider>
+    </PreferencesProvider>
   );
 };
 
