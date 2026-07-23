@@ -523,7 +523,7 @@ describe('SettingsPanel', () => {
     });
 
     it('does not announce when panel is closed (no render)', () => {
-      const { container } = renderWithProvider(
+      renderWithProvider(
         <SettingsPanel isOpen={false} onClose={() => {}} />,
       );
 

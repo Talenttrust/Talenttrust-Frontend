@@ -45,7 +45,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [announcement, setAnnouncement] = useState('');
   const baselinePrefsRef = useRef<UserPreferences>({ ...preferences });
   const hasSyncedHydrationRef = useRef(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     // 1. While still hydrating from localStorage, keep the baseline in
