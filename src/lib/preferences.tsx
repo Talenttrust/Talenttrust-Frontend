@@ -103,6 +103,7 @@ const ALLOWED_TOAST_DURATIONS: ReadonlySet<ToastDuration> = new Set(['short', 'n
 
 interface PreferencesContextType {
   preferences: UserPreferences;
+  isHydrated: boolean;
   updatePreference: <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => void;
   formatAmount: (amount: number, currency?: string) => string;
 }
@@ -288,7 +289,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   };
 
   return (
-    <PreferencesContext.Provider value={{ preferences, updatePreference, formatAmount }}>
+    <PreferencesContext.Provider value={{ preferences, isHydrated, updatePreference, formatAmount }}>
       {children}
     </PreferencesContext.Provider>
   );
@@ -307,6 +308,7 @@ export function usePreferences() {
     // Return default preferences if used outside a provider (useful for testing)
     return {
       preferences: DEFAULT_PREFERENCES,
+      isHydrated: true,
       updatePreference: () => {},
       formatAmount: (amount: number, currency: string = 'USD') => 
         safeCurrencyFormat(amount, currency, 'en-US'),
