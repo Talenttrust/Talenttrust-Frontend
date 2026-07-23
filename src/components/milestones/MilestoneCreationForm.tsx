@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useCallback, FormEvent } from 'react';
+import React, { useState, useCallback, FormEvent, useRef } from 'react';
 import { FormField } from '@/components/FormField';
 import { ErrorSummary } from '@/components/ErrorSummary';
+import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
 import { sanitizeUserText } from '@/lib/sanitizeUserText';
 import type { Milestone } from '@/types/domain';
 
@@ -42,6 +43,7 @@ export interface MilestoneCreationFormProps {
  *
  * Mirrors the style and accessibility patterns of `ContractCreationForm`:
  * - `role="dialog"` / `aria-modal` for correct AT announcement.
+ * - Shared dialog focus trapping, Escape handling, and trigger-focus restoration.
  * - `ErrorSummary` with `role="alert"` focus management for invalid submissions.
  * - `FormField` handles per-field `aria-invalid`, `aria-describedby`, and
  *   error-border injection.
@@ -61,6 +63,8 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
   onCancel,
   contractId,
 }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState('');
   const [payout, setPayout] = useState('');
   const [currency, setCurrency] = useState<string>('USD');
@@ -139,8 +143,17 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
   const getFieldError = (fieldId: string): string | undefined =>
     errors.find((e) => e.fieldId === fieldId)?.message;
 
+  useDialogFocusTrap({
+    isOpen: true,
+    dialogRef,
+    initialFocusRef: titleInputRef,
+    onEscape: onCancel,
+    restoreFocus: true,
+  });
+
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
       role="dialog"
       aria-labelledby="create-milestone-title"
@@ -164,6 +177,7 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
             required
           >
             <input
+              ref={titleInputRef}
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}

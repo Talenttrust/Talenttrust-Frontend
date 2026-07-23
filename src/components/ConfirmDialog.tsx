@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useId, useRef } from 'react';
+import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
 
 /** Props for the ConfirmDialog component */
 export interface ConfirmDialogProps {
@@ -50,8 +51,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   const titleId = useId();
   const descriptionId = useId();
 
-  const FOCUSABLE_SELECTORS =
-    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  useDialogFocusTrap({
+    isOpen,
+    dialogRef,
+    initialFocusRef: cancelBtnRef,
+    onEscape: onCancel,
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -109,38 +114,6 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     };
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    // Move focus to cancel button on open
-    cancelBtnRef.current?.focus();
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onCancel();
-        return;
-      }
-      if (e.key === 'Tab') {
-        const panel = dialogRef.current;
-        if (!panel) return;
-        const focusable = Array.from(
-          panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS)
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onCancel]);
-
   if (!isOpen) return null;
 
   return (
@@ -154,7 +127,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       {/* Dialog */}
       <div
         ref={dialogRef}
-        role={tone === 'destructive' ? 'alertdialog dialog' : 'dialog'}
+        role={tone === 'destructive' ? 'alertdialog' : 'dialog'}
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
