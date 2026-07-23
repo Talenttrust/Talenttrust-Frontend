@@ -39,7 +39,6 @@
   "exclude": [
     "node_modules",
     "jest.setup.ts",
-    "jest.setup.js",
     "**/*.test.ts",
     "**/*.test.tsx",
     ".next/types/test",

@@ -5,7 +5,7 @@ Automated accessibility regression tests catch contrast, role, labeling, and sem
 ## Setup
 
 - **jest-axe** is installed as a dev dependency.
-- The custom `toHaveNoViolations` matcher is registered in `jest.setup.js`.
+- The custom `toHaveNoViolations` matcher is registered in `jest.setup.ts`.
 - A shared helper module lives at `src/test-utils/a11y.tsx` with:
   - `testA11y(ui, options?)` — renders a component and asserts zero axe violations.
   - `assertNoA11yViolations(container)` — runs axe on an already-rendered container.
