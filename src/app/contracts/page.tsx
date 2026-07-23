@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import BackToTop from '../../components/BackToTop';
 import EmptyState from '../../components/EmptyState';
 import { ContractCreationForm } from '../../components/ContractCreationForm';
 import { listContracts, saveContract } from '@/lib/repository';
@@ -11,6 +12,7 @@ const ContractsPage: React.FC = () => {
   // a state update so the list reflects newly added items immediately.
   const [contracts, setContracts] = useState<Contract[]>(() => listContracts());
   const [showForm, setShowForm] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   /**
    * Opens the contract creation form modal.
@@ -38,7 +40,9 @@ const ContractsPage: React.FC = () => {
 
   return (
     <main className="min-h-screen p-8">
-      <h1 className="text-2xl font-bold mb-6">Contracts</h1>
+      <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold mb-6 focus-visible:outline-none">
+        Contracts
+      </h1>
 
       {!showForm && contracts.length === 0 && (
         <EmptyState
@@ -75,6 +79,9 @@ const ContractsPage: React.FC = () => {
               </li>
             ))}
           </ul>
+          <div className="mt-4 flex justify-end">
+            <BackToTop focusTargetRef={headingRef} />
+          </div>
         </>
       )}
 
@@ -89,4 +96,3 @@ const ContractsPage: React.FC = () => {
 };
 
 export default ContractsPage;
-

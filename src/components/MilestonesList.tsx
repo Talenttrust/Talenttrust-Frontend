@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import BackToTop from './BackToTop';
 import StatusBadge, { StatusType, statusColorMap, statusIconMap } from './StatusBadge';
 import { usePreferences } from '@/lib/preferences';
 import { isDueSoon } from '@/lib/dueSoon';
@@ -195,6 +196,12 @@ const MilestonesList = ({ milestones, contractCurrency }: MilestonesListProps) =
           </article>
         ))}
       </div>
+
+      {milestones.length > 0 && (
+        <div className="mt-3 flex justify-end">
+          <BackToTop containerRef={listContainerRef} threshold={240} />
+        </div>
+      )}
     </section>
   );
 };
