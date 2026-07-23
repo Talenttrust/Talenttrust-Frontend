@@ -278,6 +278,7 @@ describe('SettingsPanel', () => {
   // --- Accessibility validation with jest-axe ---
 
   it('passes accessibility audit with jest-axe when open', async () => {
+    jest.useRealTimers();
     const { container } = renderWithProvider(
       <SettingsPanel isOpen={true} onClose={() => {}} />
     );
@@ -287,6 +288,7 @@ describe('SettingsPanel', () => {
   });
 
   it('passes accessibility audit with jest-axe when closed', async () => {
+    jest.useRealTimers();
     const { container } = renderWithProvider(
       <SettingsPanel isOpen={false} onClose={() => {}} />
     );
