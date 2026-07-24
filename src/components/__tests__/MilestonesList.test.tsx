@@ -437,7 +437,7 @@ describe('MilestonesList', () => {
       fireEvent.change(searchInput, { target: { value: 'single' } });
 
       expect(screen.getByText('Single Milestone')).toBeInTheDocument();
-      expect(screen.getByText('Showing 1 of 1 milestones')).toBeInTheDocument();
+      expect(screen.getByText('Showing all 1 milestones')).toBeInTheDocument();
     });
 
     it('handles ties in payout sorting', () => {
