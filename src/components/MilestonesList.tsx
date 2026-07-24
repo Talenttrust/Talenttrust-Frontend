@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import StatusBadge, { StatusType, statusColorMap, statusIconMap } from './StatusBadge';
 import { usePreferences } from '@/lib/preferences';
 import { isDueSoon } from '@/lib/dueSoon';
@@ -23,7 +23,7 @@ export type MilestonesListProps = {
 
 export const REMINDER_WINDOW_DAYS = 7;
 
-const MilestonesList = ({ milestones, contractCurrency }: MilestonesListProps) => {
+const MilestonesList = React.memo(({ milestones, contractCurrency }: MilestonesListProps) => {
   const { formatAmount } = usePreferences();
   const [isDismissed, setIsDismissed] = useState(false);
   const listContainerRef = useRef<HTMLDivElement>(null);
@@ -173,30 +173,35 @@ const MilestonesList = ({ milestones, contractCurrency }: MilestonesListProps) =
         tabIndex={milestones.length > 0 ? 0 : undefined}
         className="mt-6 space-y-4 max-h-[calc(100vh-260px)] overflow-y-auto pr-2 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
       >
-        {milestones.map((milestone) => (
-          <article
-            key={milestone.id}
-            id={`milestone-${milestone.id}`}
-            className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm"
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600">{milestone.title}</p>
-                <p className="mt-1 text-sm text-slate-500">Due {milestone.dueDate ?? 'TBD'}</p>
-              </div>
-              <StatusBadge status={milestone.status} />
-            </div>
-            <div className="mt-4 flex items-center justify-between gap-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
-              <p>Payout</p>
-              <p className="font-semibold text-slate-900">
-                {formatAmount(milestone.payout, milestone.currency)}
-              </p>
-            </div>
-          </article>
-        ))}
+          {milestones.map((milestone) => (
+            <MilestoneRow key={milestone.id} milestone={milestone} formatAmount={formatAmount} />
+          ))}
       </div>
     </section>
   );
-};
+});
+
+// Memoized row component for individual milestone
+const MilestoneRow = React.memo(({ milestone, formatAmount }: { milestone: Milestone; formatAmount: (amount: number, currency: string) => string; }) => (
+  <article
+    id={`milestone-${milestone.id}`}
+    className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm"
+  >
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm font-medium text-slate-600">{milestone.title}</p>
+        <p className="mt-1 text-sm text-slate-500">Due {milestone.dueDate ?? 'TBD'}</p>
+      </div>
+      <StatusBadge status={milestone.status} />
+    </div>
+    <div className="mt-4 flex items-center justify-between gap-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
+      <p>Payout</p>
+      <p className="font-semibold text-slate-900">
+        {formatAmount(milestone.payout, milestone.currency)}
+      </p>
+    </div>
+  </article>
+));
+
 
 export default MilestonesList;
