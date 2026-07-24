@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  memo,
   useCallback,
   useContext,
   useEffect,
@@ -11,8 +12,8 @@ import {
 } from 'react';
 import { usePreferences } from '@/lib/preferences';
 import type { ToastDuration } from '@/lib/preferences';
-
-type ToastVariant = 'success' | 'error';
+import { getToastStyles } from './toast-styles';
+import type { ToastVariant } from './toast-styles';
 
 /** Optional inline action attached to a toast. */
 type ToastAction = {
@@ -83,28 +84,93 @@ function generateToastId(): string {
   return `toast-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
-function getToastStyles(variant: ToastVariant) {
-  // a11y/theming-27: badge classes were `bg-emerald-100 text-emerald-800`
-  // / `bg-rose-100 text-rose-800` — fixed Tailwind pastels that don't
-  // respond to [data-theme='dark']. Swapped for the --status-* variables
-  // defined in globals.css, which carry an audited light AND dark pair.
-  // Light-mode hex values are unchanged from the originals.
-  if (variant === 'success') {
-    return {
-      accent: 'bg-emerald-500',
-      badge: 'bg-[var(--status-success-bg)] text-[var(--status-success-foreground)]',
-      panel: 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] shadow-sm',
-    };
-  }
+/**
+ * Renders a single toast panel. Memoized so that an unrelated re-render of
+ * `ToastProvider` (e.g. a preference or sibling state change that leaves
+ * this toast's own props untouched) does not re-run the row's derived-data
+ * computation (`getToastStyles`) or re-render its DOM.
+ */
+export const ToastRow = memo(function ToastRow({
+  toast,
+  onDismiss,
+  onPauseTimer,
+  onResumeTimer,
+}: {
+  toast: ToastRecord;
+  onDismiss: (id: string) => void;
+  onPauseTimer: (id: string) => void;
+  onResumeTimer: (id: string) => void;
+}) {
+  const styles = useMemo(() => getToastStyles(toast.variant), [toast.variant]);
+  const badgeLabel = toast.variant === 'success' ? 'Success' : 'Error';
 
-  return {
-    accent: 'bg-rose-500',
-    badge: 'bg-[var(--status-error-bg)] text-[var(--status-error-foreground)]',
-    panel: 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] shadow-sm',
-  };
-}
+  return (
+    <div
+      className={`pointer-events-auto overflow-hidden rounded-2xl border ${styles.panel} shadow-lg`}
+      onBlur={() => onResumeTimer(toast.id)}
+      onFocus={() => onPauseTimer(toast.id)}
+      onMouseEnter={() => onPauseTimer(toast.id)}
+      onMouseLeave={() => onResumeTimer(toast.id)}
+      role={toast.variant === 'error' ? 'alert' : 'status'}
+    >
+      <div className={`h-1.5 w-full ${styles.accent}`} />
+      <div className="flex items-start gap-3 p-4">
+        <div className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${styles.badge}`}>
+          {badgeLabel}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">{toast.title}</p>
+          {toast.description ? (
+            // a11y/theming-27: was `text-slate-600`, which measured
+            // 2.36:1 against the dark --surface (#0f172a) — well
+            // below the 4.5:1 AA minimum for body text. Replaced
+            // with --muted-foreground, which is themed in
+            // globals.css and passes AA in both modes (4.55:1
+            // light, 6.96:1 dark). See docs/components/Accessibility.md.
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">{toast.description}</p>
+          ) : null}
+          {toast.action ? (
+            // Action button: label is a plain text node — never set via
+            // innerHTML or dangerouslySetInnerHTML. Clicking fires the
+            // caller-supplied callback then immediately dismisses this toast.
+            <button
+              type="button"
+              onClick={() => {
+                toast.action!.onClick();
+                onDismiss(toast.id);
+              }}
+              className="mt-2 rounded-md px-3 py-1 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-1 bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
+            >
+              {toast.action.label}
+            </button>
+          ) : null}
+        </div>
+        <button
+          aria-label={`Dismiss ${badgeLabel.toLowerCase()} notification`}
+          // a11y/theming-27: was `text-slate-500 hover:bg-slate-100
+          // hover:text-slate-900`. text-slate-500 measured 3.75:1
+          // against the dark --surface — fails AA. The light hover
+          // background also stayed fixed-light, producing a bright
+          // patch on a dark panel. Replaced with themed tokens that
+          // pass AA in both modes.
+          // The `transition` utility is kept here; the global
+          // @media (prefers-reduced-motion: reduce) rule in
+          // globals.css collapses its duration to 0.01ms so the
+          // button snaps to its hover/focus state instantly for
+          // users who prefer reduced motion, without any layout
+          // shift or visibility change.
+          className="rounded-full p-1.5 text-[var(--muted-foreground)] transition hover:bg-[var(--accent)] hover:text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          onClick={() => onDismiss(toast.id)}
+          type="button"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    </div>
+  );
+});
 
-function ToastViewport({
+export const ToastViewport = memo(function ToastViewport({
   toasts,
   onDismiss,
   onPauseTimer,
@@ -126,83 +192,28 @@ function ToastViewport({
         density === 'compact' ? 'gap-1.5' : 'gap-3'
       }`}
     >
-      {toasts.map((toast) => {
-        const styles = getToastStyles(toast.variant);
-        const badgeLabel = toast.variant === 'success' ? 'Success' : 'Error';
-
-        return (
-          <div
-            key={toast.id}
-            className={`pointer-events-auto overflow-hidden rounded-2xl border ${styles.panel} shadow-lg`}
-            onBlur={() => onResumeTimer(toast.id)}
-            onFocus={() => onPauseTimer(toast.id)}
-            onMouseEnter={() => onPauseTimer(toast.id)}
-            onMouseLeave={() => onResumeTimer(toast.id)}
-            role={toast.variant === 'error' ? 'alert' : 'status'}
-          >
-            <div className={`h-1.5 w-full ${styles.accent}`} />
-            <div className="flex items-start gap-3 p-4">
-              <div className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${styles.badge}`}>
-                {badgeLabel}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{toast.title}</p>
-                {toast.description ? (
-                  // a11y/theming-27: was `text-slate-600`, which measured
-                  // 2.36:1 against the dark --surface (#0f172a) — well
-                  // below the 4.5:1 AA minimum for body text. Replaced
-                  // with --muted-foreground, which is themed in
-                  // globals.css and passes AA in both modes (4.55:1
-                  // light, 6.96:1 dark). See docs/components/Accessibility.md.
-                  <p className="mt-1 text-sm text-[var(--muted-foreground)]">{toast.description}</p>
-                ) : null}
-                {toast.action ? (
-                  // Action button: label is a plain text node — never set via
-                  // innerHTML or dangerouslySetInnerHTML. Clicking fires the
-                  // caller-supplied callback then immediately dismisses this toast.
-                  <button
-                    type="button"
-                    onClick={() => {
-                      toast.action!.onClick();
-                      onDismiss(toast.id);
-                    }}
-                    className="mt-2 rounded-md px-3 py-1 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-1 bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
-                  >
-                    {toast.action.label}
-                  </button>
-                ) : null}
-              </div>
-              <button
-                aria-label={`Dismiss ${badgeLabel.toLowerCase()} notification`}
-                // a11y/theming-27: was `text-slate-500 hover:bg-slate-100
-                // hover:text-slate-900`. text-slate-500 measured 3.75:1
-                // against the dark --surface — fails AA. The light hover
-                // background also stayed fixed-light, producing a bright
-                // patch on a dark panel. Replaced with themed tokens that
-                // pass AA in both modes.
-                // The `transition` utility is kept here; the global
-                // @media (prefers-reduced-motion: reduce) rule in
-                // globals.css collapses its duration to 0.01ms so the
-                // button snaps to its hover/focus state instantly for
-                // users who prefer reduced motion, without any layout
-                // shift or visibility change.
-                className="rounded-full p-1.5 text-[var(--muted-foreground)] transition hover:bg-[var(--accent)] hover:text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                onClick={() => onDismiss(toast.id)}
-                type="button"
-              >
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>
-          </div>
-        );
-      })}
+      {toasts.map((toast) => (
+        <ToastRow
+          key={toast.id}
+          onDismiss={onDismiss}
+          onPauseTimer={onPauseTimer}
+          onResumeTimer={onResumeTimer}
+          toast={toast}
+        />
+      ))}
     </div>
   );
-}
+});
 
-function ToastAnnouncer({ toasts }: { toasts: ToastRecord[] }) {
-  const latestSuccess = [...toasts].reverse().find((toast) => toast.variant === 'success');
-  const latestError = [...toasts].reverse().find((toast) => toast.variant === 'error');
+export const ToastAnnouncer = memo(function ToastAnnouncer({ toasts }: { toasts: ToastRecord[] }) {
+  const latestSuccess = useMemo(
+    () => [...toasts].reverse().find((toast) => toast.variant === 'success'),
+    [toasts],
+  );
+  const latestError = useMemo(
+    () => [...toasts].reverse().find((toast) => toast.variant === 'error'),
+    [toasts],
+  );
 
   return (
     <>
@@ -214,7 +225,7 @@ function ToastAnnouncer({ toasts }: { toasts: ToastRecord[] }) {
       </div>
     </>
   );
-}
+});
 
 type ToastTimerState = {
   expiresAt: number | null;
