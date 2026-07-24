@@ -1,7 +1,6 @@
 // @jest-environment jsdom
 /// <reference types="jest" />
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { StrictMode } from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ToastProvider, useToast } from './toast-provider';
 
 function MinimalToastHarness() {
