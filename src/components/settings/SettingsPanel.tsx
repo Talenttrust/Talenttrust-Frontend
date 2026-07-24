@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { usePreferences, Theme, AmountFormat, ToastDensity } from '@/lib/preferences';
+import { exportAppDataAsJson } from '@/lib/dataExport';
 
 const FOCUSABLE_SELECTORS =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -14,6 +15,16 @@ interface SettingsPanelProps {
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { preferences, updatePreference } = usePreferences();
   const panelRef = useRef<HTMLDivElement>(null);
+  const [exportStatus, setExportStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  const handleExportData = () => {
+    try {
+      exportAppDataAsJson();
+      setExportStatus('success');
+    } catch {
+      setExportStatus('error');
+    }
+  };
 
   /**
    * Focus management effect for modal dialog accessibility.
@@ -184,6 +195,32 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   />
                 </button>
               </div>
+            </div>
+          </section>
+
+          {/* Data Section */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Data</h3>
+
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm font-medium text-[var(--foreground)]">Export your data</p>
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  Download a JSON file of everything saved in this browser so you can back it up
+                  or move to another browser.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleExportData}
+                className="w-full py-2 px-4 rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] text-sm font-medium hover:border-[var(--muted-foreground)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+              >
+                Export data as JSON
+              </button>
+              <p role="status" aria-live="polite" className="text-xs text-[var(--muted-foreground)]">
+                {exportStatus === 'success' && 'Export downloaded.'}
+                {exportStatus === 'error' && 'Export failed. Please try again.'}
+              </p>
             </div>
           </section>
         </div>
