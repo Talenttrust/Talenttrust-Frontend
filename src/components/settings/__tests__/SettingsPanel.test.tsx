@@ -4,7 +4,11 @@ import { axe } from 'jest-axe';
 import { SettingsPanel } from '../SettingsPanel';
 import { PreferencesProvider } from '@/lib/preferences';
 import { resetCache } from '@/lib/safeStorage';
+import * as dataExport from '@/lib/dataExport';
 
+jest.mock('@/lib/dataExport', () => ({
+  exportAppDataAsJson: jest.fn(),
+}));
 
 const renderWithProvider = (ui: React.ReactElement) => {
   return render(
@@ -18,6 +22,7 @@ describe('SettingsPanel', () => {
   beforeEach(() => {
     localStorage.clear();
     resetCache();
+    jest.mocked(dataExport.exportAppDataAsJson).mockReset();
   });
 
   it('renders nothing when closed', () => {
@@ -32,6 +37,7 @@ describe('SettingsPanel', () => {
     expect(screen.getByText('Settings')).toBeDefined();
     expect(screen.getByText('Appearance')).toBeDefined();
     expect(screen.getByText('Notifications')).toBeDefined();
+    expect(screen.getByText('Data')).toBeDefined();
   });
 
   it('calls onClose when close button is clicked', () => {
@@ -187,6 +193,7 @@ describe('SettingsPanel', () => {
     const focusableControls = [
       screen.getByRole('button', { name: /close settings/i }),
       screen.getByRole('switch', { name: /quiet mode/i }),
+      screen.getByRole('button', { name: /export data as json/i }),
       screen.getByRole('button', { name: /done/i }),
     ];
 
@@ -245,6 +252,20 @@ describe('SettingsPanel', () => {
     last.focus();
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: false });
     expect(document.activeElement).toBe(focusable[0]);
+  });
+
+  it('Tab on a middle focusable element does not wrap focus', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    const dialog = screen.getByRole('dialog');
+    const focusable = Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    );
+    const middle = focusable[Math.floor(focusable.length / 2)];
+    middle.focus();
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: false });
+    expect(document.activeElement).toBe(middle);
   });
 
   it('Shift+Tab on the first focusable element wraps focus to the last', () => {
@@ -328,5 +349,51 @@ describe('SettingsPanel', () => {
     expect(themeButtons[0]).toHaveAccessibleName('light');
     expect(themeButtons[1]).toHaveAccessibleName('dark');
     expect(themeButtons[2]).toHaveAccessibleName('system');
+  });
+
+  // --- Data export section ---
+
+  describe('data export', () => {
+    it('renders an accessible export control in the Data section', () => {
+      renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      const exportButton = screen.getByRole('button', { name: /export data as json/i });
+      expect(exportButton).toBeInTheDocument();
+      expect(exportButton).toHaveAccessibleName('Export data as JSON');
+    });
+
+    it('triggers the export helper when the export button is clicked', () => {
+      renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /export data as json/i }));
+
+      expect(dataExport.exportAppDataAsJson).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows a success status message after a successful export', () => {
+      renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /export data as json/i }));
+
+      expect(screen.getByRole('status')).toHaveTextContent('Export downloaded.');
+    });
+
+    it('shows an error status message when the export helper throws', () => {
+      jest.mocked(dataExport.exportAppDataAsJson).mockImplementation(() => {
+        throw new Error('boom');
+      });
+
+      renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /export data as json/i }));
+
+      expect(screen.getByRole('status')).toHaveTextContent('Export failed. Please try again.');
+    });
+
+    it('shows no status message before the export button has been clicked', () => {
+      renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      expect(screen.getByRole('status')).toHaveTextContent('');
+    });
   });
 });
