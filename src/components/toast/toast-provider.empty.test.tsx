@@ -1,5 +1,5 @@
 // @jest-environment jsdom
-/// <reference types=\"jest\" />
+/// <reference types="jest" />
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { ToastProvider, useToast } from './toast-provider';

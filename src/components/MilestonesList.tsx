@@ -179,7 +179,7 @@ const MilestonesList = React.memo(({ milestones, contractCurrency }: MilestonesL
       </div>
     </section>
   );
-};
+});
 
 // Memoized row component for individual milestone
 const MilestoneRow = React.memo(({ milestone, formatAmount }: { milestone: Milestone; formatAmount: (amount: number, currency: string) => string; }) => (
