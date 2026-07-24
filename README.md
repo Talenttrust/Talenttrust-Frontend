@@ -38,6 +38,7 @@ Open [http://localhost:3000](http://localhost:3000).
 This repository keeps user-facing and implementation notes inside the `docs/` folder. Key documentation includes:
 
 - `docs/components/Accessibility.md` — Accessibility testing, a11y helpers, and issue #383 notes
+- `docs/components/MilestonesList.md` � Milestones list props, rendered states, and usage contract
 - `docs/components/ReputationPage.md` — Reputation page implementation and rendering states
 - `docs/data-model.md` — Data model and persistence guide
 - `docs/persistence.md` — Persistence API and local storage patterns
