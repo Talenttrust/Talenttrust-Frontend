@@ -105,7 +105,7 @@ export function WalletAddressInput({
     [onChange, internalError, onValidation, id]
   );
 
-  const effectiveError = parentError ?? internalError;
+  const effectiveError = parentError ?? internalError ?? undefined;
 
   return (
     <FormField
