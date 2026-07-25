@@ -482,7 +482,7 @@ describe('formatAmount – compact', () => {
     const { result } = renderHook(() => usePreferences(), { wrapper });
     act(() => { result.current.updatePreference('amountFormat', 'compact'); });
     const formatted = result.current.formatAmount(1500, 'USD');
-    expect(formatted).toMatch(/1\\.?5K|\\$2K|\\$1K/); // runtime may round
+    expect(formatted).toMatch(/1\.?5K|\$2K|\$1K/); // runtime may round
   });
 
   it('abbreviates millions', () => {
@@ -494,7 +494,7 @@ describe('formatAmount – compact', () => {
   it('formats zero compactly', () => {
     const { result } = renderHook(() => usePreferences(), { wrapper });
     act(() => { result.current.updatePreference('amountFormat', 'compact'); });
-    expect(result.current.formatAmount(0, 'USD')).toMatch(/\\$0/);
+    expect(result.current.formatAmount(0, 'USD')).toMatch(/\$0/);
   });
 
   it('keeps a custom currency when compact notation is enabled', () => {
