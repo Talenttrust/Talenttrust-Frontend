@@ -12,6 +12,10 @@ export type ReputationProfileProps = {
   history?: ReputationEvent[];
   /** Maximum possible score value. Used for aria-valuemax on the meter role. */
   maxScore?: number;
+  /** Action triggered when the user clicks the endorse button. */
+  onEndorse?: () => void;
+  /** Whether an endorsement is currently pending. */
+  isEndorsing?: boolean;
 };
 
 export type ReputationBand = {
@@ -60,6 +64,8 @@ export default function ReputationProfile({
   level,
   history = [],
   maxScore = 5,
+  onEndorse,
+  isEndorsing = false,
 }: ReputationProfileProps) {
   const hasReputation = typeof score === 'number' && score >= 0;
   const showPartial = hasReputation && history.length === 0;
@@ -82,9 +88,21 @@ export default function ReputationProfile({
               <h1 className="text-2xl font-semibold text-slate-950">{name}</h1>
             </div>
           </div>
-          <div className="flex flex-col gap-2 rounded-3xl bg-slate-50 p-4 text-slate-700 sm:p-5">
-            <p className="text-sm font-medium text-slate-500">Privacy-friendly defaults</p>
-            <p className="text-sm leading-6">Only summary trust signals are shown by default. Sensitive metadata remains hidden.</p>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {onEndorse && (
+              <button
+                type="button"
+                onClick={onEndorse}
+                disabled={isEndorsing}
+                className="shrink-0 rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isEndorsing ? 'Endorsing...' : 'Endorse User'}
+              </button>
+            )}
+            <div className="flex flex-col gap-2 rounded-3xl bg-slate-50 p-4 text-slate-700 sm:p-5">
+              <p className="text-sm font-medium text-slate-500">Privacy-friendly defaults</p>
+              <p className="text-sm leading-6">Only summary trust signals are shown by default. Sensitive metadata remains hidden.</p>
+            </div>
           </div>
         </div>
 
