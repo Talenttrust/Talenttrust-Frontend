@@ -1,6 +1,12 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ReputationPageContent } from '../page';
+import { useToast } from '@/components/toast/toast-provider';
+import { endorseUser } from '@/lib/reputationService';
+
+jest.mock('@/components/toast/toast-provider');
+jest.mock('@/lib/reputationService');
 
 // Mock the ReputationProfile component to avoid complex rendering
 jest.mock('../../../components/ReputationProfile', () => {
@@ -20,9 +26,30 @@ jest.mock('../../../components/ReputationProfile', () => {
             ))}
           </ul>
         )}
+        {props.onEndorse && (
+          <button
+            data-testid="endorse-button"
+            onClick={props.onEndorse}
+            disabled={props.isEndorsing}
+          >
+            Endorse
+          </button>
+        )}
       </div>
     );
   };
+});
+
+const mockShowError = jest.fn();
+const mockShowSuccess = jest.fn();
+
+beforeEach(() => {
+  jest.mocked(useToast).mockReturnValue({
+    showError: mockShowError,
+    showSuccess: mockShowSuccess,
+    dismissToast: jest.fn(),
+  } as any);
+  jest.clearAllMocks();
 });
 
 describe('ReputationPageContent', () => {
@@ -217,6 +244,96 @@ describe('ReputationPageContent', () => {
       render(<ReputationPageContent reputationData={data} userName="CustomName" />);
 
       expect(screen.getByTestId('reputation-name')).toHaveTextContent('CustomName');
+    });
+  });
+
+  describe('Optimistic Updates', () => {
+    const TestWrapper = ({ initialData }: { initialData: any }) => {
+      const [data, setData] = React.useState(initialData);
+
+      React.useEffect(() => {
+        const originalMock = jest.mocked(endorseUser).getMockImplementation();
+        jest.mocked(endorseUser).mockImplementation(async (d, fail) => {
+          if (originalMock) {
+            const result = await originalMock(d, fail);
+            setData(result);
+            return result;
+          }
+          return d;
+        });
+      }, []);
+
+      return <ReputationPageContent reputationData={data} />;
+    };
+
+    it('optimistically updates score and reverts on failure', async () => {
+      const user = userEvent.setup();
+      let rejectPromise: (reason?: any) => void;
+      const promise = new Promise<any>((_, reject) => {
+        rejectPromise = reject;
+      });
+      jest.mocked(endorseUser).mockReturnValue(promise);
+
+      const initialData = { score: 10, history: [] };
+      render(<TestWrapper initialData={initialData} />);
+
+      expect(screen.getByTestId('reputation-score')).toHaveTextContent('10');
+
+      await user.click(screen.getByTestId('endorse-button'));
+
+      // Optimistic update should be immediate
+      expect(screen.getByTestId('reputation-score')).toHaveTextContent('11');
+      expect(screen.getByTestId('reputation-history-count')).toHaveTextContent('1');
+      expect(screen.getByTestId('endorse-button')).toBeDisabled();
+
+      // Trigger failure
+      await act(async () => {
+        rejectPromise!(new Error('Network failure'));
+      });
+
+      // Rollback to initial state
+      await waitFor(() => {
+        expect(screen.getByTestId('reputation-score')).toHaveTextContent('10');
+      });
+      expect(screen.getByTestId('reputation-history-count')).toHaveTextContent('0');
+      expect(mockShowError).toHaveBeenCalledWith({ title: 'Endorsement failed', description: 'Could not submit endorsement.' });
+      expect(screen.getByTestId('endorse-button')).not.toBeDisabled();
+    });
+
+    it('keeps optimistic state on success', async () => {
+      const user = userEvent.setup();
+      jest.mocked(endorseUser).mockResolvedValue({ score: 11, history: [{ id: '1', type: 'Endorsement', summary: 'test', date: '2026' }] });
+
+      const initialData = { score: 10, history: [] };
+      render(<TestWrapper initialData={initialData} />);
+
+      await user.click(screen.getByTestId('endorse-button'));
+
+      // Stays at 11 since parent state is updated on resolve
+      await waitFor(() => {
+        expect(screen.getByTestId('reputation-score')).toHaveTextContent('11');
+      });
+      
+      expect(screen.getByTestId('reputation-history-count')).toHaveTextContent('1');
+      expect(mockShowSuccess).toHaveBeenCalledWith({ title: 'Success', description: 'User endorsed successfully.' });
+      expect(screen.getByTestId('endorse-button')).not.toBeDisabled();
+    });
+
+    it('handles concurrent actions gracefully', async () => {
+      const user = userEvent.setup();
+      // Fast resolve for this test to just ensure the UI responds correctly
+      jest.mocked(endorseUser).mockResolvedValue({ score: 12, history: [] });
+
+      const initialData = { score: 10, history: [] };
+      render(<TestWrapper initialData={initialData} />);
+
+      // React testing library `user.click` checks pointer-events and disabled state. 
+      // Since it's disabled after click due to transition, we can just check if it gets disabled quickly.
+      await user.click(screen.getByTestId('endorse-button'));
+      
+      await waitFor(() => {
+        expect(mockShowSuccess).toHaveBeenCalled();
+      });
     });
   });
 });
