@@ -772,3 +772,175 @@ describe('ReputationProfile – reputation score meter (issue #245)', () => {
       await assertNoA11yViolations(container);
     });
   });
+
+// ---------------------------------------------------------------------------
+// 12. Last-updated timestamp indicator (issue #62)
+// ---------------------------------------------------------------------------
+
+/**
+ * These tests use a fixed reference timestamp injected via the formatRelativeTime
+ * module. Because the component calls formatRelativeTime(lastUpdated) at render
+ * time using the real clock, we mock the module so that our assertions are
+ * deterministic regardless of when the test suite runs.
+ *
+ * The mock lets individual tests return whatever relative string they need,
+ * keeping every test self-contained and immune to wall-clock drift.
+ */
+
+jest.mock('@/lib/formatRelativeTime', () => ({
+  formatRelativeTime: jest.fn(),
+  toISOString: jest.fn(),
+}));
+
+// Pull in the mocked versions so individual tests can configure return values.
+import { formatRelativeTime as mockFormatRelativeTime, toISOString as mockToISOString } from '@/lib/formatRelativeTime';
+const mockFRT = mockFormatRelativeTime as jest.Mock;
+const mockISO = mockToISOString as jest.Mock;
+
+describe('ReputationProfile – last-updated timestamp (issue #62)', () => {
+  const ISO_TS = '2026-07-27T11:55:00.000Z';
+
+  beforeEach(() => {
+    // Default: 5 minutes ago
+    mockFRT.mockReturnValue('5 minutes ago');
+    mockISO.mockReturnValue(ISO_TS);
+  });
+
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
+  // ── Visibility ────────────────────────────────────────────────────────────
+
+  it('renders the last-updated indicator when lastUpdated is provided', () => {
+    renderProfile({ name: 'TS User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toBeInTheDocument();
+  });
+
+  it('does NOT render the indicator when lastUpdated is omitted', () => {
+    renderProfile({ name: 'No TS User', history: [] });
+    expect(screen.queryByTestId('last-updated')).not.toBeInTheDocument();
+  });
+
+  it('does NOT render the indicator when lastUpdated is null', () => {
+    renderProfile({ name: 'Null TS User', history: [], lastUpdated: null });
+    expect(screen.queryByTestId('last-updated')).not.toBeInTheDocument();
+  });
+
+  it('does NOT render the indicator when formatRelativeTime returns null', () => {
+    mockFRT.mockReturnValue(null);
+    renderProfile({ name: 'Invalid TS User', history: [], lastUpdated: 'bad-date' });
+    expect(screen.queryByTestId('last-updated')).not.toBeInTheDocument();
+  });
+
+  // ── Relative text content ─────────────────────────────────────────────────
+
+  it('displays the relative time string returned by formatRelativeTime', () => {
+    renderProfile({ name: 'FRT User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toHaveTextContent('Updated 5 minutes ago');
+  });
+
+  it('displays "just now" when formatRelativeTime returns "just now"', () => {
+    mockFRT.mockReturnValue('just now');
+    renderProfile({ name: 'Just Now User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toHaveTextContent('Updated just now');
+  });
+
+  it('displays "2 hours ago" correctly', () => {
+    mockFRT.mockReturnValue('2 hours ago');
+    renderProfile({ name: 'Hours User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toHaveTextContent('Updated 2 hours ago');
+  });
+
+  it('displays "3 days ago" correctly', () => {
+    mockFRT.mockReturnValue('3 days ago');
+    renderProfile({ name: 'Days User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toHaveTextContent('Updated 3 days ago');
+  });
+
+  // ── <time> element & dateTime attribute ───────────────────────────────────
+
+  it('wraps the relative time in a <time> element', () => {
+    const { container } = renderProfile({ name: 'Time El User', history: [], lastUpdated: ISO_TS });
+    // The last-updated paragraph contains exactly one <time> element.
+    const p = container.querySelector('[data-testid="last-updated"]');
+    expect(p?.querySelector('time')).not.toBeNull();
+  });
+
+  it('sets dateTime attribute on <time> to the ISO string from toISOString', () => {
+    const { container } = renderProfile({ name: 'DateTime User', history: [], lastUpdated: ISO_TS });
+    const timeEl = container.querySelector('[data-testid="last-updated"] time');
+    expect(timeEl?.getAttribute('dateTime')).toBe(ISO_TS);
+  });
+
+  it('omits dateTime attribute when toISOString returns an empty string', () => {
+    mockISO.mockReturnValue('');
+    const { container } = renderProfile({ name: 'No DateTime User', history: [], lastUpdated: 'bad' });
+    const timeEl = container.querySelector('[data-testid="last-updated"] time');
+    // When isoTime is falsy, dateTime prop is undefined → attribute absent.
+    expect(timeEl?.hasAttribute('dateTime')).toBe(false);
+  });
+
+  // ── Accessible label ──────────────────────────────────────────────────────
+
+  it('the indicator paragraph has an aria-label containing the ISO timestamp', () => {
+    renderProfile({ name: 'A11y TS User', history: [], lastUpdated: ISO_TS });
+    const p = screen.getByTestId('last-updated');
+    expect(p).toHaveAttribute('aria-label', `Last updated at ${ISO_TS}`);
+  });
+
+  it('aria-label falls back to "Last updated" when toISOString returns empty', () => {
+    mockISO.mockReturnValue('');
+    mockFRT.mockReturnValue('5 minutes ago');
+    renderProfile({ name: 'Fallback A11y User', history: [], lastUpdated: 'bad' });
+    const p = screen.getByTestId('last-updated');
+    expect(p).toHaveAttribute('aria-label', 'Last updated');
+  });
+
+  // ── Works across all reputation states ───────────────────────────────────
+
+  it('shows the indicator in the no-reputation state', () => {
+    renderProfile({ name: 'No Score TS', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toBeInTheDocument();
+  });
+
+  it('shows the indicator in the partial-reputation state', () => {
+    renderProfile({ name: 'Partial TS', score: 3, history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toBeInTheDocument();
+  });
+
+  it('shows the indicator in the full-reputation state', () => {
+    renderProfile({ name: 'Full TS', score: 4, history: HISTORY_EVENTS, lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toBeInTheDocument();
+  });
+
+  // ── Accessibility audit ───────────────────────────────────────────────────
+
+  it('passes axe audit with lastUpdated present (full-reputation state)', async () => {
+    mockFRT.mockReturnValue('5 minutes ago');
+    mockISO.mockReturnValue(ISO_TS);
+    const { container } = render(
+      <ReputationProfile
+        name="A11y TS Full"
+        score={4}
+        level="Expert"
+        history={HISTORY_EVENTS}
+        lastUpdated={ISO_TS}
+      />
+    );
+    await assertNoA11yViolations(container);
+  });
+
+  it('passes axe audit with lastUpdated present (no-reputation state)', async () => {
+    mockFRT.mockReturnValue('just now');
+    mockISO.mockReturnValue(ISO_TS);
+    const { container } = render(
+      <ReputationProfile
+        name="A11y TS None"
+        history={[]}
+        lastUpdated={ISO_TS}
+      />
+    );
+    await assertNoA11yViolations(container);
+  });
+});

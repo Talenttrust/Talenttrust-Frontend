@@ -36,6 +36,7 @@ export function ReputationPageContent({
         score={score}
         level={reputationData.level}
         history={reputationData.history}
+        lastUpdated={reputationData.lastUpdated}
       />
     </main>
   );

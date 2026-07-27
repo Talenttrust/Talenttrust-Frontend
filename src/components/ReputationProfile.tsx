@@ -1,3 +1,5 @@
+import { formatRelativeTime, toISOString } from '@/lib/formatRelativeTime';
+
 export type ReputationEvent = {
   id: string;
   type: string;
@@ -12,6 +14,16 @@ export type ReputationProfileProps = {
   history?: ReputationEvent[];
   /** Maximum possible score value. Used for aria-valuemax on the meter role. */
   maxScore?: number;
+  /**
+   * ISO-8601 timestamp (or Date / epoch ms) indicating when this reputation
+   * profile was last refreshed. When provided, a relative "Updated X ago"
+   * indicator is shown in the profile card header.
+   *
+   * Pass `null` or omit entirely to hide the indicator.
+   *
+   * @example "2026-07-27T10:30:00Z"
+   */
+  lastUpdated?: Date | string | number | null;
 };
 
 export type ReputationBand = {
@@ -60,6 +72,7 @@ export default function ReputationProfile({
   level,
   history = [],
   maxScore = 5,
+  lastUpdated,
 }: ReputationProfileProps) {
   const hasReputation = typeof score === 'number' && score >= 0;
   const showPartial = hasReputation && history.length === 0;
@@ -67,6 +80,9 @@ export default function ReputationProfile({
   const resolvedLevel = level !== undefined
     ? level
     : (hasReputation ? resolveReputationLevel(score, maxScore) : 'Community Member');
+
+  const relativeTime = lastUpdated != null ? formatRelativeTime(lastUpdated) : null;
+  const isoTime = lastUpdated != null ? toISOString(lastUpdated) : '';
 
   return (
     <section className="w-full max-w-5xl mx-auto space-y-8 px-4 py-10 sm:px-6 lg:px-8" aria-labelledby="profile-heading">
@@ -87,6 +103,32 @@ export default function ReputationProfile({
             <p className="text-sm leading-6">Only summary trust signals are shown by default. Sensitive metadata remains hidden.</p>
           </div>
         </div>
+
+        {/**
+         * Last-updated indicator.
+         *
+         * Renders a relative time string (e.g. "Updated 5 minutes ago") when
+         * `lastUpdated` is provided. The underlying `<time>` element carries the
+         * full ISO-8601 value in its `dateTime` attribute so screen readers and
+         * search engines can consume the machine-readable absolute time, while
+         * sighted users see the friendlier relative form.
+         *
+         * The `aria-label` on the wrapping `<p>` surfaces the absolute time as
+         * an accessible text alternative, satisfying WCAG 2.1 SC 1.3.1 (Info
+         * and Relationships) without duplicating the visible relative text.
+         */}
+        {relativeTime && (
+          <p
+            className="mt-4 text-xs text-slate-400"
+            aria-label={isoTime ? `Last updated at ${isoTime}` : 'Last updated'}
+            data-testid="last-updated"
+          >
+            Updated{' '}
+            <time dateTime={isoTime || undefined}>
+              {relativeTime}
+            </time>
+          </p>
+        )}
 
         {/**
           * Reputation score meter with accessible semantics.
