@@ -4,6 +4,7 @@ import React, { useState, useCallback, FormEvent, useRef } from 'react';
 import { FormField } from '@/components/FormField';
 import { ErrorSummary } from '@/components/ErrorSummary';
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
+import { useFormValidation } from '@/hooks/useFormValidation';
 import { sanitizeUserText } from '@/lib/sanitizeUserText';
 import {
   validateMilestone,
@@ -72,16 +73,11 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
   const [currency, setCurrency] = useState<string>('USD');
   const [status, setStatus] = useState<Milestone['status']>('Pending');
   const [dueDate, setDueDate] = useState('');
-  const [errors, setErrors] = useState<Array<{ fieldId: string; message: string }>>([]);
 
-  /**
-   * Delegates to the pure `validateMilestone` helper and returns the resulting
-   * errors array. Keeping the call-site here (rather than inlining the logic)
-   * means the form stays thin while the rules live in a testable module.
-   */
-  const validateForm = useCallback((): Array<{ fieldId: string; message: string }> => {
-    return validateMilestone({ title, payout, currency, dueDate, status });
-  }, [title, payout, currency, dueDate, status]);
+  const { errors, validateForm, getFieldError } = useFormValidation({
+    validate: validateMilestone,
+    values: { title, payout, currency, dueDate, status },
+  });
 
   /**
    * Handles form submission: validates, then calls `onSubmit` with the
@@ -91,10 +87,7 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
 
-      const validationErrors = validateForm();
-      setErrors(validationErrors);
-
-      if (validationErrors.length > 0) return;
+      if (!validateForm()) return;
 
       // Generate a stable id from title slug + current timestamp
       const sanitizedTitle = sanitizeUserText(title, MAX_MILESTONE_TITLE_LENGTH);
@@ -118,9 +111,6 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
     },
     [title, payout, currency, status, dueDate, contractId, validateForm, onSubmit],
   );
-
-  const getFieldError = (fieldId: string): string | undefined =>
-    errors.find((e) => e.fieldId === fieldId)?.message;
 
   useDialogFocusTrap({
     isOpen: true,
