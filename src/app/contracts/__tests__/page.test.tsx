@@ -93,8 +93,8 @@ const mockSaveContract = repository.saveContract as jest.MockedFunction<
 const mockIsValidStellarAddress = stellarAddress.isValidStellarAddress as jest.MockedFunction<
   typeof stellarAddress.isValidStellarAddress
 >;
-const mockDownloadCsv = jest.requireMock('@/lib/exportContracts').downloadContractsCsv as jest.Mock;
-const mockDownloadJson = jest.requireMock('@/lib/exportContracts').downloadContractsJson as jest.Mock;
+const _mockDownloadCsv = jest.requireMock('@/lib/exportContracts').downloadContractsCsv as jest.Mock;
+const _mockDownloadJson = jest.requireMock('@/lib/exportContracts').downloadContractsJson as jest.Mock;
 
 const VALID_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
 
@@ -362,6 +362,38 @@ describe('ContractsPage', () => {
 
       // Should not crash
       expect(() => render(<ContractsPage />)).not.toThrow();
+    });
+
+    it('renders a recoverable error instead of the empty state when loading fails', () => {
+      mockListContracts.mockImplementation(() => {
+        throw new Error('Storage error');
+      });
+
+      render(<ContractsPage />);
+
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load contracts');
+      expect(screen.getByRole('button', { name: 'Retry loading contracts' })).toBeInTheDocument();
+      expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('contracts-list')).not.toBeInTheDocument();
+    });
+
+    it('re-fetches contracts when retry is activated', async () => {
+      const recoveredContracts = [makeContract({ contractName: 'Recovered Contract' })];
+      mockListContracts
+        .mockImplementationOnce(() => {
+          throw new Error('Storage error');
+        })
+        .mockReturnValueOnce(recoveredContracts);
+
+      render(<ContractsPage />);
+      fireEvent.click(screen.getByRole('button', { name: 'Retry loading contracts' }));
+
+      expect(screen.getByRole('status', { name: 'Loading contracts' })).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Recovered Contract')).toBeInTheDocument();
+      });
+      expect(mockListContracts).toHaveBeenCalledTimes(2);
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
     it('handles rapid form toggles', () => {

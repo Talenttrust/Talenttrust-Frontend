@@ -30,6 +30,7 @@ Reference documentation for components, hooks, contexts, and library utilities.
 | [Toast.md](./components/Toast.md) | Toast notification system — quiet mode, density, auto-dismiss, action button |
 | [WalletConnectButton.md](./components/WalletConnectButton.md) | Wallet connect/disconnect button |
 | [WalletContext.md](./components/WalletContext.md) | `WalletProvider`, `useWallet`, idle auto-disconnect |
+| [WALLET_ACCESSIBILITY.md](./WALLET_ACCESSIBILITY.md) | Wallet components accessibility contract (roles, keyboard, focus) |
 
 ---
 
@@ -38,8 +39,10 @@ Reference documentation for components, hooks, contexts, and library utilities.
 | Document | What it covers |
 |----------|----------------|
 | [**ContractsHooks.md**](./hooks/ContractsHooks.md) | **Contracts hooks usage reference** — `useContractProgress` / `calculateContractProgress` (escrow metrics, memoization contract) and `useOptimisticContractStatus` (optimistic status writes, rollback, stale detection) with inputs, returns, and states |
-| [useCopyToClipboard.md](./hooks/useCopyToClipboard.md) | Clipboard copy with status management and SSR safety |
-| [useMediaQuery.md](./hooks/useMediaQuery.md) | SSR-safe CSS media query hook |
+| [useCopyToClipboard.md](./hooks/useCopyToClipboard.md) | Clipboard copy with status management |
+| [useDialogFocusTrap.md](./hooks/useDialogFocusTrap.md) | Focus management for dialogs |
+| [useFormAnnouncer.md](./hooks/useFormAnnouncer.md) | ARIA announcements for forms |
+| [useMediaQuery.md](./hooks/useMediaQuery.md) | SSR-safe media query hook |
 
 > The `useDialogFocusTrap` hook is documented in [Dialogs.md](./components/Dialogs.md#usedialogfocustrap-hook).
 
