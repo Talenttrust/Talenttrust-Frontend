@@ -34,6 +34,8 @@ module.exports = [
     },
     rules: {
       ...js.configs.recommended.rules,
+      'no-unassigned-vars': 'off',
+      'preserve-caught-error': 'off',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['error', {
         vars: 'all',
