@@ -21,6 +21,12 @@ export type ReputationProfileProps = {
   syncUrl?: boolean;
   /** Number of history events shown per page before "Load more" appears. */
   pageSize?: number;
+  /** Debounce delay (ms) for live-region announcements. Defaults to 300. */
+  announcerDebounceMs?: number;
+  /** Optional callback when items are deleted. If it returns false, an error announcement is made. */
+  onDeleteSelected?: (ids: string[]) => boolean | void;
+  /** Optional callback when items are exported. If it returns false, an error announcement is made. */
+  onExportSelected?: (events: ReputationEvent[]) => boolean | void;
 };
 
 export type ReputationBand = {
@@ -67,6 +73,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useToast } from './toast/toast-provider';
+import { useFormAnnouncer } from '@/hooks/useFormAnnouncer';
 import {
   DEFAULT_DIR,
   DEFAULT_TYPE,
@@ -91,6 +98,9 @@ export default function ReputationProfile({
   maxScore = 5,
   syncUrl = true,
   pageSize = REPUTATION_PAGE_SIZE,
+  announcerDebounceMs = 300,
+  onDeleteSelected,
+  onExportSelected,
 }: ReputationProfileProps) {
   let showSuccess: ReturnType<typeof useToast>['showSuccess'] | null = null;
   try {
@@ -102,7 +112,9 @@ export default function ReputationProfile({
   const showPartial = hasReputation && history.length === 0;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [events, setEvents] = useState(history);
-  const [announcement, setAnnouncement] = useState('');
+  const { politeMessage, assertiveMessage, announce: announceResult } = useFormAnnouncer({
+    debounceMs: announcerDebounceMs,
+  });
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [displayCount, setDisplayCount] = useState(pageSize);
 
@@ -193,8 +205,8 @@ export default function ReputationProfile({
     ? level
     : (hasReputation ? resolveReputationLevel(score, maxScore) : 'Community Member');
 
-  const announce = (message: string) => {
-    setAnnouncement(message);
+  const announce = (message: string, type: 'success' | 'error' = 'success') => {
+    announceResult({ message, type });
   };
 
   const clearSelection = () => {
@@ -223,27 +235,38 @@ export default function ReputationProfile({
 
   const confirmDeleteSelected = () => {
     const count = selectedEvents.length;
-    setEvents((current) => current.filter((event) => !selectedIds.includes(event.id)));
-    setSelectedIds([]);
-    setConfirmOpen(false);
-    announce(`Deleted ${count} reputation ${count === 1 ? 'item' : 'items'}.`);
-    showSuccess?.({
-      title: 'Bulk delete complete',
-      description: `Deleted ${count} reputation ${count === 1 ? 'item' : 'items'}.`,
-      duration: 3000,
-    });
+    const success = onDeleteSelected ? onDeleteSelected(selectedIds) !== false : true;
+    if (success) {
+      setEvents((current) => current.filter((event) => !selectedIds.includes(event.id)));
+      setSelectedIds([]);
+      setConfirmOpen(false);
+      announce(`Deleted ${count} reputation ${count === 1 ? 'item' : 'items'}.`, 'success');
+      showSuccess?.({
+        title: 'Bulk delete complete',
+        description: `Deleted ${count} reputation ${count === 1 ? 'item' : 'items'}.`,
+        duration: 3000,
+      });
+    } else {
+      setConfirmOpen(false);
+      announce('Failed to delete reputation items.', 'error');
+    }
   };
 
   const handleExportSelected = () => {
     if (selectedEvents.length === 0) return;
-    const payload = selectedEvents.map((event) => ({
-      id: event.id,
-      type: event.type,
-      summary: event.summary,
-      date: event.date,
-    }));
-    void payload;
-    announce(`Exported ${selectedEvents.length} reputation ${selectedEvents.length === 1 ? 'item' : 'items'}.`);
+    const success = onExportSelected ? onExportSelected(selectedEvents) !== false : true;
+    if (success) {
+      const payload = selectedEvents.map((event) => ({
+        id: event.id,
+        type: event.type,
+        summary: event.summary,
+        date: event.date,
+      }));
+      void payload;
+      announce(`Exported ${selectedEvents.length} reputation ${selectedEvents.length === 1 ? 'item' : 'items'}.`, 'success');
+    } else {
+      announce('Failed to export reputation items.', 'error');
+    }
   };
 
   return (
@@ -403,9 +426,12 @@ export default function ReputationProfile({
           </div>
         </div>
 
-        <p aria-live="polite" aria-atomic="true" className="sr-only">
-          {announcement}
-        </p>
+        <div aria-live="polite" aria-atomic="true" className="sr-only" data-testid="reputation-announcer-polite">
+          {politeMessage}
+        </div>
+        <div aria-live="assertive" aria-atomic="true" className="sr-only" data-testid="reputation-announcer-assertive">
+          {assertiveMessage}
+        </div>
 
         {events.length === 0 ? (
           <div className="rounded-3xl border-[var(--border)] bg-[var(--surface)] p-6 text-[var(--muted-foreground)]">

@@ -26,7 +26,7 @@
  */
 
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import ReputationProfile, {
   ReputationEvent,
   ReputationProfileProps,
@@ -347,7 +347,7 @@ describe('ReputationProfile – full reputation (score + history)', () => {
     expect(screen.queryAllByRole('checkbox', { name: /select reputation item/i })).toHaveLength(0);
   });
 
-  it('announces export results for a partial bulk selection', () => {
+  it('announces export results for a partial bulk selection', async () => {
     fireEvent.click(screen.getByRole('checkbox', {
       name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
     }));
@@ -356,7 +356,7 @@ describe('ReputationProfile – full reputation (score + history)', () => {
     }));
     fireEvent.click(screen.getByRole('button', { name: /export selected/i }));
 
-    expect(screen.getByText(/Exported 2 reputation items\./i)).toBeInTheDocument();
+    expect(await screen.findByText(/Exported 2 reputation items\./i)).toBeInTheDocument();
   });
 });
 
@@ -1188,5 +1188,107 @@ describe('ReputationProfile – history filtering and sorting', () => {
       target: { value: 'On-chain review' },
     });
     expect(screen.getByText(/Showing 2 events of type On-chain review/i)).toBeInTheDocument();
+  });
+});
+
+describe('ReputationProfile – live region announcements (issue #810)', () => {
+  it('announces bulk deletion via polite live region', async () => {
+    renderProfile({ name: 'Announcer User', score: 80, history: HISTORY_EVENTS });
+    fireEvent.click(screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /delete selected/i }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /delete selected/i }));
+
+    const polite = screen.getByTestId('reputation-announcer-polite');
+    await waitFor(() => {
+      expect(polite.textContent).toBe('Deleted 1 reputation item.');
+    });
+    const assertive = screen.getByTestId('reputation-announcer-assertive');
+    expect(assertive.textContent).toBe('');
+  });
+
+  it('announces selection clearing via polite live region', async () => {
+    renderProfile({ name: 'Announcer User', score: 80, history: HISTORY_EVENTS });
+    fireEvent.click(screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /clear selection/i }));
+
+    const polite = screen.getByTestId('reputation-announcer-polite');
+    await waitFor(() => {
+      expect(polite.textContent).toBe('Selection cleared.');
+    });
+  });
+
+  it('announces failure when onDeleteSelected callback returns false via assertive live region', async () => {
+    const onDeleteSelected = jest.fn().mockReturnValue(false);
+    renderProfile({ name: 'Announcer User', score: 80, history: HISTORY_EVENTS, onDeleteSelected });
+    fireEvent.click(screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /delete selected/i }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /delete selected/i }));
+
+    const assertive = screen.getByTestId('reputation-announcer-assertive');
+    await waitFor(() => {
+      expect(assertive.textContent).toBe('Failed to delete reputation items.');
+    });
+    const polite = screen.getByTestId('reputation-announcer-polite');
+    expect(polite.textContent).toBe('');
+  });
+
+  it('announces failure when onExportSelected callback returns false via assertive live region', async () => {
+    const onExportSelected = jest.fn().mockReturnValue(false);
+    renderProfile({ name: 'Announcer User', score: 80, history: HISTORY_EVENTS, onExportSelected });
+    fireEvent.click(screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /export selected/i }));
+
+    const assertive = screen.getByTestId('reputation-announcer-assertive');
+    await waitFor(() => {
+      expect(assertive.textContent).toBe('Failed to export reputation items.');
+    });
+  });
+
+  it('debounces rapid announcement calls', async () => {
+    jest.useFakeTimers();
+    renderProfile({ name: 'Debounce User', score: 80, history: HISTORY_EVENTS, announcerDebounceMs: 500 });
+    const checkbox = screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+    });
+    
+    // Trigger rapid selection changes and clears
+    fireEvent.click(checkbox);
+    fireEvent.click(screen.getByRole('button', { name: /clear selection/i }));
+    fireEvent.click(checkbox);
+    fireEvent.click(screen.getByRole('button', { name: /clear selection/i }));
+
+    const polite = screen.getByTestId('reputation-announcer-polite');
+    // Before debounce timer completes, live region remains empty
+    expect(polite.textContent).toBe('');
+
+    // Advance timer past debounce window
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(polite.textContent).toBe('Selection cleared.');
+    jest.useRealTimers();
+  });
+
+  it('preserves sr-only formatting and correct ARIA attributes for live regions', () => {
+    renderProfile({ name: 'A11y User', score: 80, history: HISTORY_EVENTS });
+    const polite = screen.getByTestId('reputation-announcer-polite');
+    const assertive = screen.getByTestId('reputation-announcer-assertive');
+
+    expect(polite).toHaveAttribute('aria-live', 'polite');
+    expect(polite).toHaveAttribute('aria-atomic', 'true');
+    expect(polite).toHaveClass('sr-only');
+
+    expect(assertive).toHaveAttribute('aria-live', 'assertive');
+    expect(assertive).toHaveAttribute('aria-atomic', 'true');
+    expect(assertive).toHaveClass('sr-only');
   });
 });
