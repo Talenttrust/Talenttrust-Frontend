@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, {
   useCallback,
@@ -7,23 +7,28 @@ import React, {
   useRef,
   useState,
   Suspense,
-} from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import EmptyState from '../../components/EmptyState';
-import MilestonesList from '../../components/MilestonesList';
+} from "react";
+import dynamic from "next/dynamic";
+import { useSearchParams, useRouter } from "next/navigation";
+import EmptyState from "../../components/EmptyState";
+import MilestonesList from "../../components/MilestonesList";
 import MilestoneFilter, {
   type MilestoneStatusFilter,
-} from '../../components/milestones/MilestoneFilter';
-import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
-import MilestonesErrorBoundary from '../../components/milestones/MilestonesErrorBoundary';
-import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository';
-import { getItem, setItem } from '@/lib/safeStorage';
-import { useToast } from '@/components/toast/toast-provider';
-import SafeBoundary from '@/components/SafeBoundary';
-import type { Milestone } from '@/types/domain';
-import type { StatusType } from '@/components/StatusBadge';
+} from "../../components/milestones/MilestoneFilter";
+import MilestonesErrorBoundary from "../../components/milestones/MilestonesErrorBoundary";
+import {
+  listMilestones,
+  saveMilestone,
+  updateMilestone,
+} from "@/lib/repository";
+import { getItem, setItem } from "@/lib/safeStorage";
+import { useToast } from "@/components/toast/toast-provider";
+import SafeBoundary from "@/components/SafeBoundary";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import type { Milestone } from "@/types/domain";
+import type { StatusType } from "@/components/StatusBadge";
 
-export const SAMPLE_DISMISSED_KEY = 'talenttrust-milestones-sample-dismissed';
+export const SAMPLE_DISMISSED_KEY = "talenttrust-milestones-sample-dismissed";
 
 /**
  * MilestonesList paginates internally via its own `pageSize` prop, but that
@@ -35,69 +40,90 @@ const UNPAGINATED_LIST_SIZE = 9999;
 
 export const SAMPLE_MILESTONES: Milestone[] = [
   {
-    id: '1',
-    title: 'Project Kickoff & Discovery',
-    status: 'Completed',
+    id: "1",
+    title: "Project Kickoff & Discovery",
+    status: "Completed",
     payout: 2500,
-    currency: 'USD',
-    dueDate: '2026-03-15',
+    currency: "USD",
+    dueDate: "2026-03-15",
   },
   {
-    id: '2',
-    title: 'UI/UX Design Handoff',
-    status: 'Paid',
+    id: "2",
+    title: "UI/UX Design Handoff",
+    status: "Paid",
     payout: 3500,
-    currency: 'USD',
-    dueDate: '2026-04-01',
+    currency: "USD",
+    dueDate: "2026-04-01",
   },
   {
-    id: '3',
-    title: 'Frontend Development – Sprint 1',
-    status: 'Pending',
+    id: "3",
+    title: "Frontend Development – Sprint 1",
+    status: "Pending",
     payout: 5000,
-    currency: 'USD',
-    dueDate: '2026-05-01',
+    currency: "USD",
+    dueDate: "2026-05-01",
   },
   {
-    id: '4',
-    title: 'API Integration & Testing',
-    status: 'Pending',
+    id: "4",
+    title: "API Integration & Testing",
+    status: "Pending",
     payout: 4000,
-    currency: 'USD',
-    dueDate: '2026-05-15',
+    currency: "USD",
+    dueDate: "2026-05-15",
   },
   {
-    id: '5',
-    title: 'Payment Gateway Integration',
-    status: 'Disputed',
+    id: "5",
+    title: "Payment Gateway Integration",
+    status: "Disputed",
     payout: 3000,
-    currency: 'USD',
-    dueDate: '2026-04-20',
+    currency: "USD",
+    dueDate: "2026-04-20",
   },
 ];
 
 const VALID_STATUSES: MilestoneStatusFilter[] = [
-  'All',
-  'Pending',
-  'Completed',
-  'Paid',
-  'Disputed',
+  "All",
+  "Pending",
+  "Completed",
+  "Paid",
+  "Disputed",
 ];
 
 function getValidStatus(param: string | null): MilestoneStatusFilter {
   return param && (VALID_STATUSES as string[]).includes(param)
     ? (param as MilestoneStatusFilter)
-    : 'All';
+    : "All";
 }
 
-export type MilestoneSortOption = 'newest' | 'oldest';
-const VALID_SORT_OPTIONS: MilestoneSortOption[] = ['newest', 'oldest'];
+export type MilestoneSortOption = "newest" | "oldest";
+const VALID_SORT_OPTIONS: MilestoneSortOption[] = ["newest", "oldest"];
 
 function getValidSortOption(param: string | null): MilestoneSortOption {
   return param && (VALID_SORT_OPTIONS as string[]).includes(param)
     ? (param as MilestoneSortOption)
-    : 'newest';
+    : "newest";
 }
+
+const MilestoneCreationFormFallback = () => (
+  <div
+    data-testid="milestone-form-loading"
+    className="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg"
+  >
+    <LoadingSkeleton rows={4} className="mb-4" />
+    <LoadingSkeleton rows={1} width="w-3/4" />
+  </div>
+);
+
+const MilestoneCreationForm = dynamic(
+  () =>
+    import("@/components/milestones/MilestoneCreationForm").then(
+      (mod) => mod.MilestoneCreationForm,
+    ),
+  {
+    ssr: false,
+    loading: MilestoneCreationFormFallback,
+  },
+);
 
 const MilestonesContent: React.FC = () => {
   const [milestones, setMilestones] = useState<Milestone[]>(SAMPLE_MILESTONES);
@@ -106,39 +132,39 @@ const MilestonesContent: React.FC = () => {
   const router = useRouter();
   const startFromScratchRef = useRef<HTMLButtonElement | null>(null);
 
-  const initialStatus = getValidStatus(searchParams.get('status'));
+  const initialStatus = getValidStatus(searchParams.get("status"));
   const [statusFilter, setStatusFilter] =
     useState<MilestoneStatusFilter>(initialStatus);
   const [sortOrder, setSortOrder] = useState<MilestoneSortOption>(
-    getValidSortOption(searchParams.get('sort')),
+    getValidSortOption(searchParams.get("sort")),
   );
   const [showForm, setShowForm] = useState(false);
   const { showError } = useToast();
 
   // Sync state if searchParams change externally (e.g. back/forward navigation)
   useEffect(() => {
-    setStatusFilter(getValidStatus(searchParams.get('status')));
-    setSortOrder(getValidSortOption(searchParams.get('sort')));
+    setStatusFilter(getValidStatus(searchParams.get("status")));
+    setSortOrder(getValidSortOption(searchParams.get("sort")));
   }, [searchParams]);
 
   // Sync filter/sort state changes to the URL without adding browser history entries.
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
-      if (statusFilter !== 'All') {
-        params.set('status', statusFilter);
+      if (statusFilter !== "All") {
+        params.set("status", statusFilter);
       } else {
-        params.delete('status');
+        params.delete("status");
       }
 
-      if (sortOrder !== 'newest') {
-        params.set('sort', sortOrder);
+      if (sortOrder !== "newest") {
+        params.set("sort", sortOrder);
       } else {
-        params.delete('sort');
+        params.delete("sort");
       }
 
       const query = params.toString();
-      router.replace(query ? `?${query}` : '?');
+      router.replace(query ? `?${query}` : "?");
     }, 150);
 
     return () => window.clearTimeout(timeoutId);
@@ -152,7 +178,7 @@ const MilestonesContent: React.FC = () => {
       setIsDismissed(true);
     } else {
       try {
-        const dismissed = getItem(SAMPLE_DISMISSED_KEY) === 'true';
+        const dismissed = getItem(SAMPLE_DISMISSED_KEY) === "true";
         setIsDismissed(dismissed);
       } catch {
         setIsDismissed(true);
@@ -163,7 +189,7 @@ const MilestonesContent: React.FC = () => {
 
   const handleDismissSampleBanner = useCallback(() => {
     try {
-      setItem(SAMPLE_DISMISSED_KEY, 'true');
+      setItem(SAMPLE_DISMISSED_KEY, "true");
     } catch {
       // safeStorage failure resilience
     }
@@ -179,23 +205,31 @@ const MilestonesContent: React.FC = () => {
   const displayMilestones = isUsingSampleData && isDismissed ? [] : milestones;
 
   const filtered = useMemo(() => {
-    if (statusFilter === 'All') return displayMilestones;
+    if (statusFilter === "All") return displayMilestones;
     return displayMilestones.filter((m) => m.status === statusFilter);
   }, [displayMilestones, statusFilter]);
 
   const sortedMilestones = useMemo(() => {
     const nextMilestones = [...filtered];
 
-    if (sortOrder === 'oldest') {
+    if (sortOrder === "oldest") {
       nextMilestones.sort((left, right) => {
-        const leftTime = left.dueDate ? Date.parse(left.dueDate) : Number.POSITIVE_INFINITY;
-        const rightTime = right.dueDate ? Date.parse(right.dueDate) : Number.POSITIVE_INFINITY;
+        const leftTime = left.dueDate
+          ? Date.parse(left.dueDate)
+          : Number.POSITIVE_INFINITY;
+        const rightTime = right.dueDate
+          ? Date.parse(right.dueDate)
+          : Number.POSITIVE_INFINITY;
         return leftTime - rightTime;
       });
     } else {
       nextMilestones.sort((left, right) => {
-        const leftTime = left.dueDate ? Date.parse(left.dueDate) : Number.NEGATIVE_INFINITY;
-        const rightTime = right.dueDate ? Date.parse(right.dueDate) : Number.NEGATIVE_INFINITY;
+        const leftTime = left.dueDate
+          ? Date.parse(left.dueDate)
+          : Number.NEGATIVE_INFINITY;
+        const rightTime = right.dueDate
+          ? Date.parse(right.dueDate)
+          : Number.NEGATIVE_INFINITY;
         return rightTime - leftTime;
       });
     }
@@ -207,26 +241,31 @@ const MilestonesContent: React.FC = () => {
     setShowForm(true);
   }, []);
 
-  const handleSubmitMilestone = useCallback((milestone: Milestone) => {
-    const previousIsDismissed = isDismissed;
+  const handleSubmitMilestone = useCallback(
+    (milestone: Milestone) => {
+      const previousIsDismissed = isDismissed;
 
-    setMilestones((prev) => [...prev, milestone]);
-    setIsDismissed(true);
-    setShowForm(false);
+      setMilestones((prev) => [...prev, milestone]);
+      setIsDismissed(true);
+      setShowForm(false);
 
-    const persisted = saveMilestone(milestone);
-    if (!persisted) {
-      setMilestones((prev) => prev.filter((item) => item.id !== milestone.id));
-      setIsDismissed(previousIsDismissed);
-      showError({
-        title: 'Unable to create milestone',
-        description: 'Your milestone could not be saved. Please try again.',
-      });
-      return;
-    }
+      const persisted = saveMilestone(milestone);
+      if (!persisted) {
+        setMilestones((prev) =>
+          prev.filter((item) => item.id !== milestone.id),
+        );
+        setIsDismissed(previousIsDismissed);
+        showError({
+          title: "Unable to create milestone",
+          description: "Your milestone could not be saved. Please try again.",
+        });
+        return;
+      }
 
-    setIsDismissed(true);
-  }, [isDismissed, showError]);
+      setIsDismissed(true);
+    },
+    [isDismissed, showError],
+  );
 
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
@@ -336,7 +375,9 @@ const MilestonesContent: React.FC = () => {
                   id="milestone-sort"
                   aria-label="Sort milestones"
                   value={sortOrder}
-                  onChange={(event) => setSortOrder(event.target.value as MilestoneSortOption)}
+                  onChange={(event) =>
+                    setSortOrder(event.target.value as MilestoneSortOption)
+                  }
                   className="rounded-xl border border-slate-200 bg-transparent px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="newest">Newest first</option>
