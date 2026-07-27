@@ -510,7 +510,7 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
           </p>
         </div>
         <div
-          class="rounded-3xl border-[var(--border)] bg-[var(--surface)] p-5"
+          class="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"
         >
           <p
             class="text-sm font-medium text-[var(--muted-foreground)]"
@@ -531,7 +531,7 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
           </p>
         </div>
         <div
-          class="rounded-3xl border-[var(--border)] bg-[var(--surface)] p-5"
+          class="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"
         >
           <p
             class="text-sm font-medium text-[var(--muted-foreground)]"
@@ -667,13 +667,13 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
             class="flex items-center gap-2"
           >
             <label
-              class="text-sm font-medium text-slate-700"
+              class="text-sm font-medium text-[var(--foreground)]"
               for="history-type-filter"
             >
               Filter:
             </label>
             <select
-              class="rounded-lg border border-slate-300 py-1 pl-3 pr-8 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              class="rounded-lg border border-[var(--border)] bg-[var(--card)] py-1 pl-3 pr-8 text-sm text-[var(--foreground)] focus:border-[var(--ring)] focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
               data-testid="reputation-type-filter"
               id="history-type-filter"
             >
@@ -703,13 +703,13 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
             class="flex items-center gap-2"
           >
             <label
-              class="text-sm font-medium text-slate-700"
+              class="text-sm font-medium text-[var(--foreground)]"
               for="history-sort-dir"
             >
               Sort:
             </label>
             <select
-              class="rounded-lg border border-slate-300 py-1 pl-3 pr-8 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              class="rounded-lg border border-[var(--border)] bg-[var(--card)] py-1 pl-3 pr-8 text-sm text-[var(--foreground)] focus:border-[var(--ring)] focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
               data-testid="reputation-sort-dir"
               id="history-sort-dir"
             >
@@ -737,7 +737,7 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
             newest first
           </div>
           <span
-            class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-600"
+            class="rounded-full bg-[var(--surface)] px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted-foreground)]"
           >
             Visible
           </span>
@@ -759,22 +759,26 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
           >
             <input
               aria-label="Select all reputation items"
-              class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+              class="h-4 w-4 rounded border-[var(--border)] text-[var(--foreground)] focus:ring-[var(--ring)]"
               type="checkbox"
             />
             Select all
           </label>
           <div
+            aria-label="Reputation history actions"
             class="flex flex-wrap gap-2"
+            role="toolbar"
           >
             <button
-              class="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Export selected reputation items"
+              class="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--muted-foreground)] disabled:cursor-not-allowed disabled:opacity-50"
               disabled=""
               type="button"
             >
               Export selected
             </button>
             <button
+              aria-label="Delete selected reputation items"
               class="rounded-2xl bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
               disabled=""
               type="button"
@@ -782,7 +786,8 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
               Delete selected
             </button>
             <button
-              class="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Clear selected reputation items; clear selection"
+              class="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--muted-foreground)] disabled:cursor-not-allowed disabled:opacity-50"
               disabled=""
               type="button"
             >
@@ -804,24 +809,24 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
               >
                 <input
                   aria-label="Select reputation item Verification: Completed identity verification"
-                  class="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                  class="mt-1 h-4 w-4 rounded border-[var(--border)] text-[var(--foreground)] focus:ring-[var(--ring)]"
                   type="checkbox"
                 />
                 <span>
                   <span
-                    class="block text-sm font-medium text-slate-500"
+                    class="block text-sm font-medium text-[var(--muted-foreground)]"
                   >
                     Verification
                   </span>
                   <span
-                    class="mt-1 block text-base font-semibold text-slate-950"
+                    class="mt-1 block text-base font-semibold text-[var(--foreground)]"
                   >
                     Completed identity verification
                   </span>
                 </span>
               </label>
               <time
-                class="text-sm text-slate-500 sm:text-right"
+                class="text-sm text-[var(--muted-foreground)] sm:text-right"
                 datetime="2026-04-24"
               >
                 2026-04-24
@@ -839,24 +844,24 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
               >
                 <input
                   aria-label="Select reputation item On-chain review: Received positive trust signal"
-                  class="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                  class="mt-1 h-4 w-4 rounded border-[var(--border)] text-[var(--foreground)] focus:ring-[var(--ring)]"
                   type="checkbox"
                 />
                 <span>
                   <span
-                    class="block text-sm font-medium text-slate-500"
+                    class="block text-sm font-medium text-[var(--muted-foreground)]"
                   >
                     On-chain review
                   </span>
                   <span
-                    class="mt-1 block text-base font-semibold text-slate-950"
+                    class="mt-1 block text-base font-semibold text-[var(--foreground)]"
                   >
                     Received positive trust signal
                   </span>
                 </span>
               </label>
               <time
-                class="text-sm text-slate-500 sm:text-right"
+                class="text-sm text-[var(--muted-foreground)] sm:text-right"
                 datetime="2026-04-23"
               >
                 2026-04-23
@@ -874,24 +879,24 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
               >
                 <input
                   aria-label="Select reputation item Referral: Referred two new community members"
-                  class="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                  class="mt-1 h-4 w-4 rounded border-[var(--border)] text-[var(--foreground)] focus:ring-[var(--ring)]"
                   type="checkbox"
                 />
                 <span>
                   <span
-                    class="block text-sm font-medium text-slate-500"
+                    class="block text-sm font-medium text-[var(--muted-foreground)]"
                   >
                     Referral
                   </span>
                   <span
-                    class="mt-1 block text-base font-semibold text-slate-950"
+                    class="mt-1 block text-base font-semibold text-[var(--foreground)]"
                   >
                     Referred two new community members
                   </span>
                 </span>
               </label>
               <time
-                class="text-sm text-slate-500 sm:text-right"
+                class="text-sm text-[var(--muted-foreground)] sm:text-right"
                 datetime="2026-04-20"
               >
                 2026-04-20
@@ -1015,7 +1020,7 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
           </p>
         </div>
         <div
-          class="rounded-3xl border-[var(--border)] bg-[var(--surface)] p-5"
+          class="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"
         >
           <p
             class="text-sm font-medium text-[var(--muted-foreground)]"
@@ -1036,7 +1041,7 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
           </p>
         </div>
         <div
-          class="rounded-3xl border-[var(--border)] bg-[var(--surface)] p-5"
+          class="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"
         >
           <p
             class="text-sm font-medium text-[var(--muted-foreground)]"
@@ -1172,13 +1177,13 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
             class="flex items-center gap-2"
           >
             <label
-              class="text-sm font-medium text-slate-700"
+              class="text-sm font-medium text-[var(--foreground)]"
               for="history-type-filter"
             >
               Filter:
             </label>
             <select
-              class="rounded-lg border border-slate-300 py-1 pl-3 pr-8 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              class="rounded-lg border border-[var(--border)] bg-[var(--card)] py-1 pl-3 pr-8 text-sm text-[var(--foreground)] focus:border-[var(--ring)] focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
               data-testid="reputation-type-filter"
               id="history-type-filter"
             >
@@ -1208,13 +1213,13 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
             class="flex items-center gap-2"
           >
             <label
-              class="text-sm font-medium text-slate-700"
+              class="text-sm font-medium text-[var(--foreground)]"
               for="history-sort-dir"
             >
               Sort:
             </label>
             <select
-              class="rounded-lg border border-slate-300 py-1 pl-3 pr-8 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              class="rounded-lg border border-[var(--border)] bg-[var(--card)] py-1 pl-3 pr-8 text-sm text-[var(--foreground)] focus:border-[var(--ring)] focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
               data-testid="reputation-sort-dir"
               id="history-sort-dir"
             >
@@ -1242,7 +1247,7 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
             newest first
           </div>
           <span
-            class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-600"
+            class="rounded-full bg-[var(--surface)] px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted-foreground)]"
           >
             Visible
           </span>
@@ -1264,22 +1269,26 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
           >
             <input
               aria-label="Select all reputation items"
-              class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+              class="h-4 w-4 rounded border-[var(--border)] text-[var(--foreground)] focus:ring-[var(--ring)]"
               type="checkbox"
             />
             Select all
           </label>
           <div
+            aria-label="Reputation history actions"
             class="flex flex-wrap gap-2"
+            role="toolbar"
           >
             <button
-              class="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Export selected reputation items"
+              class="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--muted-foreground)] disabled:cursor-not-allowed disabled:opacity-50"
               disabled=""
               type="button"
             >
               Export selected
             </button>
             <button
+              aria-label="Delete selected reputation items"
               class="rounded-2xl bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
               disabled=""
               type="button"
@@ -1287,7 +1296,8 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
               Delete selected
             </button>
             <button
-              class="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Clear selected reputation items; clear selection"
+              class="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--muted-foreground)] disabled:cursor-not-allowed disabled:opacity-50"
               disabled=""
               type="button"
             >
@@ -1309,24 +1319,24 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
               >
                 <input
                   aria-label="Select reputation item Verification: Completed identity verification"
-                  class="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                  class="mt-1 h-4 w-4 rounded border-[var(--border)] text-[var(--foreground)] focus:ring-[var(--ring)]"
                   type="checkbox"
                 />
                 <span>
                   <span
-                    class="block text-sm font-medium text-slate-500"
+                    class="block text-sm font-medium text-[var(--muted-foreground)]"
                   >
                     Verification
                   </span>
                   <span
-                    class="mt-1 block text-base font-semibold text-slate-950"
+                    class="mt-1 block text-base font-semibold text-[var(--foreground)]"
                   >
                     Completed identity verification
                   </span>
                 </span>
               </label>
               <time
-                class="text-sm text-slate-500 sm:text-right"
+                class="text-sm text-[var(--muted-foreground)] sm:text-right"
                 datetime="2026-04-24"
               >
                 2026-04-24
@@ -1344,24 +1354,24 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
               >
                 <input
                   aria-label="Select reputation item On-chain review: Received positive trust signal"
-                  class="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                  class="mt-1 h-4 w-4 rounded border-[var(--border)] text-[var(--foreground)] focus:ring-[var(--ring)]"
                   type="checkbox"
                 />
                 <span>
                   <span
-                    class="block text-sm font-medium text-slate-500"
+                    class="block text-sm font-medium text-[var(--muted-foreground)]"
                   >
                     On-chain review
                   </span>
                   <span
-                    class="mt-1 block text-base font-semibold text-slate-950"
+                    class="mt-1 block text-base font-semibold text-[var(--foreground)]"
                   >
                     Received positive trust signal
                   </span>
                 </span>
               </label>
               <time
-                class="text-sm text-slate-500 sm:text-right"
+                class="text-sm text-[var(--muted-foreground)] sm:text-right"
                 datetime="2026-04-23"
               >
                 2026-04-23
@@ -1379,24 +1389,24 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
               >
                 <input
                   aria-label="Select reputation item Referral: Referred two new community members"
-                  class="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                  class="mt-1 h-4 w-4 rounded border-[var(--border)] text-[var(--foreground)] focus:ring-[var(--ring)]"
                   type="checkbox"
                 />
                 <span>
                   <span
-                    class="block text-sm font-medium text-slate-500"
+                    class="block text-sm font-medium text-[var(--muted-foreground)]"
                   >
                     Referral
                   </span>
                   <span
-                    class="mt-1 block text-base font-semibold text-slate-950"
+                    class="mt-1 block text-base font-semibold text-[var(--foreground)]"
                   >
                     Referred two new community members
                   </span>
                 </span>
               </label>
               <time
-                class="text-sm text-slate-500 sm:text-right"
+                class="text-sm text-[var(--muted-foreground)] sm:text-right"
                 datetime="2026-04-20"
               >
                 2026-04-20
@@ -1520,7 +1530,7 @@ exports[`ReputationPageContent snapshot – partial state (score === 0) matches 
           </p>
         </div>
         <div
-          class="rounded-3xl border-[var(--border)] bg-[var(--surface)] p-5"
+          class="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"
         >
           <p
             class="text-sm font-medium text-[var(--muted-foreground)]"
@@ -1541,7 +1551,7 @@ exports[`ReputationPageContent snapshot – partial state (score === 0) matches 
           </p>
         </div>
         <div
-          class="rounded-3xl border-[var(--border)] bg-[var(--surface)] p-5"
+          class="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"
         >
           <p
             class="text-sm font-medium text-[var(--muted-foreground)]"
@@ -1688,7 +1698,7 @@ exports[`ReputationPageContent snapshot – partial state (score === 0) matches 
           class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4"
         >
           <span
-            class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-600"
+            class="rounded-full bg-[var(--surface)] px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted-foreground)]"
           >
             Private by default
           </span>
@@ -1820,7 +1830,7 @@ exports[`ReputationPageContent snapshot – partial state (score, no history) ma
           </p>
         </div>
         <div
-          class="rounded-3xl border-[var(--border)] bg-[var(--surface)] p-5"
+          class="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"
         >
           <p
             class="text-sm font-medium text-[var(--muted-foreground)]"
@@ -1841,7 +1851,7 @@ exports[`ReputationPageContent snapshot – partial state (score, no history) ma
           </p>
         </div>
         <div
-          class="rounded-3xl border-[var(--border)] bg-[var(--surface)] p-5"
+          class="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"
         >
           <p
             class="text-sm font-medium text-[var(--muted-foreground)]"
@@ -1988,7 +1998,7 @@ exports[`ReputationPageContent snapshot – partial state (score, no history) ma
           class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4"
         >
           <span
-            class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-600"
+            class="rounded-full bg-[var(--surface)] px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted-foreground)]"
           >
             Private by default
           </span>
