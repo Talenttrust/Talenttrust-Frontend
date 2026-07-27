@@ -2,6 +2,7 @@
 
 import React, { useEffect, useId, useRef } from 'react';
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
+import { DialogIdBadge } from '@/components/DialogIdBadge';
 
 /** Props for the ConfirmDialog component */
 export interface ConfirmDialogProps {
@@ -11,6 +12,18 @@ export interface ConfirmDialogProps {
   title: string;
   /** Dialog description or message */
   description: string;
+  /**
+   * Optional identifier to display inside the dialog (e.g. a contract ID,
+   * dispute ID, or any entity reference). When supplied, a
+   * {@link DialogIdBadge} is rendered below the description so users can
+   * copy the ID to their clipboard.
+   */
+  dialogId?: string;
+  /**
+   * Human-readable label for the `dialogId` field, e.g. `"Contract ID"`.
+   * Defaults to `"ID"` when `dialogId` is set.
+   */
+  dialogIdLabel?: string;
   /** Text for the confirm button (default: "Confirm") */
   confirmLabel?: string;
   /** Text for the cancel button (default: "Cancel") */
@@ -38,6 +51,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   isOpen,
   title,
   description,
+  dialogId,
+  dialogIdLabel = 'ID',
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   tone = 'default',
@@ -137,6 +152,11 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           {title}
         </h2>
         <p id={descriptionId} className="text-sm text-gray-700 mb-6">{description}</p>
+        {dialogId ? (
+          <div className="mb-6">
+            <DialogIdBadge id={dialogId} label={dialogIdLabel} />
+          </div>
+        ) : null}
         <div className="flex justify-end space-x-3">
           <button
             ref={cancelBtnRef}
