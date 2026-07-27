@@ -15,15 +15,12 @@ import MilestoneFilter, {
   type MilestoneStatusFilter,
 } from '../../components/milestones/MilestoneFilter';
 import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
-import MilestonesErrorBoundary from '../../components/milestones/MilestonesErrorBoundary';
 import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository';
 import { getItem, setItem } from '@/lib/safeStorage';
 import { useToast } from '@/components/toast/toast-provider';
 import SafeBoundary from '@/components/SafeBoundary';
 import type { Milestone } from '@/types/domain';
-import type { StatusType } from '@/components/StatusBadge';
-
-export const SAMPLE_DISMISSED_KEY = 'talenttrust-milestones-sample-dismissed';
+import { SAMPLE_DISMISSED_KEY, SAMPLE_MILESTONES } from '@/lib/milestonesConstants';
 
 /**
  * MilestonesList paginates internally via its own `pageSize` prop, but that
@@ -32,49 +29,6 @@ export const SAMPLE_DISMISSED_KEY = 'talenttrust-milestones-sample-dismissed';
  * user just added, so it opts the list out of pagination entirely.
  */
 const UNPAGINATED_LIST_SIZE = 9999;
-
-export const SAMPLE_MILESTONES: Milestone[] = [
-  {
-    id: '1',
-    title: 'Project Kickoff & Discovery',
-    status: 'Completed',
-    payout: 2500,
-    currency: 'USD',
-    dueDate: '2026-03-15',
-  },
-  {
-    id: '2',
-    title: 'UI/UX Design Handoff',
-    status: 'Paid',
-    payout: 3500,
-    currency: 'USD',
-    dueDate: '2026-04-01',
-  },
-  {
-    id: '3',
-    title: 'Frontend Development – Sprint 1',
-    status: 'Pending',
-    payout: 5000,
-    currency: 'USD',
-    dueDate: '2026-05-01',
-  },
-  {
-    id: '4',
-    title: 'API Integration & Testing',
-    status: 'Pending',
-    payout: 4000,
-    currency: 'USD',
-    dueDate: '2026-05-15',
-  },
-  {
-    id: '5',
-    title: 'Payment Gateway Integration',
-    status: 'Disputed',
-    payout: 3000,
-    currency: 'USD',
-    dueDate: '2026-04-20',
-  },
-];
 
 const VALID_STATUSES: MilestoneStatusFilter[] = [
   'All',

@@ -34,6 +34,10 @@ module.exports = [
     },
     rules: {
       ...js.configs.recommended.rules,
+      // @eslint/js v10.0.1 includes rules that do not exist in ESLint core.
+      // Override them to 'off' to avoid configuration errors.
+      'no-unassigned-vars': 'off',
+      'preserve-caught-error': 'off',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['error', {
         vars: 'all',

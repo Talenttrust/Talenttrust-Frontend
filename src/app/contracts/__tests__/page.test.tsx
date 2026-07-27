@@ -93,9 +93,6 @@ const mockSaveContract = repository.saveContract as jest.MockedFunction<
 const mockIsValidStellarAddress = stellarAddress.isValidStellarAddress as jest.MockedFunction<
   typeof stellarAddress.isValidStellarAddress
 >;
-const mockDownloadCsv = jest.requireMock('@/lib/exportContracts').downloadContractsCsv as jest.Mock;
-const mockDownloadJson = jest.requireMock('@/lib/exportContracts').downloadContractsJson as jest.Mock;
-
 const VALID_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
 
 describe('ContractsPage', () => {
@@ -428,6 +425,77 @@ describe('ContractsPage', () => {
     });
   });
 
+  describe('Keyboard Accessibility', () => {
+    it('Create Contract button (non-empty state) is a native <button> (inherently keyboard accessible)', () => {
+      const contracts = [makeContract()];
+      mockListContracts.mockReturnValue(contracts);
+      render(<ContractsPage />);
+
+      const createBtn = screen.getByRole('button', { name: /create contract/i });
+      expect(createBtn.tagName).toBe('BUTTON');
+    });
+
+    it('CSV export button is a native <button> (inherently keyboard accessible)', () => {
+      const contracts = [makeContract()];
+      mockListContracts.mockReturnValue(contracts);
+      render(<ContractsPage />);
+
+      const csvBtn = screen.getByRole('button', { name: /export contracts as csv/i });
+      expect(csvBtn.tagName).toBe('BUTTON');
+    });
+
+    it('JSON export button is a native <button> (inherently keyboard accessible)', () => {
+      const contracts = [makeContract()];
+      mockListContracts.mockReturnValue(contracts);
+      render(<ContractsPage />);
+
+      const jsonBtn = screen.getByRole('button', { name: /export contracts as json/i });
+      expect(jsonBtn.tagName).toBe('BUTTON');
+    });
+
+    it('CSV export button has visible focus-visible styling', () => {
+      const contracts = [makeContract()];
+      mockListContracts.mockReturnValue(contracts);
+      render(<ContractsPage />);
+
+      const csvBtn = screen.getByRole('button', { name: /export contracts as csv/i });
+      expect(csvBtn.className).toMatch(/focus-visible:outline/);
+    });
+
+    it('JSON export button has visible focus-visible styling', () => {
+      const contracts = [makeContract()];
+      mockListContracts.mockReturnValue(contracts);
+      render(<ContractsPage />);
+
+      const jsonBtn = screen.getByRole('button', { name: /export contracts as json/i });
+      expect(jsonBtn.className).toMatch(/focus-visible:outline/);
+    });
+
+    it('Create Contract button (non-empty state) has visible focus-visible styling', () => {
+      const contracts = [makeContract()];
+      mockListContracts.mockReturnValue(contracts);
+      render(<ContractsPage />);
+
+      const createBtn = screen.getByRole('button', { name: /create contract/i });
+      expect(createBtn.className).toMatch(/focus-visible:outline/);
+    });
+
+    it('all action buttons are reachable in logical DOM order', () => {
+      const contracts = [makeContract()];
+      mockListContracts.mockReturnValue(contracts);
+      render(<ContractsPage />);
+
+      const csvBtn = screen.getByRole('button', { name: /export contracts as csv/i });
+      const jsonBtn = screen.getByRole('button', { name: /export contracts as json/i });
+      const createBtn = screen.getByRole('button', { name: /create contract/i });
+
+      // CSV should come before JSON in DOM order
+      expect(csvBtn.compareDocumentPosition(jsonBtn)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      // JSON should come before Create Contract in DOM order
+      expect(jsonBtn.compareDocumentPosition(createBtn)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+  });
+
   it('renders persisted contracts when storage already contains data', () => {
     const existingContracts = [
       {
@@ -460,7 +528,7 @@ describe('ContractsPage', () => {
       }));
       mockListContracts.mockReturnValue(mockContracts);
       render(<ContractsPage />);
-      
+
       expect(screen.getByText('Contract 0')).toBeInTheDocument();
       expect(screen.getByText('Contract 9')).toBeInTheDocument();
       expect(screen.queryByText('Contract 10')).not.toBeInTheDocument();
@@ -479,9 +547,9 @@ describe('ContractsPage', () => {
       }));
       mockListContracts.mockReturnValue(mockContracts);
       render(<ContractsPage />);
-      
+
       fireEvent.click(screen.getByRole('button', { name: /load more/i }));
-      
+
       expect(screen.getByText('Contract 0')).toBeInTheDocument();
       expect(screen.getByText('Contract 11')).toBeInTheDocument();
     });
@@ -498,9 +566,9 @@ describe('ContractsPage', () => {
       }));
       mockListContracts.mockReturnValue(mockContracts);
       render(<ContractsPage />);
-      
+
       fireEvent.click(screen.getByRole('button', { name: /load more/i }));
-      
+
       // We are on page 2, 20 items loaded, but only 12 exist, so load more should hide
       expect(screen.queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
     });
@@ -517,7 +585,7 @@ describe('ContractsPage', () => {
       }));
       mockListContracts.mockReturnValue(mockContracts);
       render(<ContractsPage />);
-      
+
       // Click load more
       fireEvent.click(screen.getByRole('button', { name: /load more/i }));
       expect(screen.getByText('Contract 11')).toBeInTheDocument(); // A pending contract on page 2

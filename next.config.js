@@ -39,7 +39,7 @@ const cspHeader = cspDirectives.join('; ');
 const nextConfig = {
   reactStrictMode: true,
   turbopack: {
-    root: __dirname,
+    // root key was removed — not a recognized turbopack option
   },
 
   /**
