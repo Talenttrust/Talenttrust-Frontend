@@ -1,9 +1,16 @@
 const js = require('@eslint/js');
 const globals = require('globals');
-const tsParser = require('@typescript-eslint/parser');
+const nextPlugin = require('@next/eslint-plugin-next');
 const tsPlugin = require('@typescript-eslint/eslint-plugin');
+const tsParser = require('@typescript-eslint/parser');
 
 module.exports = [
+  // Ignore stray files that should never be linted
+  // - `test_check.js` and `coverage/**` are generated/test artefacts that
+  //   would otherwise pollute lint output during CI.
+  // - `.next/**` is the Next.js build cache (regenerated on every build).
+  // - `node_modules/**` is third-party code.
+  // - `src/declarations.d.ts` holds ambient declarations (no executable code).
   {
     ignores: [
       '**/test_check.js',
@@ -13,27 +20,35 @@ module.exports = [
       '**/src/declarations.d.ts',
     ],
   },
+  js.configs.recommended,
+  // Next.js recommended rules (from @next/eslint-plugin-next, not the
+  // eslint-config-next wrapper which exports an array incompatible with
+  // direct plugin registration in flat config).
   {
+    name: 'next/recommended',
     files: ['**/*.{js,jsx,ts,tsx}'],
+    plugins: {
+      '@next/next': nextPlugin,
+    },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+    },
+  },
+  // TypeScript configuration
+  {
+    name: 'typescript/rules',
+    files: ['**/*.{ts,tsx}'],
     languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'module',
+      parser: tsParser,
       parserOptions: {
         ecmaFeatures: { jsx: true },
-      },
-      globals: {
-        ...globals.browser,
-        ...globals.node,
-        ...globals.jest,
-        React: 'readonly',
-        JSX: 'readonly',
       },
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
     },
     rules: {
-      ...js.configs.recommended.rules,
+      // Disable base rule — @typescript-eslint/no-unused-vars handles TS correctly
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['error', {
         vars: 'all',
@@ -45,12 +60,17 @@ module.exports = [
       }],
     },
   },
+  // Shared globals for all source files (browser, Node, Jest, React, JSX)
   {
-    files: ['**/*.{ts,tsx}'],
+    name: 'shared/globals',
+    files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
-      parser: tsParser,
-      parserOptions: {
-        ecmaFeatures: { jsx: true },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.jest,
+        React: 'readonly',
+        JSX: 'readonly',
       },
     },
   },
