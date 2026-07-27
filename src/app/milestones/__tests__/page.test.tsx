@@ -2,7 +2,8 @@ import React from 'react';
 import { render, screen, waitFor, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MilestonesPage, { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from '../page';
-import { listMilestones, saveMilestone } from '@/lib/repository';
+import { listMilestones } from '@/lib/repository';
+import * as repository from '@/lib/repository';
 import type { Milestone } from '@/types/domain';
 
 // ---------------------------------------------------------------------------
@@ -54,12 +55,13 @@ jest.mock('next/navigation', () => ({
 
 jest.mock('@/lib/repository', () => ({
   listMilestones: jest.fn(),
-  saveMilestone: jest.fn(),
-  updateMilestone: jest.fn(() => true),
+  upsertMilestone: jest.fn(() => ({ success: true, stale: false })),
+  getMilestoneVersion: jest.fn(() => 0),
+  deleteMilestones: jest.fn(() => 0),
 }));
 
 const mockedListMilestones = jest.mocked(listMilestones);
-const mockedSaveMilestone = jest.mocked(saveMilestone);
+const mockedUpsertMilestone = jest.mocked(repository.upsertMilestone);
 
 // ---------------------------------------------------------------------------
 // Fixture data
@@ -115,7 +117,7 @@ beforeEach(() => {
     advanceTimers: true,
   });
   mockedListMilestones.mockReturnValue([]);
-  mockedSaveMilestone.mockReturnValue(true);
+  mockedUpsertMilestone.mockReturnValue({ success: true, stale: false });
   mockCopied = false;
   mockCopySuccess = true;
   mockUseCopyToClipboard.mockImplementation((options) => ({
@@ -159,13 +161,13 @@ describe('MilestonesPage — core rendering', () => {
     await waitFor(() => {
       expect(screen.getByText('Launch sprint')).toBeInTheDocument();
     });
-    expect(mockedSaveMilestone).toHaveBeenCalledTimes(1);
+    expect(mockedUpsertMilestone).toHaveBeenCalledTimes(1);
     expect(mockShowError).not.toHaveBeenCalled();
   });
 
   it('rolls back the optimistic milestone and shows an error toast on save failure', async () => {
     const user = userEvent.setup();
-    mockedSaveMilestone.mockReturnValue(false);
+    mockedUpsertMilestone.mockReturnValue({ success: false, stale: false });
     render(<MilestonesPage />);
 
     await user.click(screen.getAllByRole('button', { name: /add milestone/i })[0]);
@@ -892,7 +894,7 @@ describe('MilestonesPage — focus management (issue #682)', () => {
       mockedListMilestones
         .mockReturnValueOnce(persistedMilestones)
         .mockReturnValue([...persistedMilestones, newMilestone]);
-      mockedSaveMilestone.mockImplementation(() => {});
+      mockedUpsertMilestone.mockImplementation(() => ({ success: true, stale: false }));
 
       await renderPage();
       await waitFor(() => expect(screen.getByText('Repository Kickoff')).toBeInTheDocument());
