@@ -2,6 +2,7 @@
 
 import React, { memo } from 'react';
 import type { Contract } from '@/types/domain';
+import { LastUpdated } from '@/components/LastUpdated';
 
 export interface ContractListItemProps {
   contract: Contract;
@@ -35,6 +36,7 @@ const ContractListItem = memo(
       <p className="text-sm text-slate-500">
         {contract.status} · Created {contract.createdAt}
       </p>
+      {contract.updatedAt && <LastUpdated updatedAt={contract.updatedAt} />}
     </li>
   ),
   (prevProps, nextProps) => {
@@ -43,6 +45,7 @@ const ContractListItem = memo(
       prevProps.contract.contractName === nextProps.contract.contractName &&
       prevProps.contract.status === nextProps.contract.status &&
       prevProps.contract.createdAt === nextProps.contract.createdAt &&
+      prevProps.contract.updatedAt === nextProps.contract.updatedAt &&
       prevProps.index === nextProps.index
     );
   },
