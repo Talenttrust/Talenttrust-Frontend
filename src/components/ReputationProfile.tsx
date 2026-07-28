@@ -5,6 +5,7 @@ export type ReputationEvent = {
   type: string;
   summary: string;
   date: string;
+  version?: number;
 };
 
 export type ReputationProfileProps = {
@@ -68,6 +69,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useToast } from './toast/toast-provider';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
+import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';
 import {
   DEFAULT_DIR,
   DEFAULT_TYPE,
@@ -207,10 +209,14 @@ export default function ReputationProfile({
   pageSize = REPUTATION_PAGE_SIZE,
 }: ReputationProfileProps) {
   let showSuccess: ReturnType<typeof useToast>['showSuccess'] | null = null;
+  let showError: ReturnType<typeof useToast>['showError'] | null = null;
   try {
-    ({ showSuccess } = useToast());
+    const toast = useToast();
+    showSuccess = toast.showSuccess;
+    showError = toast.showError;
   } catch {
     showSuccess = null;
+    showError = null;
   }
   const hasReputation = typeof score === 'number' && score >= 0;
   const showPartial = hasReputation && history.length === 0;
@@ -219,6 +225,8 @@ export default function ReputationProfile({
   const [announcement, setAnnouncement] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [displayCount, setDisplayCount] = useState(pageSize);
+
+  const { optimisticDelete } = useOptimisticReputationMutation(events, setEvents);
 
   // Keep the local, deletable copy of history in sync whenever the parent
   // supplies a new history array (data reload, filter change upstream, etc.).
@@ -337,15 +345,30 @@ export default function ReputationProfile({
 
   const confirmDeleteSelected = () => {
     const count = selectedEvents.length;
-    setEvents((current) => current.filter((event) => !selectedIds.includes(event.id)));
+    
+    // Save selected IDs for the mutation before clearing them
+    const idsToDelete = [...selectedIds];
+    
     setSelectedIds([]);
     setConfirmOpen(false);
-    announce(`Deleted ${count} reputation ${count === 1 ? 'item' : 'items'}.`);
-    showSuccess?.({
-      title: 'Bulk delete complete',
-      description: `Deleted ${count} reputation ${count === 1 ? 'item' : 'items'}.`,
-      duration: 3000,
-    });
+    
+    const result = optimisticDelete(idsToDelete);
+    
+    if (result.ok) {
+      announce(`Deleted ${count} reputation ${count === 1 ? 'item' : 'items'}.`);
+      showSuccess?.({
+        title: 'Bulk delete complete',
+        description: `Deleted ${count} reputation ${count === 1 ? 'item' : 'items'}.`,
+        duration: 3000,
+      });
+    } else {
+      announce(`Failed to delete reputation ${count === 1 ? 'item' : 'items'}.`);
+      showError?.({
+        title: 'Delete failed',
+        description: result.error,
+        duration: 5000,
+      });
+    }
   };
 
   const handleExportSelected = () => {
