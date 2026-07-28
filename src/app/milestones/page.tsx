@@ -15,13 +15,11 @@ import MilestoneFilter, {
   type MilestoneStatusFilter,
 } from '../../components/milestones/MilestoneFilter';
 import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
-import MilestonesErrorBoundary from '../../components/milestones/MilestonesErrorBoundary';
 import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository';
 import { getItem, setItem } from '@/lib/safeStorage';
 import { useToast } from '@/components/toast/toast-provider';
 import SafeBoundary from '@/components/SafeBoundary';
 import type { Milestone } from '@/types/domain';
-import type { StatusType } from '@/components/StatusBadge';
 import { SAMPLE_DISMISSED_KEY, SAMPLE_MILESTONES } from './constants';
 
 /**
@@ -46,7 +44,7 @@ function getValidStatus(param: string | null): MilestoneStatusFilter {
     : 'All';
 }
 
-export type MilestoneSortOption = 'newest' | 'oldest';
+type MilestoneSortOption = 'newest' | 'oldest';
 const VALID_SORT_OPTIONS: MilestoneSortOption[] = ['newest', 'oldest'];
 
 function getValidSortOption(param: string | null): MilestoneSortOption {
@@ -59,7 +57,7 @@ const MilestonesContent: React.FC = () => {
   const [milestones, setMilestones] = useState<Milestone[]>(SAMPLE_MILESTONES);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const router = useRouter();  const headingRef = useRef<HTMLHeadingElement | null>(null);
   const startFromScratchRef = useRef<HTMLButtonElement | null>(null);
 
   const initialStatus = getValidStatus(searchParams.get('status'));
@@ -126,7 +124,7 @@ const MilestonesContent: React.FC = () => {
     setIsDismissed(true);
     setMilestones([]);
     setTimeout(() => {
-      startFromScratchRef.current?.focus();
+      headingRef.current?.focus();
     }, 0);
   }, []);
 
@@ -193,7 +191,7 @@ const MilestonesContent: React.FC = () => {
    *
    * Persistence layer:
    *   1. Call `updateMilestone(id, patch)` to push the change into
-   *      localStorage. Returns `true` on success, `false` if the milestone
+   *      localStorage Returns `true` on success, `false` if the milestone
    *      no longer exists in storage.
    *   2. Refresh local state from storage so the UI immediately reflects the
    *      persisted version (defensive against stale React state).
@@ -227,7 +225,9 @@ const MilestonesContent: React.FC = () => {
      * does not render an <h1> — the app name is a <span>, not a heading).
      */
     <div className="min-h-screen p-8">
-      <h1 className="text-2xl font-bold mb-6">Milestones</h1>
+      <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold mb-6 focus:outline-none">
+        Milestones
+      </h1>
 
       {showSampleBanner && (
         <div
