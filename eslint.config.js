@@ -52,7 +52,7 @@ module.exports = [
           caughtErrorsIgnorePattern: '^_',
         }],
       };
-    })()
+    })(),
   },
   {
     files: ['**/*.{ts,tsx}'],

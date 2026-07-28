@@ -39,7 +39,6 @@ const cspHeader = cspDirectives.join('; ');
 const nextConfig = {
   reactStrictMode: true,
 
-
   /**
    * Apply baseline security headers to every response.
    * Revisit COOP/CORP if the app later adds popup auth flows,
