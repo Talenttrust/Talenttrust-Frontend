@@ -567,4 +567,3 @@ describe('ContractsPage', () => {
     });
   });
 });
-import React from 'react';

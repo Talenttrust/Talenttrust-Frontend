@@ -1,57 +1,63 @@
 const js = require('@eslint/js');
 const globals = require('globals');
-const nextPlugin = require('eslint-config-next');
-const tsParser = require('@typescript-eslint/parser');
+const nextPlugin = require('@next/eslint-plugin-next');
 const tsPlugin = require('@typescript-eslint/eslint-plugin');
+const tsParser = require('@typescript-eslint/parser');
 
 module.exports = [
   // Ignore stray files that should never be linted
+  // - `test_check.js` and `coverage/**` are generated/test artefacts that
+  //   would otherwise pollute lint output during CI.
+  // - `.next/**` is the Next.js build cache (regenerated on every build).
+  // - `node_modules/**` is third-party code.
+  // - `src/declarations.d.ts` holds ambient declarations (no executable code).
   {
-    ignores: ['test_check.js', '.next/**', 'node_modules/**', 'src/declarations.d.ts'],
+    ignores: [
+      '**/test_check.js',
+      '**/.next/**',
+      '**/node_modules/**',
+      '**/coverage/**',
+      '**/src/declarations.d.ts',
+    ],
   },
-  js.configs.recommended,
+  // Filter deprecated/removed rules that crash ESLint 10+ (e.g. no-unassigned-vars)
+  (() => {
+    const unsupported = new Set(['no-unassigned-vars', 'no-useless-assignment', 'preserve-caught-error']);
+    const filteredRules = {};
+    for (const [key, value] of Object.entries(js.configs.recommended.rules)) {
+      if (!unsupported.has(key)) {
+        filteredRules[key] = value;
+      }
+    }
+    return { ...js.configs.recommended, rules: filteredRules };
+  })(),
+  // Next.js recommended rules (from @next/eslint-plugin-next, not the
+  // eslint-config-next wrapper which exports an array incompatible with
+  // direct plugin registration in flat config).
   {
-    files: ['**/*.{js,jsx}'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'module',
-      parserOptions: {
-        ecmaFeatures: { jsx: true },
-      },
-      globals: {
-        ...globals.browser,
-        ...globals.node,
-        ...globals.jest,
-        React: 'readonly',
-        JSX: 'readonly',
-      },
+    name: 'next/recommended',
+    files: ['**/*.{js,jsx,ts,tsx,mjs}'],
+    plugins: {
+      '@next/next': nextPlugin,
     },
-    plugins: { next: nextPlugin },
     rules: {
-      ...nextPlugin.rules,
+      ...nextPlugin.configs.recommended.rules,
     },
   },
+  // TypeScript configuration
   {
+    name: 'typescript/rules',
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
         ecmaFeatures: { jsx: true },
       },
-      globals: {
-        ...globals.browser,
-        ...globals.node,
-        ...globals.jest,
-        React: 'readonly',
-        JSX: 'readonly',
-      },
     },
     plugins: {
-      next: nextPlugin,
       '@typescript-eslint': tsPlugin,
     },
     rules: {
-      ...nextPlugin.rules,
       // Disable base rules — @typescript-eslint handles these correctly for TS
       'no-redeclare': 'off',
       'no-unused-vars': 'off',
@@ -63,6 +69,20 @@ module.exports = [
         varsIgnorePattern: '^_',
         caughtErrorsIgnorePattern: '^_',
       }],
+    },
+  },
+  // Shared globals for all source files (browser, Node, Jest, React, JSX)
+  {
+    name: 'shared/globals',
+    files: ['**/*.{js,jsx,ts,tsx,mjs}'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.jest,
+        React: 'readonly',
+        JSX: 'readonly',
+      },
     },
   },
 ];
