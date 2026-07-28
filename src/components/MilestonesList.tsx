@@ -17,6 +17,8 @@ export type Milestone = {
   dueDate?: string;
   /** Id of the parent `Contract` this milestone belongs to, when known. */
   contractId?: string;
+  createdAt?: string;    
+  updatedAt?: string;    
 };
 
 export const PAGE_SIZE_DEFAULT = 5;

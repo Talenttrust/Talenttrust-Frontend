@@ -20,7 +20,17 @@ module.exports = [
       '**/src/declarations.d.ts',
     ],
   },
-  js.configs.recommended,
+  // Filter deprecated/removed rules that crash ESLint 10+ (e.g. no-unassigned-vars)
+  (() => {
+    const unsupported = new Set(['no-unassigned-vars', 'no-useless-assignment', 'preserve-caught-error']);
+    const filteredRules = {};
+    for (const [key, value] of Object.entries(js.configs.recommended.rules)) {
+      if (!unsupported.has(key)) {
+        filteredRules[key] = value;
+      }
+    }
+    return { ...js.configs.recommended, rules: filteredRules };
+  })(),
   // Next.js recommended rules (from @next/eslint-plugin-next, not the
   // eslint-config-next wrapper which exports an array incompatible with
   // direct plugin registration in flat config).
