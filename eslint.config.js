@@ -11,6 +11,7 @@ module.exports = [
       '**/node_modules/**',
       '**/coverage/**',
       '**/src/declarations.d.ts',
+      '**/src/lib/tests/**',
     ],
   },
   {
