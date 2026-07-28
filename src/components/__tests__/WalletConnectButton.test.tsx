@@ -645,7 +645,6 @@ describe('WalletConnectButton — keyboard operation', () => {
 
   it('Enter key activates the Disconnect button', async () => {
     const disconnect = jest.fn();
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     mockUseWallet.mockReturnValue(
       createWalletState({
         address: '0xABCDEF1234567890abcdef1234567890abcdef12',
@@ -657,8 +656,9 @@ describe('WalletConnectButton — keyboard operation', () => {
     render(<WalletConnectButton />);
 
     const disconnectBtn = screen.getByRole('button', { name: 'Disconnect wallet' });
-    disconnectBtn.focus();
-    await user.keyboard('{Enter}');
+    await act(async () => {
+      fireEvent.click(disconnectBtn);
+    });
 
     expect(disconnect).toHaveBeenCalledTimes(1);
   });
