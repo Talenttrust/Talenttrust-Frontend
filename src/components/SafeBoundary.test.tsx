@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import SafeBoundary from './SafeBoundary';
-import { setErrorReporter } from '../lib/errorReporter';
+import { setErrorReporter, resolveErrorDigest } from '../lib/errorReporter';
 
 // Suppress React error boundary console noise
 beforeEach(() => {
@@ -12,10 +12,13 @@ afterEach(() => {
   setErrorReporter(null);
 });
 
-const Bomb = ({ shouldThrow }: { shouldThrow: boolean }) => {
-  if (shouldThrow) throw new Error('Test explosion');
+const Bomb = ({ shouldThrow, message = 'Test explosion' }: { shouldThrow: boolean; message?: string }) => {
+  if (shouldThrow) throw new Error(message);
   return <div>Safe content</div>;
 };
+
+const SAMPLE_G_ADDRESS =
+  'GABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVW';
 
 describe('SafeBoundary', () => {
   it('renders children when there is no error', () => {
@@ -48,7 +51,6 @@ describe('SafeBoundary', () => {
   });
 
   it('recovers after clicking Retry', () => {
-    // Wrapper lets us flip shouldThrow externally after the boundary resets
     let triggerThrow = true;
     const Child = () => <Bomb shouldThrow={triggerThrow} />;
 
@@ -60,14 +62,12 @@ describe('SafeBoundary', () => {
 
     expect(screen.getByText('This section failed to load.')).toBeInTheDocument();
 
-    // Flip the flag before clicking Retry so the next render attempt succeeds
     triggerThrow = false;
 
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: /retry/i }));
     });
 
-    // Force a rerender so React picks up the new triggerThrow value
     rerender(
       <SafeBoundary>
         <Child />
@@ -84,7 +84,6 @@ describe('SafeBoundary', () => {
         <Bomb shouldThrow={true} />
       </SafeBoundary>
     );
-    // componentDidCatch fires with the error — check it was called
     expect(spy).toHaveBeenCalledWith('[SafeBoundary]', expect.any(Error));
   });
 
@@ -100,5 +99,55 @@ describe('SafeBoundary', () => {
 
     expect(mockReporter).toHaveBeenCalledTimes(1);
     expect(mockReporter).toHaveBeenCalledWith(expect.any(Error), 'SafeBoundary', undefined, undefined);
+  });
+
+  it('shows the reporter digest instead of the raw error message', () => {
+    const message = `Crash for ${SAMPLE_G_ADDRESS}`;
+    const expectedDigest = resolveErrorDigest(new Error(message));
+
+    render(
+      <SafeBoundary>
+        <Bomb shouldThrow={true} message={message} />
+      </SafeBoundary>
+    );
+
+    expect(screen.getByTestId('safe-boundary-digest')).toHaveTextContent(
+      `Reference: ${expectedDigest}`
+    );
+    // Raw wallet address must never appear as the primary user-facing message.
+    // In test/dev the optional detail may show unredacted text; the digest is required.
+    expect(screen.getByText('This section failed to load.')).toBeInTheDocument();
+  });
+
+  it('does not render production detail containing sensitive fragments', () => {
+    const originalEnv = process.env.NODE_ENV;
+    (process.env as { NODE_ENV?: string }).NODE_ENV = 'production';
+
+    try {
+      render(
+        <SafeBoundary>
+          <Bomb
+            shouldThrow={true}
+            message={`Payment ${SAMPLE_G_ADDRESS} https://evil.example/x`}
+          />
+        </SafeBoundary>
+      );
+
+      expect(screen.queryByTestId('safe-boundary-detail')).not.toBeInTheDocument();
+      expect(screen.queryByText(new RegExp(SAMPLE_G_ADDRESS))).not.toBeInTheDocument();
+      expect(screen.queryByText(/https:\/\//)).not.toBeInTheDocument();
+      expect(screen.getByTestId('safe-boundary-digest')).toBeInTheDocument();
+    } finally {
+      (process.env as { NODE_ENV?: string }).NODE_ENV = originalEnv;
+    }
+  });
+
+  it('respects fallbackTitle for the stable user-facing message', () => {
+    render(
+      <SafeBoundary fallbackTitle="Wallet section failed to load.">
+        <Bomb shouldThrow={true} />
+      </SafeBoundary>
+    );
+    expect(screen.getByText('Wallet section failed to load.')).toBeInTheDocument();
   });
 });

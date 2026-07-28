@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import GlobalError from './global-error';
-import { setErrorReporter } from '../lib/errorReporter';
+import { setErrorReporter, resolveErrorDigest } from '../lib/errorReporter';
 import { testA11y } from '../test-utils/a11y';
 
 // Suppress React error boundary noise in test output
@@ -14,14 +14,16 @@ afterEach(() => {
   setErrorReporter(null);
 });
 
-const testError = Object.assign(new Error('Synthetic root crash'), { digest: undefined });
+const testError = Object.assign(new Error('Synthetic root crash'), {
+  digest: undefined as string | undefined,
+});
 const mockReset = jest.fn();
 
 describe('GlobalError page', () => {
-  it('renders critical error message without leaking error details', () => {
+  it('renders critical error message without leaking error details as the headline', () => {
     render(<GlobalError error={testError} reset={mockReset} />);
     expect(screen.getByRole('heading', { name: /critical error/i })).toBeInTheDocument();
-    expect(screen.queryByText('Synthetic root crash')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Synthetic root crash' })).not.toBeInTheDocument();
   });
 
   it('calls reset when Try Again is clicked', () => {
@@ -39,29 +41,54 @@ describe('GlobalError page', () => {
 
   it('logs error to console only in non-production', () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    // NODE_ENV is 'test' in Jest, which is !== 'production', so logging should fire
     render(<GlobalError error={testError} reset={mockReset} />);
     expect(spy).toHaveBeenCalledWith('[Global Error Boundary]', testError);
   });
 
-  it('does not render error message or stack trace in the UI', () => {
-    render(<GlobalError error={testError} reset={mockReset} />);
-    expect(screen.queryByText(/synthetic root crash/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/digest/i)).not.toBeInTheDocument();
+  it('displays the reporter digest as a safe support reference', () => {
+    const err = Object.assign(new Error('Synthetic root crash'), {
+      digest: undefined as string | undefined,
+    });
+    const expected = resolveErrorDigest(err);
+    render(<GlobalError error={err} reset={mockReset} />);
+    expect(screen.getByTestId('global-error-digest')).toHaveTextContent(`Reference: ${expected}`);
+  });
+
+  it('does not render raw message or stack in production', () => {
+    const originalEnv = process.env.NODE_ENV;
+    (process.env as { NODE_ENV?: string }).NODE_ENV = 'production';
+    try {
+      const err = Object.assign(
+        new Error('Synthetic root crash\n    at root (src/app/layout.tsx:1:1)'),
+        { digest: 'global-digest' }
+      );
+      render(<GlobalError error={err} reset={mockReset} />);
+      expect(screen.queryByTestId('global-error-detail')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Synthetic root crash/i)).not.toBeInTheDocument();
+      expect(screen.getByTestId('global-error-digest')).toHaveTextContent(
+        'Reference: global-digest'
+      );
+    } finally {
+      (process.env as { NODE_ENV?: string }).NODE_ENV = originalEnv;
+    }
   });
 
   it('invokes the pluggable error reporter when rendered', () => {
     const mockReporter = jest.fn();
     setErrorReporter(mockReporter);
-    
+
     render(<GlobalError error={testError} reset={mockReset} />);
-    
+
     expect(mockReporter).toHaveBeenCalledTimes(1);
-    expect(mockReporter).toHaveBeenCalledWith(testError, 'Global Error Boundary', undefined, undefined);
+    expect(mockReporter).toHaveBeenCalledWith(
+      testError,
+      'Global Error Boundary',
+      undefined,
+      undefined
+    );
   });
 
   it('is accessible and clean of violations via jest-axe', async () => {
-    // Render and check for accessibility violations
     await testA11y(<GlobalError error={testError} reset={mockReset} />);
   });
 });

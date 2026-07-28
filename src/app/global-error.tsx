@@ -1,8 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { reportError } from '../lib/errorReporter';
+import {
+  getErrorMessage,
+  prepareErrorDetailForDom,
+} from '../lib/redactErrorDetail';
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -10,8 +14,15 @@ interface GlobalErrorProps {
 }
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
+  const [digest, setDigest] = useState<string | null>(error.digest ?? null);
+
   useEffect(() => {
-    reportError(error, 'Global Error Boundary');
+    setDigest(reportError(error, 'Global Error Boundary'));
+  }, [error]);
+
+  const detail = useMemo(() => {
+    if (process.env.NODE_ENV === 'production') return null;
+    return prepareErrorDetailForDom(getErrorMessage(error));
   }, [error]);
 
   return (
@@ -26,6 +37,22 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
           <p className="text-gray-600">
             A critical error occurred. Please try reloading the page.
           </p>
+          {digest && (
+            <p
+              className="text-xs font-mono text-gray-500"
+              data-testid="global-error-digest"
+            >
+              Reference: {digest}
+            </p>
+          )}
+          {detail && (
+            <p
+              className="text-xs text-gray-400 break-words"
+              data-testid="global-error-detail"
+            >
+              {detail}
+            </p>
+          )}
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={reset}

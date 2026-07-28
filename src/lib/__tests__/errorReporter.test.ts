@@ -1,4 +1,4 @@
-import { reportError, setErrorReporter } from '../errorReporter';
+import { reportError, setErrorReporter, resolveErrorDigest } from '../errorReporter';
 
 describe('errorReporter', () => {
   let consoleErrorSpy: jest.SpyInstance;
@@ -183,6 +183,21 @@ describe('errorReporter', () => {
 
       reportError('err', 'AfterReset');
       expect(consoleErrorSpy).toHaveBeenCalledWith('[AfterReset]', 'err');
+    });
+  });
+
+  describe('digest', () => {
+    it('returns a tt- digest and attaches it to Error objects', () => {
+      const error = new Error('Digest me');
+      const digest = reportError(error, 'DigestCtx');
+      expect(digest).toMatch(/^tt-[0-9a-f]{8}$/);
+      expect((error as { digest?: string }).digest).toBe(digest);
+      expect(digest).toBe(resolveErrorDigest(error));
+    });
+
+    it('prefers an existing digest on the error', () => {
+      const error = Object.assign(new Error('Has digest'), { digest: 'next-fixed' });
+      expect(reportError(error, 'DigestCtx')).toBe('next-fixed');
     });
   });
 });
