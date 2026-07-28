@@ -8,7 +8,7 @@ import { WalletItemList } from '../../components/wallet/WalletItemList';
 import { listWalletItems, saveWalletItem, deleteWalletItems } from '@/lib/repository';
 import { useToast } from '@/components/toast/toast-provider';
 import type { WalletItem } from '@/types/domain';
-import { SAMPLE_WALLET_ITEMS } from '@/lib/walletConstants';
+import { SAMPLE_WALLET_ITEMS } from './constants';
 
 export default function WalletPage() {
   const [items, setItems] = useState<WalletItem[]>([]);

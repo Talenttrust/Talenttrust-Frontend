@@ -43,3 +43,5 @@ export function ReputationPageContent({
     </SafeBoundary>
   );
 }
+
+export default ReputationPageContent;

@@ -38,9 +38,7 @@ const cspHeader = cspDirectives.join('; ');
 
 const nextConfig = {
   reactStrictMode: true,
-  turbopack: {
-    // root key was removed — not a recognized turbopack option
-  },
+
 
   /**
    * Apply baseline security headers to every response.
