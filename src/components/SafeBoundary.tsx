@@ -3,6 +3,10 @@
 import React, { Component, ReactNode } from 'react';
 import Link from 'next/link';
 import { reportError } from '../lib/errorReporter';
+import {
+  getErrorMessage,
+  prepareErrorDetailForDom,
+} from '../lib/redactErrorDetail';
 
 interface Props {
   children: ReactNode;
@@ -12,20 +16,35 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  /** User-safe support identifier from the error reporter (never the raw message). */
+  digest: string | null;
+  /**
+   * Optional detail for DOM. In production this is always null; in development
+   * it may hold the unredacted message for local debugging.
+   */
+  detail: string | null;
 }
 
 export default class SafeBoundary extends Component<Props, State> {
-  state: State = { hasError: false };
+  state: State = { hasError: false, digest: null, detail: null };
 
-  static getDerivedStateFromError(): State {
+  static getDerivedStateFromError(): Partial<State> {
     return { hasError: true };
   }
 
   componentDidCatch(error: Error, _info: React.ErrorInfo) {
-    reportError(error, 'SafeBoundary');
+    // Full unredacted error goes only to the reporter — never into the DOM as-is.
+    const digest = reportError(error, 'SafeBoundary');
+    const raw = getErrorMessage(error);
+    const detail =
+      process.env.NODE_ENV === 'production'
+        ? null
+        : prepareErrorDetailForDom(raw);
+
+    this.setState({ digest, detail });
   }
 
-  reset = () => this.setState({ hasError: false });
+  reset = () => this.setState({ hasError: false, digest: null, detail: null });
 
   render() {
     if (this.state.hasError) {
@@ -40,6 +59,22 @@ export default class SafeBoundary extends Component<Props, State> {
           <p className="text-red-700 font-medium">
             {this.props.fallbackTitle ?? 'This section failed to load.'}
           </p>
+          {this.state.digest && (
+            <p
+              className="text-xs font-mono text-red-600/80"
+              data-testid="safe-boundary-digest"
+            >
+              Reference: {this.state.digest}
+            </p>
+          )}
+          {this.state.detail && (
+            <p
+              className="text-xs text-red-500 max-w-md break-words"
+              data-testid="safe-boundary-detail"
+            >
+              {this.state.detail}
+            </p>
+          )}
           <div className="flex gap-3">
             <button
               onClick={this.reset}

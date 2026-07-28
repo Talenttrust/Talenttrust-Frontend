@@ -1,8 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { reportError } from '../lib/errorReporter';
+import {
+  getErrorMessage,
+  prepareErrorDetailForDom,
+} from '../lib/redactErrorDetail';
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -10,8 +14,16 @@ interface ErrorProps {
 }
 
 export default function GlobalError({ error, reset }: ErrorProps) {
+  const [digest, setDigest] = useState<string | null>(error.digest ?? null);
+
   useEffect(() => {
-    reportError(error, 'Error Boundary');
+    // Full detail only through the reporter; UI gets a safe digest back.
+    setDigest(reportError(error, 'Error Boundary'));
+  }, [error]);
+
+  const detail = useMemo(() => {
+    if (process.env.NODE_ENV === 'production') return null;
+    return prepareErrorDetailForDom(getErrorMessage(error));
   }, [error]);
 
   return (
@@ -23,6 +35,22 @@ export default function GlobalError({ error, reset }: ErrorProps) {
           Something went wrong on our end. Please try again or contact support if
           the problem persists.
         </p>
+        {digest && (
+          <p
+            className="text-xs font-mono text-gray-500"
+            data-testid="error-boundary-digest"
+          >
+            Reference: {digest}
+          </p>
+        )}
+        {detail && (
+          <p
+            className="text-xs text-gray-400 break-words"
+            data-testid="error-boundary-detail"
+          >
+            {detail}
+          </p>
+        )}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={reset}
