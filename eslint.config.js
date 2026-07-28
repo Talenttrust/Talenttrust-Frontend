@@ -52,7 +52,8 @@ module.exports = [
     },
     rules: {
       ...nextPlugin.rules,
-      // Disable base rule — @typescript-eslint/no-unused-vars handles TS correctly
+      // Disable base rules — @typescript-eslint handles these correctly for TS
+      'no-redeclare': 'off',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['error', {
         vars: 'all',
