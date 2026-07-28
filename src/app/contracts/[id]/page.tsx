@@ -201,17 +201,21 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
   };
 
   const handleUpdateMilestone = useCallback((id: string, patch: Partial<Milestone>) => {
-    const persisted = updateMilestone(id, patch);
-
-    if (!persisted) {
-      return false;
-    }
+    const snapshot = milestones;
 
     setMilestones((current) =>
       current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
     );
+
+    const persisted = updateMilestone(id, patch);
+
+    if (!persisted) {
+      setMilestones(snapshot);
+      return false;
+    }
+
     return true;
-  }, []);
+  }, [milestones]);
 
   const status = contractData?.status || 'Active';
 
