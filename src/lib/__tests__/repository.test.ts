@@ -1354,7 +1354,10 @@ describe('exportMilestones', () => {
     const lines = json.split('\n');
     expect(lines.length).toBeGreaterThan(2);
     expect(lines[0]).toBe('[');
-    expect(lines[1]).toMatch(/^\s\s"/);
+    // Line 1 is the indented opening brace of the inner object (2-space indent).
+    expect(lines[1]).toMatch(/^\s+\{/);
+    // Line 2 is the first object field, indented one level further (4 spaces).
+    expect(lines[2]).toMatch(/^\s+"/);
   });
 
   it('returns "[]" for an empty input array', () => {
