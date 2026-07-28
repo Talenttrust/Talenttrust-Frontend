@@ -7,6 +7,49 @@ import ReputationProfile from '@/components/ReputationProfile';
 import EmptyState from '@/components/EmptyState';
 import StatusBadge from '@/components/StatusBadge';
 import { ToastProvider, useToast } from '@/components/toast/toast-provider';
+import Navbar from '@/components/Navbar';
+
+describe('a11y: Navbar', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('default route (no active link) has no violations', async () => {
+    await testA11y(<Navbar />);
+  });
+
+  it('Contracts route active has no violations', async () => {
+    jest.spyOn(require('next/navigation'), 'usePathname').mockReturnValue('/contracts');
+    await testA11y(<Navbar />);
+  });
+
+  it('Milestones route active has no violations', async () => {
+    jest.spyOn(require('next/navigation'), 'usePathname').mockReturnValue('/milestones');
+    await testA11y(<Navbar />);
+  });
+
+  it('Reputation route active has no violations', async () => {
+    jest.spyOn(require('next/navigation'), 'usePathname').mockReturnValue('/reputation');
+    await testA11y(<Navbar />);
+  });
+
+  it('deep-nested subroute under contracts has no violations', async () => {
+    jest.spyOn(require('next/navigation'), 'usePathname').mockReturnValue('/contracts/abc-123');
+    await testA11y(<Navbar />);
+  });
+
+  it('unknown path has no violations and no link marked active', async () => {
+    jest.spyOn(require('next/navigation'), 'usePathname').mockReturnValue('/some-unknown-page');
+    const view = renderWithA11y(<Navbar />);
+
+    const links = screen.getAllByRole('link');
+    links.forEach((link) => {
+      expect(link).not.toHaveAttribute('aria-current');
+    });
+
+    await assertNoA11yViolations(view.container);
+  });
+});
 
 describe('a11y: MilestonesList', () => {
   it('empty list has no violations', async () => {
