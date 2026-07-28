@@ -1,10 +1,5 @@
-import { existsSync, readFileSync, statSync } from 'fs';
-import { resolve } from 'path';
-
-// ── Fixtures ─────────────────────────────────────────────────────────
-// We don't want an actual `next build` in unit tests, so we construct
-// minimal in-memory manifest fixtures and test the script's core logic
-// by extracting it as a pure function.
+// Pure-function budget checker — the script's build-manifest parsing logic
+// is exercised here via a stub that avoids an actual `next build`.
 
 // The script's manifest format (App Router shape)
 interface ManifestEntry {

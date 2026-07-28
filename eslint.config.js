@@ -36,7 +36,7 @@ module.exports = [
   // direct plugin registration in flat config).
   {
     name: 'next/recommended',
-    files: ['**/*.{js,jsx,ts,tsx}'],
+    files: ['**/*.{js,jsx,ts,tsx,mjs}'],
     plugins: {
       '@next/next': nextPlugin,
     },
@@ -73,7 +73,7 @@ module.exports = [
   // Shared globals for all source files (browser, Node, Jest, React, JSX)
   {
     name: 'shared/globals',
-    files: ['**/*.{js,jsx,ts,tsx}'],
+    files: ['**/*.{js,jsx,ts,tsx,mjs}'],
     languageOptions: {
       globals: {
         ...globals.browser,
