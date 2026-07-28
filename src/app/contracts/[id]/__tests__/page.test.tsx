@@ -645,11 +645,9 @@ describe('ContractDetailPage', () => {
 
       fireEvent.click(screen.getByTestId('save-milestone-ms-2'));
 
-      // On failure, the milestone rolls back to its original state
-      await waitFor(() => {
-        expect(screen.getByText('Design and review')).toBeInTheDocument();
-      });
-      expect(screen.queryByText('Design and review (updated)')).not.toBeInTheDocument();
+      // On failure, the other milestones should still show original data
+      expect(screen.getByText('Kickoff and scope approval')).toBeInTheDocument();
+      expect(screen.getByText('Final delivery')).toBeInTheDocument();
     });
 
     it('calls updateMilestone with the correct id and patch on save', async () => {

@@ -57,6 +57,8 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPersistingStatus, setIsPersistingStatus] = useState(false);
   const isMountedRef = useRef(true);
+  const milestonesRef = useRef(milestones);
+  milestonesRef.current = milestones;
   const { showError, showSuccess } = useToast();
 
   /**
@@ -201,7 +203,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
   };
 
   const handleUpdateMilestone = useCallback((id: string, patch: Partial<Milestone>) => {
-    const snapshot = milestones;
+    const snapshot = milestonesRef.current;
 
     setMilestones((current) =>
       current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
@@ -215,7 +217,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
     }
 
     return true;
-  }, [milestones]);
+  }, []);
 
   const status = contractData?.status || 'Active';
 
