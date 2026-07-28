@@ -9,6 +9,7 @@ export type AmountFormat = 'usd' | 'ngn' | 'compact';
 export type ToastDensity = 'relaxed' | 'compact';
 export type FormDensity = 'comfortable' | 'compact';
 export type ListDensity = 'comfortable' | 'compact';
+export type ContractsDensity = 'comfortable' | 'compact';
 /**
  * Controls the default auto-dismiss duration for toasts when the caller does
  * not supply an explicit `duration`.
@@ -54,6 +55,7 @@ export interface UserPreferences {
   formDensity: FormDensity;
   milestonesDensity: ListDensity;
   walletDensity: ListDensity;
+  contractsDensity: ContractsDensity;
   quietMode: boolean;
   toastDuration: ToastDuration;
   /**
@@ -70,6 +72,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   formDensity: 'comfortable',
   milestonesDensity: 'comfortable',
   walletDensity: 'comfortable',
+  contractsDensity: 'comfortable',
   quietMode: false,
   toastDuration: 'normal',
   idleDisconnectMs: 0,
@@ -88,6 +91,7 @@ const KNOWN_KEYS: ReadonlySet<keyof UserPreferences> = new Set([
   'formDensity',
   'milestonesDensity',
   'walletDensity',
+  'contractsDensity',
   'quietMode',
   'toastDuration',
   'idleDisconnectMs',
@@ -112,6 +116,7 @@ const ALLOWED_AMOUNT_FORMATS: ReadonlySet<AmountFormat> = new Set(['usd', 'ngn',
 const ALLOWED_TOAST_DENSITIES: ReadonlySet<ToastDensity> = new Set(['relaxed', 'compact']);
 const ALLOWED_FORM_DENSITIES: ReadonlySet<FormDensity> = new Set(['comfortable', 'compact']);
 const ALLOWED_LIST_DENSITIES: ReadonlySet<ListDensity> = new Set(['comfortable', 'compact']);
+const ALLOWED_CONTRACTS_DENSITIES: ReadonlySet<ContractsDensity> = new Set(['comfortable', 'compact']);
 const ALLOWED_TOAST_DURATIONS: ReadonlySet<ToastDuration> = new Set(['short', 'normal', 'long', 'persistent']);
 
 interface PreferencesContextType {
@@ -166,6 +171,7 @@ export function sanitizePreferences(raw: unknown): UserPreferences {
   let formDensity: FormDensity = DEFAULT_PREFERENCES.formDensity;
   let milestonesDensity: ListDensity = DEFAULT_PREFERENCES.milestonesDensity;
   let walletDensity: ListDensity = DEFAULT_PREFERENCES.walletDensity;
+  let contractsDensity: ContractsDensity = DEFAULT_PREFERENCES.contractsDensity;
   let quietMode: boolean = DEFAULT_PREFERENCES.quietMode;
   let toastDuration: ToastDuration = DEFAULT_PREFERENCES.toastDuration;
   let idleDisconnectMs: number = DEFAULT_PREFERENCES.idleDisconnectMs;
@@ -215,6 +221,11 @@ export function sanitizePreferences(raw: unknown): UserPreferences {
           walletDensity = value as ListDensity;
         }
         break;
+      case 'contractsDensity':
+        if (typeof value === 'string' && ALLOWED_CONTRACTS_DENSITIES.has(value as ContractsDensity)) {
+          contractsDensity = value as ContractsDensity;
+        }
+        break;
       case 'quietMode':
         if (typeof value === 'boolean') {
           quietMode = value;
@@ -246,6 +257,7 @@ export function sanitizePreferences(raw: unknown): UserPreferences {
     formDensity,
     milestonesDensity,
     walletDensity,
+    contractsDensity,
     quietMode,
     toastDuration,
     idleDisconnectMs,

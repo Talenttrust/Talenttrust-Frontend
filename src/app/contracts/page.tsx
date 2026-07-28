@@ -7,6 +7,7 @@ import { ContractCreationForm } from '../../components/ContractCreationForm';
 import { listContracts, saveContract } from '@/lib/repository';
 import { downloadContractsCsv, downloadContractsJson } from '@/lib/exportContracts';
 import { useToast } from '@/components/toast/toast-provider';
+import { usePreferences } from '@/lib/preferences';
 import type { Contract } from '@/types/domain';
 
 type ContractsFetchState =
@@ -26,7 +27,16 @@ const ContractsPage: React.FC = () => {
   const [fetchState, setFetchState] = useState<ContractsFetchState>(getInitialFetchState);
   const [showForm, setShowForm] = useState(false);
   const { showError } = useToast();
+  const { preferences, updatePreference } = usePreferences();
   const { contracts } = fetchState;
+
+  const contractsDensity = preferences.contractsDensity;
+
+  /** Toggles between compact and comfortable density and persists the choice. */
+  const handleToggleDensity = useCallback(() => {
+    const next = contractsDensity === 'compact' ? 'comfortable' : 'compact';
+    updatePreference('contractsDensity', next);
+  }, [contractsDensity, updatePreference]);
 
   /** Re-reads persisted contracts after a recoverable load failure. */
   const loadContracts = useCallback(() => {
@@ -172,7 +182,11 @@ const ContractsPage: React.FC = () => {
             </button>
           </div>
 
-          <ContractsList contracts={contracts} />
+          <ContractsList
+            contracts={contracts}
+            density={contractsDensity}
+            onToggleDensity={handleToggleDensity}
+          />
         </>
       )}
 

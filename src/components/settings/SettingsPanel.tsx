@@ -284,6 +284,19 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 </div>
               </div>
 
+              <div>
+                <label id="contracts-density-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Contracts Density</label>
+                <RadioGroup
+                  options={['comfortable', 'compact'] as const}
+                  value={preferences.contractsDensity}
+                  onChange={(val) => handleUpdate('contractsDensity', val)}
+                  labelId="contracts-density-label"
+                  ariaLabel="Contracts Density"
+                  containerClassName="grid grid-cols-2 gap-2"
+                  textClassName="capitalize"
+                />
+              </div>
+
               <div className="flex items-center justify-between">
                 <div>
                   <label id="quiet-mode-label" className="text-sm font-medium text-[var(--foreground)]">Quiet Mode</label>

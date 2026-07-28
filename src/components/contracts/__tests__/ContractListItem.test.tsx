@@ -39,6 +39,7 @@ describe('ContractListItem', () => {
       expect(li).toHaveClass('border');
       expect(li).toHaveClass('border-slate-200');
       expect(li).toHaveClass('bg-white');
+      // Default density is 'comfortable' → p-4
       expect(li).toHaveClass('p-4');
       expect(li).toHaveClass('shadow-sm');
     });

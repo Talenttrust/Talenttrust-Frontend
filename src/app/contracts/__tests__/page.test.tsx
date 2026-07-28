@@ -16,13 +16,18 @@ jest.mock('@/lib/exportContracts', () => ({
 
 jest.mock('@/components/contracts/ContractsList', () => ({
   __esModule: true,
-  default: ({ contracts }: any) => (
-    <ul data-testid="contracts-list">
+  default: ({ contracts, density, onToggleDensity }: any) => (
+    <ul data-testid="contracts-list" data-density={density}>
       {contracts.map((contract: any, idx: number) => (
         <li key={`${contract.contractName}-${idx}`}>
           {contract.contractName}
         </li>
       ))}
+      {onToggleDensity && (
+        <button onClick={onToggleDensity} data-testid="density-toggle">
+          Toggle Density
+        </button>
+      )}
     </ul>
   ),
 }));
@@ -457,6 +462,30 @@ describe('ContractsPage', () => {
       render(<ContractsPage />);
 
       expect(screen.getByRole('main')).toBeInTheDocument();
+    });
+  });
+
+  describe('density toggle', () => {
+    it('passes density="comfortable" to ContractsList by default', () => {
+      mockListContracts.mockReturnValue([makeContract()]);
+      render(<ContractsPage />);
+
+      const list = screen.getByTestId('contracts-list');
+      expect(list).toHaveAttribute('data-density', 'comfortable');
+    });
+
+    it('passes onToggleDensity to ContractsList when contracts are present', () => {
+      mockListContracts.mockReturnValue([makeContract()]);
+      render(<ContractsPage />);
+
+      expect(screen.getByTestId('density-toggle')).toBeInTheDocument();
+    });
+
+    it('density toggle button is absent when no contracts exist', () => {
+      mockListContracts.mockReturnValue([]);
+      render(<ContractsPage />);
+
+      expect(screen.queryByTestId('density-toggle')).not.toBeInTheDocument();
     });
   });
 
