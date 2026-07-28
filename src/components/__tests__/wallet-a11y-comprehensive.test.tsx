@@ -870,14 +870,20 @@ describe('a11y: WalletItemList - keyboard navigation', () => {
     
     const selectAll = screen.getByTestId('select-all-checkbox');
     const itemCheckbox = screen.getByTestId('select-item-checkbox-w-1');
-    const deleteBtn = screen.getByRole('button', { name: /delete/i });
-    
+    const copyAddressBtn = screen.getByTestId('copy-wallet-address-btn-w-1');
+    const deleteBtn = screen.getByRole('button', { name: 'Delete Stellar Lumens (XLM)' });
+
     selectAll.focus();
     expect(selectAll).toHaveFocus();
-    
+
     await user.tab();
     expect(itemCheckbox).toHaveFocus();
-    
+
+    // w-1 has an address, so its copy-address button is the next tab stop
+    // before the delete button.
+    await user.tab();
+    expect(copyAddressBtn).toHaveFocus();
+
     await user.tab();
     expect(deleteBtn).toHaveFocus();
   });

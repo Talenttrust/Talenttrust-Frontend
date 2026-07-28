@@ -74,9 +74,18 @@ describe('WalletItemList — keyboard operation', () => {
     await user.tab();
     expect(screen.getByTestId('select-item-checkbox-w-1')).toHaveFocus();
 
+    // w-1 has an address, so its copy-address button is the next tab stop.
+    await user.tab();
+    expect(screen.getByTestId('copy-wallet-address-btn-w-1')).toHaveFocus();
+
     await user.tab();
     expect(screen.getByTestId('select-item-checkbox-w-2')).toHaveFocus();
 
+    // w-2 also has an address.
+    await user.tab();
+    expect(screen.getByTestId('copy-wallet-address-btn-w-2')).toHaveFocus();
+
+    // w-3 has no address, so its checkbox follows directly with no copy button.
     await user.tab();
     expect(screen.getByTestId('select-item-checkbox-w-3')).toHaveFocus();
   });
@@ -151,7 +160,8 @@ describe('WalletItemList — keyboard operation', () => {
       />
     );
 
-    // tab through select-all, row 1 checkbox, row 1 delete, row 2 checkbox, row 2 delete, row 3 checkbox, row 3 delete
+    // tab through select-all, row 1 checkbox, row 1 copy-address, row 1 delete
+    await user.tab();
     await user.tab();
     await user.tab();
     await user.tab();
@@ -288,7 +298,8 @@ describe('WalletItemList — keyboard operation', () => {
       );
 
       // In a table, focusable elements follow DOM order which is column-major:
-      // all checkboxes first (from thead + tbody), then all delete buttons
+      // all checkboxes first (from thead + tbody), then all buttons (copy-address
+      // and delete, in per-row DOM order: copy comes before delete within a row)
       const allCheckboxes = screen.getAllByRole('checkbox');
       const allButtons = screen.getAllByRole('button');
       const focusableOrder = [...allCheckboxes, ...allButtons];
@@ -302,7 +313,9 @@ describe('WalletItemList — keyboard operation', () => {
         'Select Stellar Lumens (XLM)',
         'Select USD Coin (USDC)',
         'Select Archived Client Token',
+        'Copy wallet address for Stellar Lumens (XLM)',
         'Delete Stellar Lumens (XLM)',
+        'Copy wallet address for USD Coin (USDC)',
         'Delete USD Coin (USDC)',
         'Delete Archived Client Token',
       ];
