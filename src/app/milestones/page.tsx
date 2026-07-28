@@ -15,13 +15,11 @@ import MilestoneFilter, {
   type MilestoneStatusFilter,
 } from '../../components/milestones/MilestoneFilter';
 import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
-import MilestonesErrorBoundary from '../../components/milestones/MilestonesErrorBoundary';
 import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository';
 import { getItem, setItem } from '@/lib/safeStorage';
 import { useToast } from '@/components/toast/toast-provider';
 import SafeBoundary from '@/components/SafeBoundary';
 import type { Milestone } from '@/types/domain';
-import type { StatusType } from '@/components/StatusBadge';
 
 export const SAMPLE_DISMISSED_KEY = 'talenttrust-milestones-sample-dismissed';
 
