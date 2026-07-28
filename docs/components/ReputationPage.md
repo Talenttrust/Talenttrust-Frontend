@@ -196,6 +196,46 @@ No changes to rendering logic are needed when API is integrated.
 
 ---
 
+## Reputation Level Legend & Bands
+
+The reputation score (which defaults to a scale of 0 to 5) is mapped to one of five reputation levels. If no explicit level is provided to the `ReputationProfile` component, the level is derived automatically from the score based on the following bands:
+
+| Min Score (Inclusive) | Max Score | Level Name |
+|-----------------------|-----------|------------|
+| 0.0                   | 1.0       | Newcomer   |
+| 1.0                   | 2.0       | Contributor|
+| 2.0                   | 3.0       | Active Contributor |
+| 3.0                   | 4.0       | Trusted Partner    |
+| 4.0                   | 5.0 (Incl)| Expert     |
+
+These bands scale proportionally if a custom `maxScore` is provided (e.g., if `maxScore` is 10, the "Trusted Partner" band scales to 6.0 - 8.0).
+
+---
+
+## URL filter / sort state
+
+When reputation history is present, `ReputationProfile` exposes:
+
+- **Filter** (`?type=`) — event type, default `All` (omitted from the URL)
+- **Sort** (`?dir=`) — `desc` (newest first, default, omitted) or `asc` (oldest first)
+
+Behaviour:
+
+1. State is **restored from the URL** on load and on back/forward navigation.
+2. Invalid `type` / `dir` / `sort` values are ignored and fall back to defaults.
+3. URL writes are **debounced** (250ms) via `router.replace` so rapid changes stay shareable without flooding history.
+4. Pure helpers live in `src/lib/reputationUrlState.ts` (validation, query build, filter+sort).
+
+Example shareable link: `/reputation?type=Verification&dir=asc`
+
+### URL sync tests
+
+```bash
+npm test -- --testPathPattern="reputation-filter-url|reputationUrlState"
+```
+
+---
+
 ## Testing
 
 ### Coverage Requirements
@@ -205,11 +245,13 @@ No changes to rendering logic are needed when API is integrated.
 - ✓ Full reputation (score + history)
 - ✓ Heading hierarchy
 - ✓ ReputationProfile not rendered when no data
+- ✓ Restore filter/sort from URL; invalid params ignored; debounced shareable updates
 
 ### Running Tests
 
 ```bash
 npm test -- src/app/reputation/__tests__/page.test.tsx
+npm test -- --testPathPattern="reputation-filter-url|reputationUrlState|ReputationProfile.test"
 ```
 
 ---
@@ -218,5 +260,8 @@ npm test -- src/app/reputation/__tests__/page.test.tsx
 
 - **Page:** `src/app/reputation/page.tsx`
 - **Component:** `src/components/ReputationProfile.tsx`
+- **URL helpers:** `src/lib/reputationUrlState.ts`
 - **Tests:** `src/app/reputation/__tests__/page.test.tsx`
 - **Component Tests:** `src/components/ReputationProfile.test.tsx`
+- **URL Tests:** `src/app/__tests__/reputation-filter-url.test.tsx`
+- **Helper Tests:** `src/lib/__tests__/reputationUrlState.test.ts`

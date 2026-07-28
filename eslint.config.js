@@ -58,8 +58,7 @@ module.exports = [
       '@typescript-eslint': tsPlugin,
     },
     rules: {
-      // Disable base rules — @typescript-eslint handles these correctly for TS
-      'no-redeclare': 'off',
+      // Disable base rule — @typescript-eslint/no-unused-vars handles TS correctly
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['error', {
         vars: 'all',

@@ -1,13 +1,55 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import { ContractCreationForm } from '../ContractCreationForm';
+import {
+  ContractCreationForm,
+  MAX_CONTRACT_NAME_LENGTH,
+  MAX_PARTY_LABEL_LENGTH,
+} from '../ContractCreationForm';
 import * as stellarAddress from '@/lib/stellarAddress';
 
 // Mock the stellarAddress module
 jest.mock('@/lib/stellarAddress', () => ({
   isValidStellarAddress: jest.fn(),
 }));
+
+const VALID_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
+const INVALID_ADDRESS = 'INVALID123';
+
+function createFocusTestHarness() {
+  const onCancel = jest.fn();
+  const onSubmit = jest.fn();
+
+  function Harness() {
+    const [isOpen, setIsOpen] = React.useState(false);
+
+    return (
+      <>
+        <button type="button" onClick={() => setIsOpen(true)}>
+          Open contract dialog
+        </button>
+        <button type="button" onClick={() => setIsOpen(false)}>
+          Close externally
+        </button>
+        {isOpen && (
+          <ContractCreationForm
+            onSubmit={(contract) => {
+              onSubmit(contract);
+              setIsOpen(false);
+            }}
+            onCancel={() => {
+              onCancel();
+              setIsOpen(false);
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  return { Harness, onCancel, onSubmit };
+}
 
 describe('ContractCreationForm', () => {
   const mockOnSubmit = jest.fn();
@@ -17,10 +59,6 @@ describe('ContractCreationForm', () => {
     onSubmit: mockOnSubmit,
     onCancel: mockOnCancel,
   };
-
-  // Valid Stellar address for testing
-  const VALID_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
-  const INVALID_ADDRESS = 'INVALID123';
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -66,12 +104,16 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByRole('alert', { name: /there is a problem/i })).toBeInTheDocument();
+        const errorSummary = screen.getByRole('alert', { name: /there is a problem/i });
+        expect(errorSummary).toBeInTheDocument();
+        expect(errorSummary).toHaveTextContent(/contract name is required/i);
+        expect(errorSummary).toHaveTextContent(/total value is required/i);
+        expect(errorSummary).toHaveTextContent(/at least two parties are required/i);
       });
 
-      expect(screen.getByText(/contract name is required/i)).toBeInTheDocument();
-      expect(screen.getByText(/total value is required/i)).toBeInTheDocument();
-      expect(screen.getByText(/at least two parties are required/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/contract name is required/i)[0]).toBeInTheDocument();
+      expect(screen.getAllByText(/total value is required/i)[0]).toBeInTheDocument();
+      expect(screen.getAllByText(/at least two parties are required/i)[0]).toBeInTheDocument();
       expect(mockOnSubmit).not.toHaveBeenCalled();
     });
 
@@ -83,7 +125,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/contract name is required/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/contract name is required/i)[0]).toBeInTheDocument();
       });
     });
 
@@ -95,7 +137,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/total value is required/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/total value is required/i)[0]).toBeInTheDocument();
       });
     });
   });
@@ -109,7 +151,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/total value must be a positive number/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/total value must be a positive number/i)[0]).toBeInTheDocument();
       });
     });
 
@@ -121,7 +163,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/total value must be a positive number/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/total value must be a positive number/i)[0]).toBeInTheDocument();
       });
     });
 
@@ -149,7 +191,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/party 1 address must be a valid stellar address/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/party 1 address must be a valid stellar address/i)[0]).toBeInTheDocument();
       });
       expect(mockOnSubmit).not.toHaveBeenCalled();
     });
@@ -163,7 +205,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/party 1 label is required/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/party 1 label is required/i)[0]).toBeInTheDocument();
       });
     });
 
@@ -176,7 +218,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/party 1 address is required/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/party 1 address is required/i)[0]).toBeInTheDocument();
       });
     });
   });
@@ -294,6 +336,33 @@ describe('ContractCreationForm', () => {
       expect(submittedContract.contractName).toBe('Website Redesign');
     });
 
+    it('normalizes control characters and whitespace before submitting text fields', async () => {
+      render(<ContractCreationForm {...defaultProps} />);
+
+      fireEvent.change(screen.getByLabelText(/contract name/i), {
+        target: { value: '  Website\u0000\n  Redesign  ' },
+      });
+      fireEvent.change(screen.getByLabelText(/total value/i), { target: { value: '5000' } });
+
+      const partyLabels = screen.getAllByPlaceholderText(/e\.g\., client, freelancer/i);
+      const partyAddresses = screen.getAllByPlaceholderText(/GXXXXXXXXXX/i);
+      fireEvent.change(partyLabels[0], { target: { value: '  Client\u0007  Team ' } });
+      fireEvent.change(partyAddresses[0], { target: { value: VALID_ADDRESS } });
+      fireEvent.change(partyLabels[1], { target: { value: ' Freelancer ' } });
+      fireEvent.change(partyAddresses[1], { target: { value: VALID_ADDRESS } });
+
+      fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
+
+      await waitFor(() => expect(mockOnSubmit).toHaveBeenCalledTimes(1));
+      expect(mockOnSubmit.mock.calls[0][0]).toMatchObject({
+        contractName: 'Website Redesign',
+        parties: [
+          { label: 'Client Team', address: VALID_ADDRESS },
+          { label: 'Freelancer', address: VALID_ADDRESS },
+        ],
+      });
+    });
+
     it('filters out empty parties when submitting', async () => {
       render(<ContractCreationForm {...defaultProps} />);
 
@@ -363,7 +432,7 @@ describe('ContractCreationForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/contract name is required/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/contract name is required/i)[0]).toBeInTheDocument();
       });
 
       // Check aria-invalid is set
@@ -376,6 +445,56 @@ describe('ContractCreationForm', () => {
       // Required fields should have asterisks
       const contractNameLabel = screen.getByText(/contract name/i).closest('label');
       expect(contractNameLabel?.textContent).toContain('*');
+    });
+
+    describe('Button focus-visible styles', () => {
+      it('Create Contract button has focus-visible outline classes', () => {
+        render(<ContractCreationForm {...defaultProps} />);
+
+        const createBtn = screen.getByRole('button', { name: /create contract/i });
+        expect(createBtn.className).toMatch(/focus-visible:outline/);
+        expect(createBtn.className).toMatch(/focus-visible:outline-4/);
+        expect(createBtn.className).toMatch(/focus-visible:outline-offset-2/);
+        expect(createBtn.className).toMatch(/focus-visible:outline-blue-500/);
+      });
+
+      it('Cancel button has focus-visible outline classes', () => {
+        render(<ContractCreationForm {...defaultProps} />);
+
+        const cancelBtn = screen.getByRole('button', { name: /cancel/i });
+        expect(cancelBtn.className).toMatch(/focus-visible:outline/);
+        expect(cancelBtn.className).toMatch(/focus-visible:outline-4/);
+        expect(cancelBtn.className).toMatch(/focus-visible:outline-offset-2/);
+        expect(cancelBtn.className).toMatch(/focus-visible:outline-blue-500/);
+      });
+
+      it('Add Another Party button has focus-visible outline classes', () => {
+        render(<ContractCreationForm {...defaultProps} />);
+
+        const addPartyBtn = screen.getByRole('button', { name: /add another party/i });
+        expect(addPartyBtn.className).toMatch(/focus-visible:outline/);
+        expect(addPartyBtn.className).toMatch(/focus-visible:outline-4/);
+        expect(addPartyBtn.className).toMatch(/focus-visible:outline-offset-2/);
+        expect(addPartyBtn.className).toMatch(/focus-visible:outline-blue-500/);
+      });
+
+      it('Remove party buttons have focus-visible outline classes', async () => {
+        render(<ContractCreationForm {...defaultProps} />);
+
+        // Add a third party first so Remove buttons appear
+        fireEvent.click(screen.getByRole('button', { name: /add another party/i }));
+
+        await waitFor(() => {
+          const removeButtons = screen.getAllByRole('button', { name: /remove party/i });
+          expect(removeButtons.length).toBeGreaterThan(0);
+          removeButtons.forEach((btn) => {
+            expect(btn.className).toMatch(/focus-visible:outline/);
+            expect(btn.className).toMatch(/focus-visible:outline-4/);
+            expect(btn.className).toMatch(/focus-visible:outline-offset-2/);
+            expect(btn.className).toMatch(/focus-visible:outline-red-500/);
+          });
+        });
+      });
     });
   });
 
@@ -413,6 +532,41 @@ describe('ContractCreationForm', () => {
     });
   });
 
+  describe('Text length validation', () => {
+    it('rejects an over-length contract name instead of truncating it', async () => {
+      render(<ContractCreationForm {...defaultProps} />);
+
+      fireEvent.change(screen.getByLabelText(/contract name/i), {
+        target: { value: 'a'.repeat(MAX_CONTRACT_NAME_LENGTH + 1) },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
+
+      await waitFor(() => {
+        expect(screen.getAllByText(
+          `Contract name must be no more than ${MAX_CONTRACT_NAME_LENGTH} characters`,
+        )[0]).toBeInTheDocument();
+      });
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+    });
+
+    it('rejects an over-length party label instead of truncating it', async () => {
+      render(<ContractCreationForm {...defaultProps} />);
+      const partyLabels = screen.getAllByPlaceholderText(/e\.g\., client, freelancer/i);
+      const partyAddresses = screen.getAllByPlaceholderText(/GXXXXXXXXXX/i);
+      fireEvent.change(partyLabels[0], { target: { value: 'a'.repeat(MAX_PARTY_LABEL_LENGTH + 1) } });
+      fireEvent.change(partyAddresses[0], { target: { value: VALID_ADDRESS } });
+
+      fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
+
+      await waitFor(() => {
+        expect(screen.getAllByText(
+          `Party 1 label must be no more than ${MAX_PARTY_LABEL_LENGTH} characters`,
+        )[0]).toBeInTheDocument();
+      });
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Integration with isValidStellarAddress', () => {
     it('calls isValidStellarAddress for each party address', async () => {
       render(<ContractCreationForm {...defaultProps} />);
@@ -438,6 +592,115 @@ describe('ContractCreationForm', () => {
       await waitFor(() => {
         expect(stellarAddress.isValidStellarAddress).toHaveBeenCalledWith(VALID_ADDRESS);
       });
+    });
+  });
+
+  describe('Focus management', () => {
+    it('moves initial focus to the first form field when opened', async () => {
+      const dialogOnCancel = jest.fn();
+      const user = userEvent.setup();
+
+      function Harness() {
+        const [isOpen, setIsOpen] = React.useState(false);
+
+        return (
+          <>
+            <button type="button" onClick={() => setIsOpen(true)}>
+              Open contract dialog
+            </button>
+            {isOpen && (
+              <ContractCreationForm
+                onCancel={dialogOnCancel}
+                onSubmit={jest.fn()}
+              />
+            )}
+          </>
+        );
+      }
+
+      render(<Harness />);
+
+      const trigger = screen.getByRole('button', { name: 'Open contract dialog' });
+      await user.click(trigger);
+
+      expect(screen.getByLabelText(/contract name/i)).toHaveFocus();
+    });
+
+    it('invokes onCancel when Escape is pressed', async () => {
+      const dialogOnCancel = jest.fn();
+      const user = userEvent.setup();
+
+      function Harness() {
+        const [isOpen, setIsOpen] = React.useState(false);
+
+        return (
+          <>
+            <button type="button" onClick={() => setIsOpen(true)}>
+              Open contract dialog
+            </button>
+            {isOpen && (
+              <ContractCreationForm
+                onCancel={dialogOnCancel}
+                onSubmit={jest.fn()}
+              />
+            )}
+          </>
+        );
+      }
+
+      render(<Harness />);
+
+      await user.click(screen.getByRole('button', { name: 'Open contract dialog' }));
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+      await user.keyboard('{Escape}');
+
+      expect(dialogOnCancel).toHaveBeenCalledTimes(1);
+    });
+
+    it('traps Tab focus within the dialog while open', async () => {
+      const user = userEvent.setup();
+      const { Harness } = createFocusTestHarness();
+      render(<Harness />);
+
+      await user.click(screen.getByRole('button', { name: 'Open contract dialog' }));
+      const dialog = screen.getByRole('dialog');
+      const contractNameInput = screen.getByLabelText(/contract name/i);
+
+      contractNameInput.focus();
+      await user.tab();
+      expect(screen.getByLabelText(/total value/i)).toHaveFocus();
+
+      const focusable = dialog.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      const focusableArray = Array.from(focusable);
+      const lastFocusable = focusableArray[focusableArray.length - 1];
+      lastFocusable.focus();
+      await user.tab();
+
+      expect(contractNameInput).toHaveFocus();
+    });
+
+    it('cycles Shift+Tab from the first control back to the last control', async () => {
+      const user = userEvent.setup();
+      const { Harness } = createFocusTestHarness();
+      render(<Harness />);
+
+      await user.click(screen.getByRole('button', { name: 'Open contract dialog' }));
+      const contractNameInput = screen.getByLabelText(/contract name/i);
+
+      contractNameInput.focus();
+      await user.tab({ shift: true });
+
+      const dialog = screen.getByRole('dialog');
+      const focusable = dialog.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      const focusableArray = Array.from(focusable);
+      const lastFocusable = focusableArray[focusableArray.length - 1];
+
+      expect(lastFocusable).toHaveFocus();
     });
   });
 });

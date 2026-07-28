@@ -25,6 +25,13 @@
   --radius: 0.5rem;
   --surface: #f8fafc;
 
+  /* Legend/band tokens (a11y/reputation-31): used by ReputationProfile
+     legend items. Light-mode values match the original indigo-50/200/900
+     palette so the light theme is visually unchanged. */
+  --legend-active-bg: #eef2ff;
+  --legend-active-border: #c7d2fe;
+  --legend-active-foreground: #312e81;
+
   /* Status/badge tokens (a11y/theming-27): used by StatusBadge and the
      toast badges. Light-mode values match the existing Tailwind pastel
      chips (emerald/sky/rose/amber-100 + 800) so the light theme is visually
@@ -61,6 +68,12 @@
   --ring: #3b82f6;
   --surface: #0f172a;
 
+  /* Dark-mode legend tokens: deep indigo background with light indigo
+     text so the active band legibly stands out against --surface. */
+  --legend-active-bg: #1e1b4b;
+  --legend-active-border: #4338ca;
+  --legend-active-foreground: #e0e7ff;
+
   /* Dark-mode status/badge tokens: swapped from light pastel chips
      (emerald/sky/rose/amber-100) to deep tinted backgrounds with bright
      tinted text. Verified two things, not just one:
@@ -84,4 +97,152 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* prefers-reduced-motion: halt all animations and transitions for users
+   who have requested reduced motion via their OS/browser settings.
+   - animate-spin (and any Tailwind animation utility) is stopped by
+     setting animation to none.
+   - All CSS transitions are collapsed to instant (duration 0ms) so
+     elements snap to their end state without motion.
+   - scroll-behavior is set to auto to prevent smooth scrolling.
+   Elements that serve as static loading indicators (e.g. the spinner SVG
+   inside WalletConnectButton) remain visible in the DOM; only the
+   rotation is halted so the indicator is still perceivable. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Explicitly stop Tailwind's animate-spin so the spinner SVG becomes
+     a static circle rather than a continuously rotating element. The
+     element remains in the DOM and is still visible as a loading cue. */
+  .animate-spin {
+    animation: none !important;
+  }
+
+  /* Freeze the shimmer skeleton animation. The block remains visible as
+     a static grey placeholder so users with reduced-motion still perceive
+     the loading state without any movement. */
+  .animate-shimmer {
+    animation: none !important;
+    background-image: none !important;
+  }
+
+  /* Freeze pulse animations on skeleton components (e.g. MilestonesListSkeleton). */
+  .animate-pulse {
+    animation: none !important;
+  }
+}
+
+/* forced-colors / high-contrast mode: ensures legibility and clear component
+   boundaries for users on Windows High Contrast / Forced Colors mode. */
+@media (forced-colors: active) {
+  /* Progress bar container and fill visibility in high-contrast mode */
+  [role="progressbar"] {
+    border: 1px solid CanvasText !important;
+  }
+
+  [role="progressbar"] > div {
+    background-color: Highlight !important;
+    forced-color-adjust: none;
+  }
+
+  /* Status chips, filter radios, and alert containers high contrast borders */
+  [role="listitem"],
+  [role="status"],
+  fieldset label {
+    border: 1px solid CanvasText !important;
+  }
+
+  /* Selected filter state in radiogroup */
+  fieldset label:has(input:checked) {
+    background-color: Highlight !important;
+    color: HighlightText !important;
+    border: 1px solid Highlight !important;
+  }
+
+  /* ── Wallet-specific high-contrast rules ──
+     Ensures the wallet table, selected rows, status badges, toolbar, and
+     checkboxes remain legible and clearly distinguishable when forced-colors
+     mode is active (e.g. Windows High Contrast). */
+
+  /* Wallet table container and cell borders */
+  [data-wallet-table] {
+    border: 2px solid CanvasText !important;
+  }
+
+  [data-wallet-table] th,
+  [data-wallet-table] td {
+    border-bottom: 1px solid CanvasText !important;
+  }
+
+  /* Selected wallet rows: highlighted background with high-contrast text */
+  [data-wallet-table] tr[data-selected] {
+    background-color: Highlight !important;
+    color: HighlightText !important;
+    forced-color-adjust: none;
+  }
+
+  /* Wallet status badges: visible borders in forced-colors mode */
+  [data-wallet-status] {
+    border: 1px solid CanvasText !important;
+  }
+
+  /* Wallet bulk toolbar: visible border in forced-colors mode */
+  [data-wallet-toolbar] {
+    border: 2px solid CanvasText !important;
+  }
+
+  /* Wallet checkboxes: ensure they're visible in high-contrast */
+  [data-wallet-table] input[type="checkbox"] {
+    forced-color-adjust: auto;
+  }
+
+  /* Wallet delete buttons: ensure icon buttons have visible boundaries */
+  [data-wallet-table] button {
+    border: 1px solid ButtonText !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Shimmer keyframe for LoadingSkeleton
+ *
+ * Creates a left-to-right highlight sweep using a CSS gradient and
+ * background-position animation. The gradient is positioned so the bright
+ * band starts off-screen to the left (-200% background-position) and
+ * travels to the right (200%). background-size is set to 200% so the sweep
+ * covers the full element width exactly once per cycle.
+ *
+ * This class is intentionally defined inside @layer utilities so Tailwind's
+ * purge process does not strip it, and so it can be overridden by any
+ * Tailwind utility class at the same specificity layer.
+ * --------------------------------------------------------------------------- */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@layer utilities {
+  .animate-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      #e2e8f0 0%,
+      #f1f5f9 40%,
+      #e2e8f0 60%,
+      #e2e8f0 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
 }

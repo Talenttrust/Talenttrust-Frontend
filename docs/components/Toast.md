@@ -1,43 +1,116 @@
 # Toast
 
-Transient notification system for success and error feedback. Supports auto-dismiss, pause-on-interaction, screen reader announcements, density preferences, and quiet mode suppression.
+Transient notification system for success and error feedback. Supports auto-dismiss, pause-on-interaction (hover and focus), screen-reader announcements, density preferences, and quiet-mode suppression.
 
-## Location
+**Source:** `src/components/toast/toast-provider.tsx`
+**Tests:** `src/components/toast/toast-provider.test.tsx`
 
-`src/components/toast/toast-provider.tsx`
+---
+
+## Quick Start
+
+### 1. Mount the provider
+
+`ToastProvider` must wrap any component that calls `useToast()`. In this project it is already wired in `src/app/layout.tsx` inside `PreferencesProvider`:
+
+```tsx
+// src/app/layout.tsx
+import { PreferencesProvider } from '@/lib/preferences';
+import { ToastProvider } from '@/components/toast/toast-provider';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <PreferencesProvider>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
+        </PreferencesProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+`ToastProvider` **must** be a descendant of `PreferencesProvider` because it reads
+`quietMode`, `toastDensity`, and `toastDuration` from `usePreferences()`.
+
+### 2. Call the hook
+
+```tsx
+'use client';
+import { useToast } from '@/components/toast/toast-provider';
+
+export function SaveButton() {
+  const { showSuccess, showError } = useToast();
+
+  const handleSave = async () => {
+    try {
+      await saveData();
+      showSuccess({ title: 'Saved', description: 'Your changes have been saved.' });
+    } catch {
+      showError({ title: 'Save failed', description: 'Please try again.' });
+    }
+  };
+
+  return <button onClick={handleSave}>Save</button>;
+}
+```
+
+---
 
 ## Provider Architecture
 
-```
-<PreferencesProvider>
-  <ToastProvider>
+```text
+<PreferencesProvider>            <- src/lib/preferences.tsx
+  <ToastProvider>                <- src/components/toast/toast-provider.tsx
     {children}
-    <ToastAnnouncer />    {/* screen-reader-only live regions */}
-    <ToastViewport />      {/* visual toast stack, fixed top-right */}
+    <ToastAnnouncer />           {/* two sr-only live-region <div>s */}
+    <ToastViewport />            {/* fixed top-right visual stack */}
   </ToastProvider>
 </PreferencesProvider>
 ```
 
-`ToastProvider` must be mounted as a child of `PreferencesProvider` because it reads `quietMode` and `toastDensity` from `usePreferences()`.
+All active toasts render in a **single** fixed column anchored `top-4 right-4`.
+There is no multi-column layout.
 
-There is only one viewport. All active toasts stack vertically in a single column fixed to the top-right of the viewport.
+---
 
 ## Exports
 
-| Export | Kind | Description |
-|---|---|---|
-| `ToastProvider` | Component | Context provider; renders viewport and announcer |
-| `useToast` | Hook | Returns `{ toasts, showSuccess, showError, dismissToast }` |
+| Export               | Kind      | Description                                              |
+|----------------------|-----------|----------------------------------------------------------|
+| `ToastProvider`      | Component | Context provider; renders viewport and announcer          |
+| `useToast`           | Hook      | Returns `{ toasts, showSuccess, showError, dismissToast }` |
+| `ToastErrorBoundary` | Component | Class error boundary wrapping the toast viewport          |
+| `ToastSkeleton`      | Component | Loading-state placeholder matching the toast layout       |
 
-## Types (internal, not exported)
+All four are named exports from `@/components/toast/toast-provider`.
+
+---
+
+## API Reference
+
+### Types
 
 ```ts
 type ToastVariant = 'success' | 'error';
 
+type ToastAction = {
+  /** Plain-text label. Never interpolated as HTML. */
+  label: string;
+  /** Called when the user clicks the action button. */
+  onClick: () => void;
+};
+
 type ToastInput = {
   title: string;
   description?: string;
-  duration?: number;    // defaults to 5000ms
+  /** Duration in ms. Overrides the user preference when supplied. */
+  duration?: number;
+  /** Optional inline action button. */
+  action?: ToastAction;
 };
 
 type ToastRecord = ToastInput & {
@@ -48,202 +121,377 @@ type ToastRecord = ToastInput & {
 type ToastContextValue = {
   toasts: ToastRecord[];
   showSuccess: (toast: ToastInput) => string;
-  showError: (toast: ToastInput) => string;
+  showError:   (toast: ToastInput) => string;
   dismissToast: (id: string) => void;
 };
 ```
 
-## `useToast()` API
+### `useToast()` hook
 
-| Return value | Type | Description |
-|---|---|---|
-| `toasts` | `ToastRecord[]` | Array of currently visible toasts |
-| `showSuccess(toast)` | `(input: ToastInput) => string` | Shows a success toast, returns its ID. Returns `'suppressed'` when quiet mode is active |
-| `showError(toast)` | `(input: ToastInput) => string` | Shows an error toast, returns its ID. Not affected by quiet mode |
-| `dismissToast(id)` | `(id: string) => void` | Programmatically dismisses a toast by its ID |
+Must be called inside `<ToastProvider>`. When called outside a provider the
+context resolves to a default value whose `showSuccess` and `showError` return
+empty strings and `dismissToast` is a no-op — no error is thrown.
 
-### ToastInput fields
+Returns the `ToastContextValue` object:
 
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `title` | `string` | Yes | — | Bold heading displayed inside the toast panel |
-| `description` | `string` | No | — | Secondary text below the title |
-| `duration` | `number` | No | `5000` | Milliseconds before auto-dismiss. Passed to `window.setTimeout` |
+| Member               | Type                     | Description                                      |
+|----------------------|--------------------------|--------------------------------------------------|
+| `toasts`             | `ToastRecord[]`          | All currently visible toasts                     |
+| `showSuccess(toast)` | `(ToastInput) => string` | Creates a success toast; see return-value table  |
+| `showError(toast)`   | `(ToastInput) => string` | Creates an error toast; always returns an ID     |
+| `dismissToast(id)`   | `(string) => void`       | Removes the toast with the given ID immediately  |
 
-## Return values
+### `showSuccess(toast: ToastInput): string`
 
-| Method | Normal return | Quiet mode return |
-|---|---|---|
-| `showSuccess` | Unique toast ID string (e.g. `"toast-550e8400-e29b-41d4-a716-446655440000"`) | `"suppressed"` (no toast created) |
-| `showError` | Unique toast ID string | Always returns ID; quiet mode has no effect |
+```ts
+const showSuccess = useCallback(
+  (toast: ToastInput) => {
+    if (preferences.quietMode) {
+      return 'suppressed';          // literal string when quietMode is true
+    }
+    const durationMs =
+      toast.duration !== undefined ? toast.duration : DURATION_MAP[preferences.toastDuration];
+    return createToast('success', toast, durationMs);
+  },
+  [createToast, preferences.quietMode, preferences.toastDuration],
+);
+```
 
-The returned ID can be passed to `dismissToast` to programmatically dismiss a toast. See [dismissToast example](#dismissing-a-toast-by-id).
+### `showError(toast: ToastInput): string`
 
-## Quiet mode
+```ts
+const showError = useCallback(
+  (toast: ToastInput) => {
+    const durationMs =
+      toast.duration !== undefined ? toast.duration : DURATION_MAP[preferences.toastDuration];
+    return createToast('error', toast, durationMs);
+  },
+  [createToast, preferences.toastDuration],
+);
+```
 
-When `UserPreferences.quietMode` is `true`:
+`showError` has **no** quiet-mode branch — it always creates a toast.
 
-- `showSuccess()` returns the string `'suppressed'` and does **not** create a toast
-- `showError()` is **unaffected** — error toasts always display
-- The `suppressed` return lets callers branch on suppression if needed
+### `dismissToast(id: string): void`
 
-To set quiet mode, use `updatePreference('quietMode', true)` from `usePreferences()`.
+Removes the matching toast by ID. If the ID does not correspond to any visible
+toast the call is a no-op.
 
-## Density preference
+### `ToastErrorBoundary`
 
-`UserPreferences.toastDensity` controls the vertical gap between stacked toasts:
+A class-based React error boundary that wraps the `ToastAnnouncer` and `ToastViewport`
+inside `ToastProvider`. If the toast viewport throws during render, the boundary catches
+the error, reports it via `reportError` from `@/lib/errorReporter`, and renders a
+fallback panel with a **Retry** button. Clicking Retry resets the boundary state so the
+viewport can re-mount.
 
-| Value | Gap class | Visual spacing |
-|---|---|---|
-| `'relaxed'` (default) | `gap-3` (12px) | Looser vertical spacing |
-| `'compact'` | `gap-1.5` (6px) | Tighter vertical spacing |
+```tsx
+// Used internally by ToastProvider — you normally do not need to use it directly.
+// If you need a standalone boundary for a custom viewport, import it explicitly:
+import { ToastErrorBoundary } from '@/components/toast/toast-provider';
 
-Set via `updatePreference('toastDensity', 'compact')` from `usePreferences()`.
+<ToastErrorBoundary>
+  <MyCustomToastViewport />
+</ToastErrorBoundary>
+```
 
-## Announcer roles
+---
 
-`ToastAnnouncer` renders two screen-reader-only `<div>` elements inside the provider:
+## Return-Value Table
 
-| Region | `aria-live` | Content |
-|---|---|---|
-| Polite announcer | `polite` | Title + description of the **most recent** success toast |
-| Assertive announcer | `assertive` | Title + description of the **most recent** error toast |
+| Function       | Scenario                                              | Return value                         |
+|----------------|-------------------------------------------------------|--------------------------------------|
+| `showSuccess`  | Normal (`quietMode` is `false`)                       | Unique ID string e.g. `"toast-<uuid>"` |
+| `showSuccess`  | Quiet mode active (`preferences.quietMode === true`)  | `'suppressed'` — no toast is created |
+| `showError`    | Any (quiet mode is ignored)                           | Unique ID string e.g. `"toast-<uuid>"` |
+| `dismissToast` | —                                                     | `void`                               |
 
-Both regions use `aria-atomic="true"`, so the entire text content is treated as one unit.
+The returned ID prefix is always `"toast-"`.
 
-Only the **latest** toast of each variant is announced, not the entire stack.
+---
 
-## Accessibility behavior
+## Common Patterns
 
-| Element | Role / attribute | Rationale |
-|---|---|---|
-| Toast panel (error) | `role="alert"` | Announces immediately with host's alert sound |
-| Toast panel (success) | `role="status"` | Announces when idle, no alert sound |
-| Viewport container | `role="region"`, `aria-label="Notifications"`, `aria-atomic="false"` | Groups notifications as a landmark |
-| Dismiss button | `aria-label="Dismiss {type} notification"` | Unique label per variant (success/error) |
-| Descriptions | `text-[var(--muted-foreground)]` | Custom property passes WCAG AA 4.5:1 contrast in both themes |
-| Accent bar | CSS custom properties via `--status-success-bg`/`--status-error-bg` | Theme-aware colors, not fixed Tailwind |
-
-## Auto-dismiss behavior
-
-- Every toast starts a `window.setTimeout` equal to `duration` (default `5000` ms).
-- Timer **pauses** while the toast is hovered (`mouseenter`/`mouseleave`) or the dismiss button is focused (`focus`/`blur`).
-- Stacked hover and focus events use a counter so the timer only resumes when **both** interactions end.
-- If a toast is dismissed manually, its timer is cleaned up immediately.
-- All timers are cleared when the `ToastProvider` unmounts.
-
-## Examples
-
-### Basic success toast
+### Basic success and error
 
 ```tsx
 'use client';
 import { useToast } from '@/components/toast/toast-provider';
 
-export function SignInForm() {
-  const { showSuccess } = useToast();
+export function ContractActions() {
+  const { showSuccess, showError } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    showSuccess({ title: 'Form submitted successfully!' });
-  };
-
-  return <form onSubmit={handleSubmit}>{/* fields */}</form>;
-}
-```
-
-### Success and error toasts with descriptions
-
-```tsx
-'use client';
-import { useToast } from '@/components/toast/toast-provider';
-
-export function ApproveReleaseButton() {
-  const { showError, showSuccess } = useToast();
-
-  const handleApprove = () => {
-    showSuccess({
-      title: 'Milestone released',
-      description: 'Funds are on the way to the freelancer wallet.',
-    });
-  };
-
-  const handleReject = () => {
-    showError({
-      title: 'Wallet not connected',
-      description: 'Connect a wallet before approving this release.',
-    });
-  };
-
-  return (
-    <div>
-      <button onClick={handleApprove}>Approve</button>
-      <button onClick={handleReject}>Reject</button>
-    </div>
-  );
-}
-```
-
-### Custom duration
-
-```tsx
-showSuccess({
-  title: 'Quick notification',
-  duration: 2000, // dismiss after 2 seconds
-});
-```
-
-### Dismissing a toast by ID
-
-```tsx
-'use client';
-import { useToast } from '@/components/toast/toast-provider';
-
-export function DismissibleAction() {
-  const { showSuccess, dismissToast } = useToast();
-
-  const handleNotify = () => {
-    const id = showSuccess({ title: 'Dismissible toast' });
-    // Pass id to a close button or timeout
-    setTimeout(() => dismissToast(id), 1000);
-  };
-
-  return <button onClick={handleNotify}>Notify</button>;
-}
-```
-
-### Quiet-aware success call
-
-```tsx
-'use client';
-import { useToast } from '@/components/toast/toast-provider';
-
-export function SessionMonitor() {
-  const { showSuccess } = useToast();
-
-  const handleExpiry = () => {
-    const result = showSuccess({
-      title: 'Session expired',
-      description: 'You have been disconnected due to inactivity.',
-    });
-
-    if (result === 'suppressed') {
-      // Quiet mode is on — user will not see the toast
-      console.log('Session expiry toast suppressed by user preference');
+  const handleRelease = async () => {
+    try {
+      await releaseFunds();
+      showSuccess({
+        title: 'Milestone released',
+        description: 'Funds are on the way to the freelancer wallet.',
+      });
+    } catch {
+      showError({
+        title: 'Release failed',
+        description: 'Wallet not connected.',
+      });
     }
   };
 
-  // ...
+  return <button onClick={handleRelease}>Release milestone</button>;
 }
 ```
+
+### Undo action
+
+Pass an `action` to render an inline button inside the toast. The callback fires
+and the toast dismisses immediately when the user clicks it.
+
+```tsx
+const handleRelease = async () => {
+  await releaseFunds();
+  showSuccess({
+    title: 'Milestone released',
+    description: 'Funds are on the way.',
+    action: {
+      label: 'Undo',
+      onClick: () => cancelRelease(),
+      // onClick fires before dismiss; toast is always removed afterward
+    },
+  });
+};
+```
+
+### Checking quiet mode
+
+`showSuccess` returns the literal string `'suppressed'` when the user has quiet
+mode enabled. Branch on it if the caller needs to fall back to another form of
+feedback:
+
+```tsx
+const id = showSuccess({ title: 'Profile saved' });
+if (id === 'suppressed') {
+  // quietMode is on — update a status indicator instead
+  setStatusText('Profile saved');
+}
+```
+
+### Programmatic dismiss
+
+Use the returned ID to dismiss a toast before its auto-dismiss timer fires —
+useful for "loading" style toasts:
+
+```tsx
+const { showSuccess, showError, dismissToast } = useToast();
+
+const handleUpload = async () => {
+  const loadingId = showSuccess({
+    title: 'Uploading…',
+    duration: 60_000,   // keep visible during upload
+  });
+
+  try {
+    await uploadFile(file);
+    dismissToast(loadingId);
+    showSuccess({ title: 'Upload complete' });
+  } catch {
+    dismissToast(loadingId);
+    showError({ title: 'Upload failed' });
+  }
+};
+```
+
+### Per-call duration override
+
+Supply `duration` in milliseconds to override the user's preference for a
+single toast:
+
+```tsx
+// Show a critical error for 15 seconds regardless of user preference.
+showError({
+  title: 'Payment failed',
+  description: 'Insufficient balance.',
+  duration: 15_000,
+});
+
+// Show a brief confirmation for 1.5 seconds.
+showSuccess({ title: 'Copied!', duration: 1_500 });
+
+// Keep a toast on screen until the user dismisses it manually.
+showSuccess({ title: 'Waiting for wallet…', duration: Infinity });
+```
+
+### Persistent toast (no auto-dismiss)
+
+Set `toastDuration` to `'persistent'` in user preferences, or pass a very large
+`duration`. The toast stays until the user clicks the dismiss button:
+
+```tsx
+// preference-driven — affects all toasts for this user
+// (stored in talenttrust-user-preferences via PreferencesProvider)
+
+// per-call — only this one toast stays persistent
+showError({ title: 'Action required', duration: 0 }); // duration 0 = dismiss immediately
+// NOTE: to keep on screen indefinitely, pass a large number or Infinity:
+showError({ title: 'Action required', description: 'Please review the contract.', duration: 2_147_483_647 });
+```
+
+---
+
+## Behavioral Guarantees
+
+### Quiet Mode
+
+When `preferences.quietMode === true`:
+
+- `showSuccess()` returns the **literal string `'suppressed'`** and does **not** add
+  any entry to the `toasts` array.
+- `showError()` is **completely unaffected**. It returns a valid `toast-...` ID and
+  the toast is rendered with `role="alert"`.
+- The quiet-mode gate is applied **before** `createToast`, so no ID is ever
+  generated for suppressed calls.
+
+### `MAX_VISIBLE_TOASTS` and Eviction Order
+
+```ts
+const MAX_VISIBLE_TOASTS = 4;
+```
+
+When a new toast would make the queue length exceed `MAX_VISIBLE_TOASTS`,
+the **oldest** toast (index 0) is evicted **before** the new one is appended:
+
+```ts
+setToasts((currentToasts) => {
+  const next = [...currentToasts, { ...toast, id, variant }];
+  if (next.length <= MAX_VISIBLE_TOASTS) {
+    return next;
+  }
+  const [evicted, ...remaining] = next;
+  clearToastTimer(evicted.id);
+  return remaining;
+});
+```
+
+Eviction is **oldest-first (FIFO)**. The evicted toast's auto-dismiss timer is
+cancelled so its callback cannot fire after removal. The live region after
+eviction announces the **newest** surviving toast.
+
+### Density and Stacking Gap
+
+`preferences.toastDensity` controls the Tailwind `gap-*` class on the viewport:
+
+| `toastDensity` value  | CSS class | Approximate gap |
+|-----------------------|-----------|-----------------|
+| `'relaxed'` (default) | `gap-3`   | 12 px           |
+| `'compact'`           | `gap-1.5` | 6 px            |
+
+### Auto-Dismiss Duration
+
+```ts
+const DURATION_MAP: Readonly<Record<ToastDuration, number | null>> = {
+  short:      2500,
+  normal:     5000,
+  long:      10000,
+  persistent: null,   // null -> no timer scheduled
+};
+```
+
+**Resolution order** (same for both `showSuccess` and `showError`):
+
+1. If `toast.duration` is explicitly supplied, use it **as-is**.
+2. Otherwise look up `DURATION_MAP[preferences.toastDuration]`.
+
+Per-call `duration` always wins, including over `'persistent'`.
+
+| Preference value | Effective duration | Auto-dismissed? |
+|------------------|--------------------|-----------------|
+| `'short'`        | 2 500 ms           | Yes             |
+| `'normal'`       | 5 000 ms           | Yes (default)   |
+| `'long'`         | 10 000 ms          | Yes             |
+| `'persistent'`   | —                  | No              |
+
+### Pause on Hover / Focus
+
+Each toast panel listens for:
+
+| Event        | Handler         |
+|--------------|-----------------|
+| `mouseenter` | pause timer     |
+| `mouseleave` | resume timer    |
+| `focus`      | pause timer     |
+| `blur`       | resume timer    |
+
+A `pauseCount` integer tracks overlapping interactions. The timer only resumes
+when `pauseCount` returns to `0`. Remaining time is computed from
+`expiresAt - Date.now()` at pause time and passed to a fresh `setTimeout` on
+resume.
+
+### Action Button Contract
+
+```ts
+type ToastAction = {
+  label: string;        // rendered as a plain text node — never set via innerHTML
+  onClick: () => void;  // callback; toast dismissed unconditionally after call
+};
+```
+
+**Plain-text enforcement.** `label` is rendered as a React text child and is
+**never** set via `innerHTML` or `dangerouslySetInnerHTML`.
+
+**Dismiss-on-fire.** Clicking the action button **always** calls `onDismiss`
+immediately after `onClick`, unconditionally:
+
+```tsx
+onClick={() => {
+  toast.action!.onClick();
+  onDismiss(toast.id);
+}}
+```
+
+---
+
+## Accessibility
+
+### `role` attributes
+
+| Toast variant | `role` value | AT behavior                                      |
+|---------------|--------------|--------------------------------------------------|
+| `'success'`   | `"status"`   | Announced when the AT is idle (non-interrupting) |
+| `'error'`     | `"alert"`    | Announced immediately; may trigger alert sound   |
+
+The viewport container carries `role="region"` and `aria-label="Notifications"`
+with `aria-atomic="false"`, making it a navigable landmark.
+
+### Live-Region Announcer
+
+`ToastAnnouncer` renders **three** `sr-only` `<div>` elements:
+
+| Region            | `aria-live`   | `aria-atomic` | Content                                                       |
+|-------------------|---------------|---------------|---------------------------------------------------------------|
+| Success (latest)  | `"polite"`    | `"true"`      | `title[. description]` of the **latest** success toast        |
+| Error (latest)    | `"assertive"` | `"true"`      | `title[. description]` of the **latest** error toast          |
+| Status summary    | `"polite"`    | `"true"`      | Aggregate notification count summary, e.g. `"3 notifications (1 error, 2 successes)"` |
+
+Only the **most recent** toast of each variant appears in the per-variant
+regions. The status-summary region updates 500 ms after every change,
+announcing the total and per-variant breakdown. After eviction, all live
+regions reflect the newest surviving toasts.
+
+### Dismiss Button
+
+Each toast renders one dismiss button with:
+
+- `aria-label="Dismiss success notification"` or `"Dismiss error notification"`
+- `focus:ring-2 focus:ring-[var(--ring)]` — fully keyboard accessible
+- `<span aria-hidden="true">&times;</span>` hides the `×` glyph from AT
+
+---
 
 ## Troubleshooting
 
 | Symptom | Likely cause |
-|---|---|
-| `useToast` throws "must be used within a ToastProvider" | Component is rendered outside `<ToastProvider>` |
-| Success toasts are not appearing | `quietMode` is `true` in user preferences; `showSuccess` returns `'suppressed'` |
-| Toasts dismiss immediately | `duration` is set too low (below ~500ms) |
-| Toasts never dismiss | `duration` is set to a very large value; try manual dismissal via `dismissToast(id)` |
-| Screen reader announces stale toast | Only the **latest** toast per variant is announced; dismiss stale toasts before showing new ones |
-| ESLint warns about `preferences.quietMode` dependency | `showSuccess` already includes it in its dependency array; no action needed |
+|---------|--------------|
+| `useToast` throws `"must be used within a ToastProvider"` | Component is outside `<ToastProvider>` |
+| Success toasts not appearing | `quietMode` is `true`; `showSuccess` returns `'suppressed'` |
+| Only 4 toasts visible after a burst | `MAX_VISIBLE_TOASTS = 4`; oldest toast evicted |
+| Toast never dismisses | `toastDuration` is `'persistent'` with no per-call `duration` override |
+| Action button click does not dismiss | Impossible by design: `onDismiss` is called unconditionally after `onClick` |
+| Toast viewport crashes silently | `ToastErrorBoundary` caught a render error; check `reportError` output |

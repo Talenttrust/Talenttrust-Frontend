@@ -4,6 +4,7 @@ import "@testing-library/jest-dom";
 import ContractsPage from "../contracts/page";
 import MilestonesPage from "../milestones/page";
 import * as repository from "@/lib/repository";
+import { useToast } from "@/components/toast/toast-provider";
 
 jest.mock("@/components/toast/toast-provider", () => ({
   useToast: jest.fn(() => ({

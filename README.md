@@ -33,6 +33,24 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run lint` | Run ESLint             |
 | `npm test`    | Run Jest tests           |
 
+## Documentation Index
+
+This repository keeps user-facing and implementation notes inside the `docs/` folder. Key documentation includes:
+
+- `docs/components/Accessibility.md` — Accessibility testing, a11y helpers, and issue #383 notes
+- `docs/components/Forms.md` — Consolidated Forms API reference (props, types, minimal usage for `FormField`, `ErrorSummary`, `ContractCreationForm`, `CreateContractForm`, `MilestoneCreationForm`, `WalletAddressInput`, `ConfirmDialog`) — closes #859
+- `docs/components/ReputationPage.md` — Reputation page implementation and rendering states
+- `docs/components/ReputationProfile.md` — Reputation component API reference (props, helpers, examples)
+- `docs/data-model.md` — Data model and persistence guide
+- `docs/milestones-data-flow.md` — Milestones data flow diagram (fetch → filter → render → create)
+- `docs/persistence.md` — Persistence API and local storage patterns
+- `docs/preferences.md` — Preferences provider and currency/locale helpers
+- `docs/contexts/wallet-session.md` — Wallet session lifecycle and idle disconnect guidance
+- `docs/contexts/wallet-data-flow.md` — Wallet data flow diagram (fetch -> transform -> render)
+- `docs/implementation/ISSUE_383_IMPLEMENTATION.md` — Folded implementation notes for issue #383
+
+If you find other implementation notes in the repository root, they have been consolidated into `docs/` where appropriate. Remove or ignore remaining one-off files.
+
 ## Architecture
 
 The project is built on Next.js App Router. The UI layer shares components, whilst global state is handled via an ordered provider stack.
@@ -43,7 +61,7 @@ The project is built on Next.js App Router. The UI layer shares components, whil
 |-------|-------------|--------|
 | `/` | Landing page / Home | Placeholder (contains a login form demo and toast demo) |
 | `/contracts` | Contracts list | Placeholder handler (uses local storage stub) |
-| `/contracts/[id]` | Contract details | Placeholder (sample milestones and stubbed action handlers) |
+| `/contracts/[id]` | Contract details | Implemented — `ContractSummary`, `ContractProgress`, `MilestonesList`, and `ActionPanel` mounted from resolved `ContractData`; loading skeletons and error states fully wired |
 | `/milestones` | Milestones list | Implemented (filterable status list) |
 | `/reputation` | User reputation | Placeholder (empty state) |
 
@@ -62,6 +80,12 @@ Providers are wired in `src/app/layout.tsx` with a specific nesting order:
 
 Shared components live in `src/components/` (e.g., `src/components/toast/`). Shared utilities and domain types live in `src/lib/` and `src/types/`.
 
+### Data Model & Persistence
+
+The application relies on a client-side persistence layer for storing contracts and milestones. For a complete overview of the API, `AppData` shape, and update operations, see the [Persistence API and Data Model Guide](docs/data-model.md).
+
+User-level settings are handled by `PreferencesProvider`. For the preference model, theme hydration flow, safe storage behavior, and `formatAmount` branches, see the [Preferences Provider Guide](docs/preferences.md).
+
 ## Toast notifications
 
 The app includes a global accessible toast system for transient feedback:
@@ -71,15 +95,18 @@ The app includes a global accessible toast system for transient feedback:
 - Success messages announce through a polite `aria-live` region.
 - Error messages announce through an assertive `aria-live` region.
 - **Viewport overflow protection**: at most **4 toasts** are visible at once (`MAX_VISIBLE_TOASTS = 4`). When a new toast would exceed this cap, the oldest visible toast is evicted and its auto-dismiss timer is cancelled before the new toast is appended. The live-region announcer always reflects the newest toast.
+- **Optional action buttons**: pass `action: { label, onClick }` to render an inline button (e.g. "Retry" or "Undo"). Clicking it fires the callback and immediately dismisses the toast. The label is rendered as plain text (XSS-safe). Omitting `action` keeps existing behavior unchanged.
 
 ## Session safety
 
-To improve security on shared or public machines, the `WalletProvider` includes an optional idle auto-disconnect safeguard.
+To improve security on shared or public machines, the [`WalletProvider`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/contexts/WalletContext.tsx#L31) includes an optional idle auto-disconnect safeguard.
 
-- **Configurable Timeout**: Pass an `idleTimeout` prop (in milliseconds) to `WalletProvider` in `src/app/layout.tsx`.
+- **Configurable Timeout**: Pass an [`idleTimeout`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/contexts/WalletContext.tsx#L33) prop (in milliseconds) to [`WalletProvider`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/contexts/WalletContext.tsx#L31) in [`src/app/layout.tsx`](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/src/app/layout.tsx).
 - **Activity Monitoring**: The timer resets on user activity (pointer moves, key presses, clicks, etc.).
 - **Auto-Disconnect**: Once the idle period expires, the wallet is automatically disconnected and a notification is shown.
 - **Default Behaviour**: The safeguard is disabled by default (`idleTimeout={0}`). Recommended value for production is 15 minutes (`900000` ms).
+
+For more details on the session lifecycle, storage keys, and inactivity events, see the [Wallet Session Management Guide](file:///c:/Users/USER/Desktop/Talenttrust-Frontend/docs/contexts/wallet-session.md).
 
 Example:
 
@@ -88,6 +115,26 @@ Example:
   {children}
 </WalletProvider>
 ```
+
+## Crawling and sitemap
+
+To ensure the app provides first-class support for search engine crawlers using Next.js metadata routes.
+
+- **`/robots.txt`**: Generated by `src/app/robots.ts`, allows all crawlers and points to the sitemap.
+- **`/sitemap.xml`**: Generated by `src/app/sitemap.ts`, lists all public static routes with a sensible `lastModified` timestamp.
+
+### Environment variable
+
+Set `NEXT_PUBLIC_SITE_URL` in `.env` or your deployment environment to point to your production domain. Falls back to `http://localhost:3000` when not set.
+
+Example:
+
+```bash
+# .env.local
+NEXT_PUBLIC_SITE_URL=https://talenttrust.app
+```
+
+Example:
 
 ## Wallet integration
 
@@ -176,6 +223,7 @@ The shared utility layer now includes lightweight Stellar address helpers in [sr
 
 - `isValidStellarAddress(value)` returns `true` only for a trimmed, uppercased value that looks like a Stellar public key: it starts with `G`, is exactly 56 characters long, and uses the base32 alphabet `A-Z` and `2-7`.
 - `normalizeStellarAddress(value)` trims whitespace and uppercases the value without throwing on invalid input.
+- `truncateAddress(value, prefixLength?, suffixLength?)` in [src/lib/truncateAddress.ts](src/lib/truncateAddress.ts) securely shortens addresses (or any string) by preserving the start and end, and inserting an ellipsis. Strings shorter than or equal to `prefixLength + suffixLength + 3` are returned untouched.
 - The display truncation path uses these helpers so clearly malformed addresses are treated as ordinary strings rather than being shortened as if they were valid keys.
 
 ## Authentication form validation and accessibility
