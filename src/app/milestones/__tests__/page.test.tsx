@@ -4,6 +4,9 @@ import userEvent from '@testing-library/user-event';
 import MilestonesPage, { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from '../page';
 import { listMilestones } from '@/lib/repository';
 import * as repository from '@/lib/repository';
+import MilestonesPage from '../page';
+import { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from '../constants';
+import { listMilestones, saveMilestone } from '@/lib/repository';
 import type { Milestone } from '@/types/domain';
 
 // ---------------------------------------------------------------------------

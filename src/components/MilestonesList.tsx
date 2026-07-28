@@ -24,6 +24,8 @@ export type Milestone = {
    * by another session tab.
    */
   version?: number;
+  createdAt?: string;    
+  updatedAt?: string;    
 };
 
 export const PAGE_SIZE_DEFAULT = 5;
