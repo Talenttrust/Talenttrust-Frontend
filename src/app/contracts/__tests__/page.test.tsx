@@ -98,6 +98,7 @@ const mockSaveContract = repository.saveContract as jest.MockedFunction<
 const mockIsValidStellarAddress = stellarAddress.isValidStellarAddress as jest.MockedFunction<
   typeof stellarAddress.isValidStellarAddress
 >;
+
 const VALID_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
 
 describe('ContractsPage', () => {

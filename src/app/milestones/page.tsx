@@ -15,14 +15,12 @@ import MilestoneFilter, {
   type MilestoneStatusFilter,
 } from '../../components/milestones/MilestoneFilter';
 import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
-import { listMilestones } from '@/lib/repository';
-import { useOptimisticMilestoneMutation } from '@/hooks/useOptimisticMilestoneMutation';
+import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository';
 import { getItem, setItem } from '@/lib/safeStorage';
 import { useToast } from '@/components/toast/toast-provider';
 import SafeBoundary from '@/components/SafeBoundary';
 import { downloadMilestonesICS } from '@/lib/icsExport';
 import type { Milestone } from '@/types/domain';
-import { SAMPLE_DISMISSED_KEY, SAMPLE_MILESTONES } from './constants';
 
 const UNPAGINATED_LIST_SIZE = 9999;
 
