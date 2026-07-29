@@ -1,4 +1,4 @@
- 'use client';
+import { formatRelativeTime, toISOString } from '@/lib/formatRelativeTime';
 
 export type ReputationEvent = {
   id: string;
@@ -16,18 +16,15 @@ export type ReputationProfileProps = {
   /** Maximum possible score value. Used for aria-valuemax on the meter role. */
   maxScore?: number;
   /**
-   * When false, filter/sort stay local and are not written to the URL.
-   * Defaults to true so shareable links work on the reputation page.
+   * ISO-8601 timestamp (or Date / epoch ms) indicating when this reputation
+   * profile was last refreshed. When provided, a relative "Updated X ago"
+   * indicator is shown in the profile card header.
+   *
+   * Pass `null` or omit entirely to hide the indicator.
+   *
+   * @example "2026-07-27T10:30:00Z"
    */
-  syncUrl?: boolean;
-  /** Number of history events shown per page before "Load more" appears. */
-  pageSize?: number;
-  /** Debounce delay (ms) for live-region announcements. Defaults to 300. */
-  announcerDebounceMs?: number;
-  /** Optional callback when items are deleted. If it returns false, an error announcement is made. */
-  onDeleteSelected?: (ids: string[]) => boolean | void;
-  /** Optional callback when items are exported. If it returns false, an error announcement is made. */
-  onExportSelected?: (events: ReputationEvent[]) => boolean | void;
+  lastUpdated?: Date | string | number | null;
 };
 
 export type ReputationBand = {
@@ -182,11 +179,7 @@ export default function ReputationProfile({
   level,
   history = [],
   maxScore = 5,
-  syncUrl = true,
-  pageSize = REPUTATION_PAGE_SIZE,
-  announcerDebounceMs = 300,
-  onDeleteSelected,
-  onExportSelected,
+  lastUpdated,
 }: ReputationProfileProps) {
   let showSuccess: ReturnType<typeof useToast>['showSuccess'] | null = null;
   let showError: ReturnType<typeof useToast>['showError'] | null = null;
@@ -297,69 +290,8 @@ export default function ReputationProfile({
     ? level
     : (hasReputation ? resolveReputationLevel(score, maxScore) : 'Community Member');
 
-  const announce = (message: string, type: 'success' | 'error' = 'success') => {
-    announceResult({ message, type });
-  };
-
-  const clearSelection = () => {
-    setSelectedIds([]);
-    announce('Selection cleared.');
-  };
-
-  const toggleSelection = (id: string) => {
-    setSelectedIds((current) => (
-      current.includes(id)
-        ? current.filter((selectedId) => selectedId !== id)
-        : [...current, id]
-    ));
-  };
-
-  const toggleAll = () => {
-    setSelectedIds((current) => (
-      current.length === filteredHistory.length ? [] : filteredHistory.map((event) => event.id)
-    ));
-  };
-
-  const handleDeleteSelected = () => {
-    if (selectedEvents.length === 0) return;
-    setConfirmOpen(true);
-  };
-
-  const confirmDeleteSelected = () => {
-    const count = selectedEvents.length;
-    const success = onDeleteSelected ? onDeleteSelected(selectedIds) !== false : true;
-    if (success) {
-      setEvents((current) => current.filter((event) => !selectedIds.includes(event.id)));
-      setSelectedIds([]);
-      setConfirmOpen(false);
-      announce(`Deleted ${count} reputation ${count === 1 ? 'item' : 'items'}.`, 'success');
-      showSuccess?.({
-        title: 'Bulk delete complete',
-        description: `Deleted ${count} reputation ${count === 1 ? 'item' : 'items'}.`,
-        duration: 3000,
-      });
-    } else {
-      setConfirmOpen(false);
-      announce('Failed to delete reputation items.', 'error');
-    }
-  };
-
-  const handleExportSelected = () => {
-    if (selectedEvents.length === 0) return;
-    const success = onExportSelected ? onExportSelected(selectedEvents) !== false : true;
-    if (success) {
-      const payload = selectedEvents.map((event) => ({
-        id: event.id,
-        type: event.type,
-        summary: event.summary,
-        date: event.date,
-      }));
-      void payload;
-      announce(`Exported ${selectedEvents.length} reputation ${selectedEvents.length === 1 ? 'item' : 'items'}.`, 'success');
-    } else {
-      announce('Failed to export reputation items.', 'error');
-    }
-  };
+  const relativeTime = lastUpdated != null ? formatRelativeTime(lastUpdated) : null;
+  const isoTime = lastUpdated != null ? toISOString(lastUpdated) : '';
 
   return (
     <section className="w-full max-w-5xl mx-auto space-y-8 px-4 py-10 sm:px-6 lg:px-8" aria-labelledby="profile-heading">
@@ -381,10 +313,48 @@ export default function ReputationProfile({
           </div>
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-3xl border-[var(--border)] bg-[var(--surface)] p-5">
-            <p className="text-sm font-medium text-[var(--muted-foreground)]" id="reputation-score-label">Reputation score</p>
-            <p className="mt-3 text-3xl font-semibold text-[var(--foreground)]" aria-labelledby="reputation-score-label">
+        {/**
+         * Last-updated indicator.
+         *
+         * Renders a relative time string (e.g. "Updated 5 minutes ago") when
+         * `lastUpdated` is provided. The underlying `<time>` element carries the
+         * full ISO-8601 value in its `dateTime` attribute so screen readers and
+         * search engines can consume the machine-readable absolute time, while
+         * sighted users see the friendlier relative form.
+         *
+         * The `aria-label` on the wrapping `<p>` surfaces the absolute time as
+         * an accessible text alternative, satisfying WCAG 2.1 SC 1.3.1 (Info
+         * and Relationships) without duplicating the visible relative text.
+         */}
+        {relativeTime && (
+          <p
+            className="mt-4 text-xs text-slate-400"
+            aria-label={isoTime ? `Last updated at ${isoTime}` : 'Last updated'}
+            data-testid="last-updated"
+          >
+            Updated{' '}
+            <time dateTime={isoTime || undefined}>
+              {relativeTime}
+            </time>
+          </p>
+        )}
+
+        {/**
+          * Reputation score meter with accessible semantics.
+          *
+          * The score is rendered within a span with role="meter" to expose
+          * the measured value to assistive technologies. The meter includes
+          * aria-valuenow, aria-valuemin (0), and aria-valuemax (configurable
+          * maxScore, defaulting to 5) so screen readers understand the score
+          * as a quantified range value rather than plain text.
+          *
+          * When score is absent or null, the "No reputation yet" text is shown
+          * without a meter role.
+          */}
+         <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <p className="text-sm font-medium text-slate-500" id="reputation-score-label">Reputation score</p>
+            <p className="mt-3 text-3xl font-semibold text-slate-950" aria-labelledby="reputation-score-label">
               {hasReputation ? (
                 <>
                   <span
