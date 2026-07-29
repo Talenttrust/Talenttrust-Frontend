@@ -2,6 +2,9 @@ import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { execCommandFallback } from '@/lib/clipboardFallback';
 import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';
 import { formatRelativeTime, toISOString } from '@/lib/formatRelativeTime';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
+import { execCommandFallback } from '@/lib/clipboardFallback';
+import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';
 
 export type ReputationEvent = {
   id: string;
@@ -28,6 +31,9 @@ export type ReputationProfileProps = {
    * @example "2026-07-27T10:30:00Z"
    */
   lastUpdated?: Date | string | number | null;
+  announcerDebounceMs?: number;
+  pageSize?: number;
+  syncUrl?: boolean;
 };
 
 export type ReputationBand = {
@@ -183,12 +189,27 @@ export default function ReputationProfile({
   history = [],
   maxScore = 5,
   lastUpdated,
+  announcerDebounceMs = 150,
+  pageSize = 10,
+  syncUrl = true,
 }: ReputationProfileProps) {
-  const { showSuccess, showError } = useToast();
+  let showSuccess: ReturnType<typeof useToast>['showSuccess'] | null = null;
+  let showError: ReturnType<typeof useToast>['showError'] | null = null;
+  try {
+    const toast = useToast();
+    showSuccess = toast.showSuccess;
+    showError = toast.showError;
+  } catch {
+    showSuccess = null;
+    showError = null;
+  }
   const hasReputation = typeof score === 'number' && score >= 0;
   const showPartial = hasReputation && history.length === 0;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [events, setEvents] = useState(history);
+  const { politeMessage, assertiveMessage, announce: _announceResult } = useFormAnnouncer({
+    debounceMs: announcerDebounceMs,
+  });
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [displayCount, setDisplayCount] = useState(REPUTATION_PAGE_SIZE);
 
@@ -210,6 +231,41 @@ export default function ReputationProfile({
   const selectedCount = selectedIds.length;
   const allSelected = events.length > 0 && selectedCount === events.length;
   const hasPartialSelection = selectedCount > 0 && selectedCount < events.length;
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(events.map((e) => e.id));
+    }
+  };
+  const handleExportSelected = () => {
+    const json = JSON.stringify(selectedEvents, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'reputation-export.json';
+    a.click();
+    if (typeof window !== 'undefined' && typeof window.URL?.revokeObjectURL === 'function') {
+      URL.revokeObjectURL(url);
+    }
+  };
+  const handleDeleteSelected = () => {
+    setConfirmOpen(true);
+  };
+  const clearSelection = () => {
+    setSelectedIds([]);
+  };
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+  const confirmDeleteSelected = () => {
+    optimisticDelete(selectedIds);
+    setSelectedIds([]);
+    setConfirmOpen(false);
+  };
 
   const searchParams = useSearchParams();
   const router = useRouter();

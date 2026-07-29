@@ -1,6 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import EmptyState from '@/components/EmptyState';
+import ReputationProfile from '@/components/ReputationProfile';
+import { listReputationEvents } from '@/lib/repository';
 import type { Reputation } from '@/types/domain';
 import EmptyState from '@/components/EmptyState';
 import ReputationProfile from '@/components/ReputationProfile';

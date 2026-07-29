@@ -73,6 +73,12 @@ export const FormField: React.FC<FormFieldProps> = ({
   const errorId = `${id}-error`;
   const helperId = `${id}-helper`;
   const [internalError, setInternalError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (error !== undefined) {
+      setInternalError(null);
+    }
+  }, [error]);
   
   // Prefer parent-provided error over internal validation error
   const effectiveError = error || internalError || undefined;

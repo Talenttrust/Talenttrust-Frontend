@@ -1,6 +1,10 @@
 'use client';
 
+<<<<<<< HEAD
+import React, { useRef, useEffect, useCallback, useState, memo } from 'react';
+=======
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
+>>>>>>> 832827228759e35bad5f84aa33b8c2b30853f672
 import { usePreferences, type UserPreferences } from '@/lib/preferences';
 import { useToast } from '@/components/toast/toast-provider';
 import { reportError } from '@/lib/errorReporter';
@@ -15,17 +19,17 @@ const TOAST_DENSITY_OPTIONS = ['relaxed', 'compact'] as const;
 const FORM_DENSITY_OPTIONS = ['comfortable', 'compact'] as const;
 const CONTRACTS_DENSITY_OPTIONS = ['comfortable', 'compact'] as const;
 
-interface RadioGroupProps {
-  options: readonly string[];
-  value: string;
-  onChange: (val: string) => void;
+interface RadioGroupProps<T extends string = string> {
+  options: readonly T[];
+  value: T;
+  onChange: (val: T) => void;
   labelId: string;
   ariaLabel: string;
   containerClassName: string;
   textClassName: string;
 }
 
-const RadioGroup = memo(function RadioGroup({
+function RadioGroupInner<T extends string>({
   options,
   value,
   onChange,
@@ -33,7 +37,7 @@ const RadioGroup = memo(function RadioGroup({
   ariaLabel,
   containerClassName,
   textClassName,
-}: RadioGroupProps) {
+}: RadioGroupProps<T>) {
   const renderCount = React.useRef(0);
   renderCount.current += 1;
 
@@ -41,7 +45,7 @@ const RadioGroup = memo(function RadioGroup({
     if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(e.key)) {
       e.preventDefault();
       const radios = Array.from(e.currentTarget.querySelectorAll('[role="radio"]')) as HTMLButtonElement[];
-      const currentIndex = options.indexOf(value);
+      const currentIndex = (options as readonly string[]).indexOf(value);
       const nextIndex =
         e.key === 'ArrowRight' || e.key === 'ArrowDown'
           ? (currentIndex + 1) % options.length
@@ -86,9 +90,9 @@ const RadioGroup = memo(function RadioGroup({
       ))}
     </div>
   );
-});
+}
 
-RadioGroup.displayName = 'RadioGroup';
+const RadioGroup = memo(RadioGroupInner) as <T extends string>(props: RadioGroupProps<T>) => React.ReactElement;
 
 interface AppearanceSectionProps {
   theme: UserPreferences['theme'];
@@ -378,8 +382,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     void handleUpdate('quietMode', !preferences.quietMode);
   }, [handleUpdate, preferences.quietMode]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleIdleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleRadioChange = (key: keyof UserPreferences, value: string) => {
+    clearError(`pref-${key}`);
+    handleUpdate(key as any, value as any);
+  };
+
+  const _handleIdleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setIdleInput(val);
     if (errors['pref-idleDisconnectMs']) {
@@ -408,8 +416,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleIdleBlur = () => {
+  const _handleIdleBlur = () => {
     if (idleInput === String(preferences.idleDisconnectMs)) return;
     const testErrors = validatePreferences({
       theme: preferences.theme,
@@ -439,8 +446,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const errorList = Object.entries(errors).map(([fieldId, message]) => ({ fieldId, message }));
+  const _errorList = Object.entries(errors).map(([fieldId, message]) => ({ fieldId, message }));
 
   /**
    * Focus management effect for modal dialog accessibility.

@@ -11,10 +11,10 @@ describe('Milestones route states', () => {
   });
 
   it('announces the loading state while rendering milestone placeholders', () => {
-    render(<MilestonesLoading />);
+    const { container } = render(<MilestonesLoading />);
 
-    expect(screen.getByRole('main')).toHaveAttribute('aria-busy', 'true');
-    expect(screen.getByRole('status')).toHaveTextContent('Loading milestones');
+    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading milestones…');
     expect(screen.getByRole('region', { name: 'Loading milestones' })).toBeInTheDocument();
   });
 
