@@ -388,6 +388,97 @@ describe('ContractsPage', () => {
       expect(sortSelect).toHaveValue('value-asc');
     });
 
+    describe('created-date sort', () => {
+      /** Names of the contracts currently rendered, in list order. */
+      const renderedNames = () =>
+        screen
+          .getAllByRole('listitem')
+          .map((item) => item.textContent);
+
+      const dated = [
+        makeContract({ id: 'b', contractName: 'Mobile App', createdAt: '2025-03-15' }),
+        makeContract({ id: 'a', contractName: 'Web App', createdAt: '2025-01-02' }),
+        makeContract({ id: 'c', contractName: 'Data Pipeline', createdAt: '2025-07-30' }),
+      ];
+
+      it('defaults to newest first', () => {
+        mockListContracts.mockReturnValue(dated);
+        render(<ContractsPage />);
+
+        expect(screen.getByLabelText(/sort/i)).toHaveValue('date-desc');
+        expect(renderedNames()).toEqual(['Data Pipeline', 'Mobile App', 'Web App']);
+      });
+
+      it('reorders oldest first when date-asc is selected', () => {
+        mockListContracts.mockReturnValue(dated);
+        render(<ContractsPage />);
+
+        fireEvent.change(screen.getByLabelText(/sort/i), {
+          target: { value: 'date-asc' },
+        });
+
+        expect(renderedNames()).toEqual(['Web App', 'Mobile App', 'Data Pipeline']);
+      });
+
+      it('breaks equal created dates on id in both directions', () => {
+        mockListContracts.mockReturnValue([
+          makeContract({ id: 'c', contractName: 'Charlie', createdAt: '2025-01-01' }),
+          makeContract({ id: 'a', contractName: 'Alpha', createdAt: '2025-01-01' }),
+          makeContract({ id: 'b', contractName: 'Bravo', createdAt: '2025-01-01' }),
+        ]);
+        render(<ContractsPage />);
+
+        expect(renderedNames()).toEqual(['Alpha', 'Bravo', 'Charlie']);
+
+        fireEvent.change(screen.getByLabelText(/sort/i), {
+          target: { value: 'date-asc' },
+        });
+
+        expect(renderedNames()).toEqual(['Alpha', 'Bravo', 'Charlie']);
+      });
+
+      it('combines the created-date sort with the search filter', () => {
+        mockListContracts.mockReturnValue([
+          makeContract({ id: 'a', contractName: 'App Alpha', createdAt: '2025-02-01' }),
+          makeContract({ id: 'b', contractName: 'App Bravo', createdAt: '2025-05-01' }),
+          makeContract({ id: 'c', contractName: 'Unrelated', createdAt: '2025-09-01' }),
+        ]);
+        render(<ContractsPage />);
+
+        fireEvent.change(screen.getByPlaceholderText(/search/i), {
+          target: { value: 'app' },
+        });
+        fireEvent.change(screen.getByLabelText(/sort/i), {
+          target: { value: 'date-asc' },
+        });
+
+        expect(renderedNames()).toEqual(['App Alpha', 'App Bravo']);
+
+        fireEvent.change(screen.getByLabelText(/sort/i), {
+          target: { value: 'date-desc' },
+        });
+
+        expect(renderedNames()).toEqual(['App Bravo', 'App Alpha']);
+      });
+
+      it('keeps the empty search state when sorting a filtered-out list', () => {
+        mockListContracts.mockReturnValue([
+          makeContract({ id: 'a', contractName: 'Web App', createdAt: '2025-01-01' }),
+        ]);
+        render(<ContractsPage />);
+
+        fireEvent.change(screen.getByPlaceholderText(/search/i), {
+          target: { value: 'Nonexistent' },
+        });
+        fireEvent.change(screen.getByLabelText(/sort/i), {
+          target: { value: 'date-asc' },
+        });
+
+        expect(screen.getByText('No contracts match your search')).toBeInTheDocument();
+        expect(screen.queryByTestId('contracts-list')).not.toBeInTheDocument();
+      });
+    });
+
     it('renders empty state when search yields no matches', () => {
       const contracts = [makeContract({ contractName: 'Web App' })];
       mockListContracts.mockReturnValue(contracts);

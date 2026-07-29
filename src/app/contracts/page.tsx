@@ -8,6 +8,13 @@ import { listContracts, saveContract } from '@/lib/repository';
 import { downloadContractsCsv, downloadContractsJson } from '@/lib/exportContracts';
 import { useToast } from '@/components/toast/toast-provider';
 import { usePreferences } from '@/lib/preferences';
+import {
+  CONTRACT_SORT_OPTIONS,
+  DEFAULT_CONTRACT_SORT_ORDER,
+  sortContracts,
+  toContractSortOrder,
+  type ContractSortOrder,
+} from '@/lib/sortContracts';
 import type { Contract } from '@/types/domain';
 
 type ContractsFetchState =
@@ -27,7 +34,7 @@ const ContractsPage: React.FC = () => {
   const [fetchState, setFetchState] = useState<ContractsFetchState>(getInitialFetchState);
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortOrder, setSortOrder] = useState<'date-desc' | 'date-asc' | 'value-desc' | 'value-asc'>('date-desc');
+  const [sortOrder, setSortOrder] = useState<ContractSortOrder>(DEFAULT_CONTRACT_SORT_ORDER);
   const { showError } = useToast();
   const { preferences, updatePreference } = usePreferences();
   const { contracts } = fetchState;
@@ -108,26 +115,11 @@ const ContractsPage: React.FC = () => {
     });
   }, [contracts, searchQuery]);
 
-  const sortedContracts = useMemo(() => {
-    const result = [...filteredContracts];
-    result.sort((a, b) => {
-      if (sortOrder === 'value-desc' || sortOrder === 'value-asc') {
-        const diff = a.totalValue - b.totalValue;
-        if (diff !== 0) {
-          return sortOrder === 'value-desc' ? -diff : diff;
-        }
-      }
-      
-      const timeA = Date.parse(a.createdAt);
-      const timeB = Date.parse(b.createdAt);
-      // fallback to date if values are equal, or if sorting by date
-      if (sortOrder === 'date-desc' || sortOrder === 'value-desc' || sortOrder === 'value-asc') {
-        return timeB - timeA;
-      }
-      return timeA - timeB; // date-asc
-    });
-    return result;
-  }, [filteredContracts, sortOrder]);
+  // Ordering is applied on top of the search results, so the two combine.
+  const sortedContracts = useMemo(
+    () => sortContracts(filteredContracts, sortOrder),
+    [filteredContracts, sortOrder],
+  );
 
   return (
     <main className="min-h-screen p-8 pb-24">
@@ -210,13 +202,14 @@ const ContractsPage: React.FC = () => {
               <select
                 id="contracts-sort"
                 value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as any)}
+                onChange={(e) => setSortOrder(toContractSortOrder(e.target.value))}
                 className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                <option value="date-desc">Newest first</option>
-                <option value="date-asc">Oldest first</option>
-                <option value="value-desc">Value (High to Low)</option>
-                <option value="value-asc">Value (Low to High)</option>
+                {CONTRACT_SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex items-center gap-2">
