@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useCallback } from 'react';
+import React, { memo } from 'react';
 import ContractListItem from './ContractListItem';
 import type { Contract } from '@/types/domain';
 import type { ContractsDensity } from '@/lib/preferences';

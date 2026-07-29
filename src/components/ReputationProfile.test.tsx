@@ -26,7 +26,7 @@
  */
 
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import ReputationProfile, {
   ReputationEvent,
   ReputationProfileProps,

@@ -180,6 +180,14 @@ const MilestonesList = ({
     setAnnouncement('');
   }, []);
 
+  const prevMilestonesRef = useRef(milestones);
+  useEffect(() => {
+    if (editingId && prevMilestonesRef.current !== milestones) {
+      setEditingId(null);
+    }
+    prevMilestonesRef.current = milestones;
+  }, [milestones, editingId]);
+
   // --------------------------------------------------------------------------
   // Multi-select handlers
   // --------------------------------------------------------------------------

@@ -3,7 +3,6 @@
 import { useCallback, useRef } from 'react';
 import { upsertReputationEvent, getReputationEventVersion, deleteReputationEvents } from '@/lib/repository';
 import type { ReputationEvent } from '@/types/domain';
-import type { UpsertResult } from '@/lib/repository';
 
 /**
  * Result returned by optimistic mutation operations.

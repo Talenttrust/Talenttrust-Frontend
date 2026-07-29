@@ -2,6 +2,7 @@
 
 import React, { memo } from 'react';
 import type { Contract } from '@/types/domain';
+import type { ContractsDensity } from '@/lib/preferences';
 import { LastUpdated } from '@/components/LastUpdated';
 
 export interface ContractListItemProps {
