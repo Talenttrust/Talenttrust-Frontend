@@ -25,7 +25,7 @@
  *   given prefix; iterates a frozen key snapshot to avoid index-shift bugs.
  */
 
-import type { Contract, WalletItem } from '@/types/domain';
+import type { Contract, WalletItem, ReputationEvent } from '@/types/domain';
 import type { Milestone } from '@/components/MilestonesList';
 import { reportError } from './errorReporter';
 
@@ -40,9 +40,10 @@ interface AppData {
   contracts: Contract[];
   milestones: Milestone[];
   walletItems: WalletItem[];
+  reputationEvents: ReputationEvent[];
 }
 
-const EMPTY_DATA: AppData = { contracts: [], milestones: [], walletItems: [] };
+const EMPTY_DATA: AppData = { contracts: [], milestones: [], walletItems: [], reputationEvents: [] };
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -84,6 +85,7 @@ function readStore(): AppData {
       contracts: Array.isArray(parsed.contracts) ? parsed.contracts : [],
       milestones: Array.isArray(parsed.milestones) ? parsed.milestones : [],
       walletItems: Array.isArray(parsed.walletItems) ? parsed.walletItems : [],
+      reputationEvents: Array.isArray(parsed.reputationEvents) ? parsed.reputationEvents : [],
     };
   } catch (err) {
     reportError(err, '[repository] Failed to read from localStorage. Falling back to empty state.');
@@ -611,6 +613,80 @@ export function bulkUpdateMilestoneStatus(
  */
 export function exportMilestones(milestones: Milestone[]): string {
   return JSON.stringify(milestones, null, 2);
+}
+
+// ---------------------------------------------------------------------------
+// Public API — Reputation Events
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns all persisted reputation events.
+ */
+export function listReputationEvents(): ReputationEvent[] {
+  return readStore().reputationEvents;
+}
+
+/**
+ * Returns the current persistence-layer version for the reputation event matching
+ * `id`, or `0` if it has never been persisted.
+ */
+export function getReputationEventVersion(id: string): number {
+  const store = readStore();
+  const existing = store.reputationEvents.find((e) => e.id === id);
+  return existing?.version ?? 0;
+}
+
+/**
+ * Replaces an existing reputation event that shares the same `id`, or appends it.
+ * Rejects with `stale: true` if an older version is written over a newer one.
+ */
+export function upsertReputationEvent(event: ReputationEvent): UpsertResult {
+  const store = readStore();
+  const existingIndex = store.reputationEvents.findIndex(
+    (existingEvent) => existingEvent.id === event.id,
+  );
+
+  if (existingIndex !== -1) {
+    const existing = store.reputationEvents[existingIndex];
+    const existingVersion = existing.version ?? 0;
+    const incomingVersion = event.version ?? 0;
+
+    if (incomingVersion < existingVersion) {
+      return { success: false, stale: true };
+    }
+  }
+
+  const nextVersion = (event.version ?? 0) + 1;
+  const updatedEvent: ReputationEvent = { ...event, version: nextVersion };
+
+  const reputationEvents =
+    existingIndex === -1
+      ? [...store.reputationEvents, updatedEvent]
+      : store.reputationEvents.map((existingEvent, index) =>
+          index === existingIndex ? updatedEvent : existingEvent,
+        );
+
+  const ok = writeStore({ ...store, reputationEvents });
+  return { success: ok, stale: false };
+}
+
+/**
+ * Deletes multiple reputation events identified by an array of ids.
+ */
+export function deleteReputationEvents(ids: string[]): number {
+  if (!Array.isArray(ids) || ids.length === 0) return 0;
+
+  const store = readStore();
+  const idSet = new Set(ids);
+  const before = store.reputationEvents.length;
+  const remaining = store.reputationEvents.filter((e) => !idSet.has(e.id));
+  const removed = before - remaining.length;
+
+  if (removed > 0) {
+    writeStore({ ...store, reputationEvents: remaining });
+  }
+
+  return removed;
 }
 
 // ---------------------------------------------------------------------------
