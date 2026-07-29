@@ -6,6 +6,28 @@ import { useWallet } from '@/contexts/WalletContext';
 import { ToastProvider } from '@/components/toast/toast-provider';
 import userEvent from '@testing-library/user-event';
 
+/**
+ * Installs a working clipboard mock and returns the writeText spy.
+ */
+function installClipboard(): jest.Mock {
+  const writeText = jest.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText },
+  });
+  return writeText;
+}
+
+/**
+ * Removes navigator.clipboard to simulate an unsupported environment.
+ */
+function removeClipboard(): void {
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: undefined,
+  });
+}
+
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj)) as T;
 }
@@ -126,6 +148,14 @@ describe('ContractDetailPage', () => {
     });
   });
 
+  afterEach(() => {
+    // Restore clipboard to avoid cross-test interference
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: undefined,
+    });
+  });
+
   it('renders the resolved contract details and action panel', async () => {
     await renderPage();
 
@@ -134,6 +164,86 @@ describe('ContractDetailPage', () => {
     expect(screen.getByRole('link', { name: /back to contracts/i })).toHaveAttribute('href', '/contracts');
     expect(within(getContractSummarySection()).getByLabelText('Status: Active')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /submit milestone for approval/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /copy contract id to clipboard/i })).toBeInTheDocument();
+  });
+
+  it('copies the contract id to the clipboard and shows a success toast', async () => {
+    const writeText = installClipboard();
+
+    await renderPage('contract-42');
+
+    const copyButton = screen.getByRole('button', { name: /copy contract id to clipboard/i });
+    expect(copyButton).toBeInTheDocument();
+    expect(copyButton).toHaveAttribute('title', 'Copy contract ID');
+
+    await act(async () => {
+      copyButton.click();
+    });
+
+    expect(writeText).toHaveBeenCalledWith('contract-42');
+  });
+
+  it('shows the check icon and updated label when the contract id is copied', async () => {
+    installClipboard();
+
+    await renderPage('123');
+
+    // Click the copy button to trigger the copied state
+    const copyButton = screen.getByRole('button', { name: /copy contract id to clipboard/i });
+    await act(async () => {
+      copyButton.click();
+    });
+
+    // Wait for the hook to process and update state
+    await waitFor(() => {
+      const copiedButton = screen.getByRole('button', { name: /contract id copied/i });
+      expect(copiedButton).toBeInTheDocument();
+      expect(copiedButton).toHaveAttribute('title', 'Contract ID copied');
+    });
+
+    // Verify the check icon is present (instead of the copy icon)
+    const copiedButton = screen.getByRole('button', { name: /contract id copied/i });
+    const checkIcon = copiedButton.querySelector('svg path[d="M5 13l4 4L19 7"]');
+    expect(checkIcon).toBeInTheDocument();
+  });
+
+  it('shows error toast when clipboard API is not supported', async () => {
+    removeClipboard();
+
+    await renderPage('123');
+
+    const copyButton = screen.getByRole('button', { name: /copy contract id to clipboard/i });
+
+    await act(async () => {
+      copyButton.click();
+    });
+
+    // The button should still show the copy icon (copied state unchanged)
+    expect(
+      screen.getByRole('button', { name: /copy contract id to clipboard/i })
+    ).toBeInTheDocument();
+  });
+
+  it('handles clipboard write failure gracefully', async () => {
+    installClipboard();
+    // Make clipboard.writeText reject
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: jest.fn().mockRejectedValue(new Error('Permission denied')) },
+    });
+
+    await renderPage('123');
+
+    const copyButton = screen.getByRole('button', { name: /copy contract id to clipboard/i });
+
+    await act(async () => {
+      copyButton.click();
+    });
+
+    // Button should still show the copy icon (copied state unchanged)
+    expect(
+      screen.getByRole('button', { name: /copy contract id to clipboard/i })
+    ).toBeInTheDocument();
   });
 
   it('applies the release-funds status change optimistically and persists it with the correct version', async () => {

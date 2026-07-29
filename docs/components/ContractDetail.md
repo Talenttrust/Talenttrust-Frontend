@@ -87,6 +87,15 @@ In production, replace the mock implementation with a real API call. The return 
 3. Add a new button render block in `ActionPanel` that uses the callback and descriptive `aria-label`.
 4. Add unit tests in `src/components/__tests__/ActionPanel.test.tsx` to verify the new action appears for the correct status and that the callback triggers.
 
+## Contract ID copy-to-clipboard
+
+The page header displays `Contract #{id}` next to a copy button that uses the `useCopyToClipboard` hook (see [`docs/hooks/useCopyToClipboard.md`](../hooks/useCopyToClipboard.md)).
+
+- **Accessibility:** The button has an `aria-label` that toggles between `"Copy contract ID to clipboard"` (default) and `"Contract ID copied"` (for 2 seconds after copying). The `title` attribute mirrors the label for tooltip display.
+- **Success feedback:** A success toast is shown on copy with the text "Contract ID copied."
+- **Fallback:** When the Clipboard API is unavailable, the `useCopyToClipboard` hook guards against missing `navigator.clipboard` and shows an error toast with instructions to copy manually.
+- **Visual feedback:** The copy icon (clipboard) switches to a green checkmark while in the "copied" state, then reverts after the configured delay (2000ms).
+
 ## Route parameter validation
 
 The `id` route parameter is validated by `isValidContractId` (defined in `src/lib/validateContractId.ts`) before it is used anywhere on the page.

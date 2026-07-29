@@ -2,6 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import type { Reputation } from '@/types/domain';
+import EmptyState from '@/components/EmptyState';
+import ReputationProfile from '@/components/ReputationProfile';
+import { listReputationEvents } from '@/lib/repository';
 
 export type ReputationPageContentProps = {
   reputationData?: Reputation | null;
@@ -56,7 +59,7 @@ const ReputationPage: React.FC = () => {
   }, []);
 
   return (
-    <ReputationPageClient
+    <ReputationPageContent
       reputationData={reputationData}
     />
   );
