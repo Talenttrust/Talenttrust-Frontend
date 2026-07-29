@@ -9,6 +9,7 @@ import { useToast } from '@/components/toast/toast-provider';
 import { saveContract } from '@/lib/repository';
 import { normalizeStellarAddress } from '@/lib/stellarAddress';
 import { validateContract } from '@/lib/validateContract';
+import { combineValidators, validateRequired, validatePositiveNumber } from '@/lib/fieldValidators';
 import type { ValidationError } from '@/lib/validateLogin';
 import type { Contract } from '@/types/domain';
 
@@ -70,6 +71,21 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
   const [totalValue, setTotalValue] = useState('');
   const [currency, setCurrency] = useState<string>(CURRENCY_OPTIONS[0]);
   const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  // Inline validators for real-time validation
+  const validateContractName = combineValidators([
+    validateRequired('Contract name'),
+  ]);
+
+  const validateTotalValueField = combineValidators([
+    validateRequired('Total value'),
+    validatePositiveNumber('Total value'),
+  ]);
+
+  const validateCurrencyField = combineValidators([
+    validateRequired('Currency'),
+  ]);
 
   /**
    * Called by WalletAddressInput on blur to update the parent's errors
@@ -90,6 +106,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setHasSubmitted(true);
 
     const validationErrors = validateContract({
       contractName,
@@ -130,6 +147,20 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
     onSuccess(contract);
   };
 
+  // Check if the form has any validation errors to disable submit button
+  const hasErrors = () => {
+    if (!hasSubmitted) return false;
+    
+    const allErrors = validateContract({
+      contractName,
+      freelancerAddress,
+      totalValue,
+      currency,
+    });
+    
+    return allErrors.length > 0;
+  };
+
   const inputClass =
     'w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition';
 
@@ -161,6 +192,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
             id="contractName"
             label="Contract name"
             error={errors.find((e) => e.fieldId === 'contractName')?.message}
+            validate={validateContractName}
             required
           >
             <input
@@ -192,6 +224,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
             id="totalValue"
             label="Total value"
             error={errors.find((e) => e.fieldId === 'totalValue')?.message}
+            validate={validateTotalValueField}
             required
           >
             <input
@@ -212,6 +245,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
             id="currency"
             label="Currency"
             error={errors.find((e) => e.fieldId === 'currency')?.message}
+            validate={validateCurrencyField}
             required
           >
             <select
@@ -233,7 +267,8 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
               type="submit"
-              className="rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              disabled={hasSubmitted && hasErrors()}
+              className="rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create Contract
             </button>
