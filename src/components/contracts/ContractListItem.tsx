@@ -9,7 +9,7 @@ export interface ContractListItemProps {
   contract: Contract;
   index: number;
   /** Controls spacing inside the card. Defaults to 'comfortable'. */
-  density?: ContractsDensity;
+  density?: 'comfortable' | 'compact';
 }
 
 /**

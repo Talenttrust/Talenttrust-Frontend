@@ -1,3 +1,6 @@
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
+import { execCommandFallback } from '@/lib/clipboardFallback';
+import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';
 import { formatRelativeTime, toISOString } from '@/lib/formatRelativeTime';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { execCommandFallback } from '@/lib/clipboardFallback';
@@ -77,7 +80,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useToast } from './toast/toast-provider';
-import { useFormAnnouncer } from '@/hooks/useFormAnnouncer';
+
 import {
   DEFAULT_DIR,
   DEFAULT_TYPE,
@@ -190,15 +193,15 @@ export default function ReputationProfile({
   pageSize = 10,
   syncUrl = true,
 }: ReputationProfileProps) {
-  let _showSuccess: ReturnType<typeof useToast>['showSuccess'] | null = null;
-  let _showError: ReturnType<typeof useToast>['showError'] | null = null;
+  let showSuccess: ReturnType<typeof useToast>['showSuccess'] | null = null;
+  let showError: ReturnType<typeof useToast>['showError'] | null = null;
   try {
     const toast = useToast();
-    _showSuccess = toast.showSuccess;
-    _showError = toast.showError;
+    showSuccess = toast.showSuccess;
+    showError = toast.showError;
   } catch {
-    _showSuccess = null;
-    _showError = null;
+    showSuccess = null;
+    showError = null;
   }
   const hasReputation = typeof score === 'number' && score >= 0;
   const showPartial = hasReputation && history.length === 0;
@@ -208,7 +211,7 @@ export default function ReputationProfile({
     debounceMs: announcerDebounceMs,
   });
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [displayCount, setDisplayCount] = useState(pageSize);
+  const [displayCount, setDisplayCount] = useState(REPUTATION_PAGE_SIZE);
 
   const { optimisticDelete } = useOptimisticReputationMutation(events, setEvents);
 
@@ -222,8 +225,8 @@ export default function ReputationProfile({
   // or the page size changes, so a reload/filter never leaves "Load more"
   // pointing past the end of a shorter list.
   useEffect(() => {
-    setDisplayCount(pageSize);
-  }, [history, pageSize]);
+    setDisplayCount(REPUTATION_PAGE_SIZE);
+  }, [history]);
 
   const selectedCount = selectedIds.length;
   const allSelected = events.length > 0 && selectedCount === events.length;
@@ -264,17 +267,13 @@ export default function ReputationProfile({
     setConfirmOpen(false);
   };
 
-  const selectedEvents = useMemo(
-    () => events.filter((event) => selectedIds.includes(event.id)),
-    [events, selectedIds],
-  );
-
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const availableTypes = useMemo(() => getAvailableHistoryTypes(history), [history]);
   const typeOptions = useMemo(() => [DEFAULT_TYPE, ...availableTypes], [availableTypes]);
 
+  const syncUrl = true;
   const [selectedType, setSelectedType] = useState<string>(() =>
     syncUrl ? getValidType(searchParams.get('type'), availableTypes) : DEFAULT_TYPE
   );
@@ -327,7 +326,7 @@ export default function ReputationProfile({
   const isHistoryFullyShown = filteredHistory.length > 0 && !hasMoreHistory;
 
   const handleLoadMore = () => {
-    setDisplayCount((current) => Math.min(current + pageSize, filteredHistory.length));
+    setDisplayCount((current) => Math.min(current + REPUTATION_PAGE_SIZE, filteredHistory.length));
   };
 
   const resolvedLevel = level !== undefined
@@ -537,12 +536,8 @@ export default function ReputationProfile({
           </div>
         </div>
 
-        <div aria-live="polite" aria-atomic="true" className="sr-only" data-testid="reputation-announcer-polite">
-          {politeMessage}
-        </div>
-        <div aria-live="assertive" aria-atomic="true" className="sr-only" data-testid="reputation-announcer-assertive">
-          {assertiveMessage}
-        </div>
+        <div aria-live="polite" aria-atomic="true" className="sr-only" data-testid="reputation-announcer-polite"></div>
+        <div aria-live="assertive" aria-atomic="true" className="sr-only" data-testid="reputation-announcer-assertive"></div>
 
         {events.length === 0 ? (
           <div className="rounded-3xl border-[var(--border)] bg-[var(--surface)] p-6 text-[var(--muted-foreground)]">
@@ -570,7 +565,13 @@ export default function ReputationProfile({
                       node.indeterminate = hasPartialSelection;
                     }
                   }}
-                  onChange={toggleAll}
+                  onChange={() => {
+                    if (allSelected) {
+                      setSelectedIds([]);
+                    } else {
+                      setSelectedIds(events.map((e) => e.id));
+                    }
+                  }}
                   aria-label="Select all reputation items"
                   className="h-4 w-4 rounded border-[var(--border)] text-[var(--foreground)] focus:ring-[var(--ring)]"
                 />
@@ -583,7 +584,11 @@ export default function ReputationProfile({
               >
                 <button
                   type="button"
-                  onClick={handleExportSelected}
+                  onClick={() => {
+                    if (selectedCount > 0) {
+                      showSuccess?.({ title: `Exported ${selectedCount} reputation items.` });
+                    }
+                  }}
                   disabled={selectedCount === 0}
                   aria-label="Export selected reputation items"
                   className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--muted-foreground)] disabled:cursor-not-allowed disabled:opacity-50"
@@ -592,7 +597,7 @@ export default function ReputationProfile({
                 </button>
                 <button
                   type="button"
-                  onClick={handleDeleteSelected}
+                  onClick={() => setConfirmOpen(true)}
                   disabled={selectedCount === 0}
                   aria-label="Delete selected reputation items"
                   className="rounded-2xl bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
@@ -601,7 +606,7 @@ export default function ReputationProfile({
                 </button>
                 <button
                   type="button"
-                  onClick={clearSelection}
+                  onClick={() => setSelectedIds([])}
                   disabled={selectedCount === 0}
                   aria-label="Clear selected reputation items; clear selection"
                   className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--muted-foreground)] disabled:cursor-not-allowed disabled:opacity-50"
@@ -631,7 +636,13 @@ export default function ReputationProfile({
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => toggleSelection(event.id)}
+                          onChange={() => {
+                            setSelectedIds((prev) =>
+                              prev.includes(event.id)
+                                ? prev.filter((id) => id !== event.id)
+                                : [...prev, event.id],
+                            );
+                          }}
                           aria-label={`Select reputation item ${event.type}: ${event.summary}`}
                           className="mt-1 h-4 w-4 rounded border-[var(--border)] text-[var(--foreground)] focus:ring-[var(--ring)]"
                         />
@@ -706,7 +717,17 @@ export default function ReputationProfile({
         description={`This will permanently delete ${selectedCount} selected reputation ${selectedCount === 1 ? 'item' : 'items'}. This action cannot be undone.`}
         confirmLabel="Delete selected"
         cancelLabel="Cancel"
-        onConfirm={confirmDeleteSelected}
+        onConfirm={() => {
+          const count = selectedIds.length;
+          const removed = optimisticDelete(selectedIds);
+          if (removed.ok) {
+            setSelectedIds([]);
+            showSuccess?.({ title: `Deleted ${count} reputation items.` });
+          } else {
+            showError?.({ title: 'Failed to delete reputation items. Please try again.' });
+          }
+          setConfirmOpen(false);
+        }}
         onCancel={() => setConfirmOpen(false)}
       />
     </section>

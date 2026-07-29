@@ -15,6 +15,7 @@ import ContractStatusAnnouncer from '@/components/ContractStatusAnnouncer';
 import SafeBoundary from '@/components/SafeBoundary';
 import { resolveContractData, ContractData } from '@/lib/contractResolver';
 import { useToast } from '@/components/toast/toast-provider';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import {
   listMilestonesByContract,
   updateMilestone,
@@ -60,6 +61,29 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
   const milestonesRef = useRef(milestones);
   milestonesRef.current = milestones;
   const { showError, showSuccess } = useToast();
+
+  const { copied, copy } = useCopyToClipboard({
+    delay: 2000,
+    onSuccess: () => {
+      showSuccess({
+        title: 'Contract ID copied',
+        description: 'The contract identifier has been copied to your clipboard.',
+      });
+    },
+    onError: (err) => {
+      if (err instanceof Error && err.message.includes('supported')) {
+        showError({
+          title: 'Copy not supported',
+          description: 'Your browser does not support clipboard access. Please copy the ID manually.',
+        });
+      } else {
+        showError({
+          title: 'Copy failed',
+          description: 'Unable to copy the contract ID to your clipboard. Please try again.',
+        });
+      }
+    },
+  });
 
   /**
    * Maps the resolved contract detail shape into the repository contract shape.
@@ -235,7 +259,25 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
                 { label: `#${id}` },
               ]}
             />
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900">Contract #{id}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="mt-2 text-3xl font-semibold text-slate-900">Contract #{id}</h1>
+              <button
+                onClick={() => copy(id)}
+                className="mt-2 flex-shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                aria-label={copied ? 'Contract ID copied' : 'Copy contract ID to clipboard'}
+                title={copied ? 'Contract ID copied' : 'Copy contract ID'}
+              >
+                {copied ? (
+                  <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
           <Link
             href="/contracts"

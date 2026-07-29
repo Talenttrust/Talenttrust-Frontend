@@ -1,6 +1,10 @@
 'use client';
 
+<<<<<<< HEAD
 import React, { useRef, useEffect, useCallback, useState, memo } from 'react';
+=======
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
+>>>>>>> 832827228759e35bad5f84aa33b8c2b30853f672
 import { usePreferences, type UserPreferences } from '@/lib/preferences';
 import { useToast } from '@/components/toast/toast-provider';
 import { reportError } from '@/lib/errorReporter';
@@ -295,6 +299,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
   }, [isOpen, preferences.idleDisconnectMs]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const clearError = (fieldId: string) => {
     setErrors((prev) => {
       if (!prev[fieldId]) return prev;

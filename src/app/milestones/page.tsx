@@ -15,13 +15,12 @@ import MilestoneFilter, {
   type MilestoneStatusFilter,
 } from '../../components/milestones/MilestoneFilter';
 import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
-import { listMilestones } from '@/lib/repository';
+import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository';
 import { getItem, setItem } from '@/lib/safeStorage';
 import { useToast } from '@/components/toast/toast-provider';
 import SafeBoundary from '@/components/SafeBoundary';
 import { downloadMilestonesICS } from '@/lib/icsExport';
 import { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from './constants';
-import { useOptimisticMilestoneMutation } from '@/hooks/useOptimisticMilestoneMutation';
 import type { Milestone } from '@/types/domain';
 
 const UNPAGINATED_LIST_SIZE = 9999;
@@ -49,6 +48,8 @@ function getValidSortOption(param: string | null): MilestoneSortOption {
     : 'newest';
 }
 
+
+
 const MilestonesContent: React.FC = () => {
   const [milestones, setMilestones] = useState<Milestone[]>(SAMPLE_MILESTONES);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
@@ -65,10 +66,6 @@ const MilestonesContent: React.FC = () => {
   );
   const [showForm, setShowForm] = useState(false);
   const { showError } = useToast();
-  const { optimisticCreate, optimisticUpdate } = useOptimisticMilestoneMutation(
-    milestones,
-    setMilestones,
-  );
 
   useEffect(() => {
     setStatusFilter(getValidStatus(searchParams.get('status')));
@@ -161,47 +158,31 @@ const MilestonesContent: React.FC = () => {
 
   const handleSubmitMilestone = useCallback((milestone: Milestone) => {
     setShowForm(false);
-
-    const result = optimisticCreate(milestone);
-    if (!result.ok) {
-      showError({
-        title: 'Unable to create milestone',
-        description: result.stale
-          ? 'This milestone was updated in another session. Please reload and try again.'
-          : 'Your milestone could not be saved. Please try again.',
-        action: result.stale ? undefined : {
-          label: 'Retry',
-          onClick: () => handleSubmitMilestone(milestone),
-        },
-      });
-      return;
-    }
-
+    saveMilestone(milestone);
     setIsDismissed(true);
-  }, [optimisticCreate, showError]);
+    setMilestones((prev) => [...prev, milestone]);
+  }, []);
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
   }, []);
 
   const handleUpdateMilestone = useCallback(
     (id: string, patch: Partial<Milestone>): boolean => {
-      const result = optimisticUpdate(id, patch);
-      if (!result.ok) {
+      try {
+        updateMilestone(id, patch);
+        setMilestones((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+        );
+        return true;
+      } catch {
         showError({
           title: 'Unable to update milestone',
-          description: result.stale
-            ? 'This milestone was updated in another session. Please reload and try again.'
-            : 'Your milestone could not be saved. Please try again.',
-          action: result.stale ? undefined : {
-            label: 'Retry',
-            onClick: () => handleUpdateMilestone(id, patch),
-          },
+          description: 'Your milestone could not be saved. Please try again.',
         });
         return false;
       }
-      return true;
     },
-    [optimisticUpdate, showError],
+    [showError],
   );
 
   return (

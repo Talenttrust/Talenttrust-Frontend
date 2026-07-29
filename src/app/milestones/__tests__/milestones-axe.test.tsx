@@ -16,6 +16,7 @@ import MilestonesPage from '../page';
 import MilestonesError from '../error';
 import SafeBoundary from '@/components/SafeBoundary';
 import { PreferencesProvider } from '@/lib/preferences';
+import { resetCache } from '@/lib/safeStorage';
 import * as repository from '@/lib/repository';
 import type { Milestone } from '@/types/domain';
 
@@ -111,6 +112,7 @@ describe('Milestones view a11y — Loaded State', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     window.localStorage.clear();
+    resetCache();
     mockSearchParams.get.mockImplementation(() => null);
     mockedListMilestones.mockReturnValue([]);
   });
