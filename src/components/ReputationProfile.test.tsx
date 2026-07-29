@@ -1190,3 +1190,178 @@ describe('ReputationProfile – history filtering and sorting', () => {
     expect(screen.getByText(/Showing 2 events of type On-chain review/i)).toBeInTheDocument();
   });
 });
+
+// ---------------------------------------------------------------------------
+// 13. History list semantics & accessible name (a11y/reputation-01)
+// ---------------------------------------------------------------------------
+
+describe('ReputationProfile – history list semantics & accessible name (a11y/reputation-01)', () => {
+  /**
+   * Scenario: The history <ol> has an accessible name via aria-labelledby.
+   * The "Reputation history" heading provides the list's accessible name so
+   * assistive tech can announce the list's purpose when focus enters it.
+   */
+  it('exposes the history list with role="list" and an accessible name', () => {
+    renderProfile({ name: 'List Name User', score: 80, history: HISTORY_EVENTS });
+    const list = screen.getByRole('list', { name: /reputation history/i });
+    expect(list).toBeInTheDocument();
+    expect(list.tagName).toBe('OL');
+  });
+
+  /**
+   * Scenario: The history heading carries the id referenced by the list.
+   * The <h2> "Reputation history" must have id="reputation-history-heading"
+   * so the <ol aria-labelledby="reputation-history-heading"> contract holds.
+   */
+  it('renders the history heading with id="reputation-history-heading"', () => {
+    renderProfile({ name: 'Heading Id User', score: 80, history: HISTORY_EVENTS });
+    const heading = document.getElementById('reputation-history-heading');
+    expect(heading).not.toBeNull();
+    expect(heading?.textContent).toMatch(/reputation history/i);
+  });
+
+  /**
+   * Scenario: The <ol> references the heading via aria-labelledby.
+   */
+  it('the <ol> carries aria-labelledby="reputation-history-heading"', () => {
+    renderProfile({ name: 'Ol Labelledby User', score: 80, history: HISTORY_EVENTS });
+    const ol = document.querySelector('ol');
+    expect(ol).not.toBeNull();
+    expect(ol?.getAttribute('aria-labelledby')).toBe('reputation-history-heading');
+  });
+
+  /**
+   * Scenario: Each <li> has an accessible name composed of its key data.
+   * Every entry's type, summary, and date are programmatically associated
+   * via aria-labelledby so screen readers announce the full context.
+   */
+  it('gives each list item an accessible name via aria-labelledby', () => {
+    renderProfile({ name: 'Li Labelledby User', score: 80, history: HISTORY_EVENTS });
+    const items = within(document.querySelector('ol')!).getAllByRole('listitem');
+    expect(items).toHaveLength(HISTORY_EVENTS.length);
+    HISTORY_EVENTS.forEach((ev, idx) => {
+      const labelledby = items[idx].getAttribute('aria-labelledby');
+      expect(labelledby).toBeTruthy();
+      // The aria-labelledby value must reference the three key-data ids.
+      expect(labelledby).toContain(`reputation-event-type-${ev.id}`);
+      expect(labelledby).toContain(`reputation-event-summary-${ev.id}`);
+      expect(labelledby).toContain(`reputation-event-date-${ev.id}`);
+    });
+  });
+
+  /**
+   * Scenario: Each entry's type element has a unique id.
+   */
+  it('renders a type element with a unique id for each event', () => {
+    renderProfile({ name: 'Type Id User', score: 80, history: HISTORY_EVENTS });
+    HISTORY_EVENTS.forEach((ev) => {
+      const typeEl = document.getElementById(`reputation-event-type-${ev.id}`);
+      expect(typeEl).not.toBeNull();
+      expect(typeEl?.textContent).toBe(ev.type);
+    });
+  });
+
+  /**
+   * Scenario: Each entry's summary element has a unique id.
+   */
+  it('renders a summary element with a unique id for each event', () => {
+    renderProfile({ name: 'Summary Id User', score: 80, history: HISTORY_EVENTS });
+    HISTORY_EVENTS.forEach((ev) => {
+      const summaryEl = document.getElementById(`reputation-event-summary-${ev.id}`);
+      expect(summaryEl).not.toBeNull();
+      expect(summaryEl?.textContent).toBe(ev.summary);
+    });
+  });
+
+  /**
+   * Scenario: Each entry's date element has a unique id.
+   */
+  it('renders a date element with a unique id for each event', () => {
+    renderProfile({ name: 'Date Id User', score: 80, history: HISTORY_EVENTS });
+    HISTORY_EVENTS.forEach((ev) => {
+      const dateEl = document.getElementById(`reputation-event-date-${ev.id}`);
+      expect(dateEl).not.toBeNull();
+      expect(dateEl?.textContent).toBe(ev.date);
+    });
+  });
+
+  /**
+   * Scenario: Entries are enumerated in DOM order matching the history array.
+   * The list items must appear in the same order as the supplied history so
+   * the position of each entry is meaningful to assistive technology.
+   */
+  it('enumerates entries in DOM order matching the supplied history array', () => {
+    renderProfile({ name: 'Order User', score: 80, history: HISTORY_EVENTS });
+    const items = within(document.querySelector('ol')!).getAllByRole('listitem');
+    expect(items).toHaveLength(HISTORY_EVENTS.length);
+    HISTORY_EVENTS.forEach((ev, idx) => {
+      const summaryEl = within(items[idx]).getByText(ev.summary);
+      expect(summaryEl).toBeInTheDocument();
+      // The accessible name of the <li> should include the summary text.
+      const liName = items[idx].getAttribute('aria-labelledby');
+      expect(liName).toContain(`reputation-event-summary-${ev.id}`);
+    });
+  });
+
+  /**
+   * Edge case: Empty history renders no list at all.
+   * When history is empty, no <ol> and no list role should be present.
+   */
+  it('renders no list role when history is empty', () => {
+    renderProfile({ name: 'Empty List User', history: [] });
+    expect(screen.queryByRole('list', { name: /reputation history/i })).not.toBeInTheDocument();
+    expect(document.querySelector('ol')).toBeNull();
+  });
+
+  /**
+   * Edge case: A single history entry still gets full semantics.
+   * One event must still produce a labelled <ol> and a labelled <li>.
+   */
+  it('renders full list semantics for a single history entry', () => {
+    const singleEvent: ReputationEvent = {
+      id: 'ev-solo',
+      type: 'Verification',
+      summary: 'Solo identity check',
+      date: '2026-04-24',
+    };
+    renderProfile({ name: 'Single Entry User', score: 80, history: [singleEvent] });
+
+    const list = screen.getByRole('list', { name: /reputation history/i });
+    expect(list).toBeInTheDocument();
+
+    const items = within(list).getAllByRole('listitem');
+    expect(items).toHaveLength(1);
+    expect(items[0].getAttribute('aria-labelledby')).toContain('reputation-event-type-ev-solo');
+    expect(items[0].getAttribute('aria-labelledby')).toContain('reputation-event-summary-ev-solo');
+    expect(items[0].getAttribute('aria-labelledby')).toContain('reputation-event-date-ev-solo');
+  });
+
+  /**
+   * Scenario: The history list accessible name is still present after filtering.
+   * Applying a type filter must not remove the list's accessible name.
+   */
+  it('preserves the list accessible name after filtering', () => {
+    renderProfile({ name: 'Filter Name User', score: 80, history: HISTORY_EVENTS });
+    fireEvent.change(screen.getByLabelText(/Filter:/i), {
+      target: { value: 'Verification' },
+    });
+    const list = screen.getByRole('list', { name: /reputation history/i });
+    expect(list).toBeInTheDocument();
+    expect(list.getAttribute('aria-labelledby')).toBe('reputation-history-heading');
+  });
+
+  /**
+   * Scenario: axe audit passes with the new list semantics.
+   */
+  it('full-history state with list semantics has no axe violations', async () => {
+    const { container } = render(
+      <ReputationProfile
+        name="A11y List Semantics User"
+        score={90}
+        level="Expert"
+        history={HISTORY_EVENTS}
+      />
+    );
+    await assertNoA11yViolations(container);
+  });
+});
