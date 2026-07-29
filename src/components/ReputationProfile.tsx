@@ -69,7 +69,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useToast } from './toast/toast-provider';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
-import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';
+import { execCommandFallback } from '@/lib/clipboardFallback';
 import {
   DEFAULT_DIR,
   DEFAULT_TYPE,
@@ -88,40 +88,12 @@ export const REPUTATION_PAGE_SIZE = 5;
 
 // ---------------------------------------------------------------------------
 // execCommandFallback — documented clipboard fallback when Clipboard API is
-// unavailable (e.g. non-HTTPS, older browsers).
+// unavailable (e.g. non-HTTPS, older browsers). Lives in `@/lib/clipboardFallback`
+// so it can be shared with other copy-to-clipboard controls (e.g. wallet
+// identifiers in WalletItemList); re-exported here for backwards compatibility.
 // ---------------------------------------------------------------------------
 
-/**
- * Falls back to the deprecated `document.execCommand('copy')` API when the
- * Clipboard API is not available. Creates an off-screen textarea, selects its
- * value, and invokes execCommand. The textarea is always removed from the DOM.
- *
- * @param text - The string to copy to the clipboard.
- * @returns `true` if the execCommand succeeded; `false` otherwise.
- */
-export function execCommandFallback(text: string): boolean {
-  if (typeof document === 'undefined') return false;
-
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.style.position = 'fixed';
-  textarea.style.top = '-9999px';
-  textarea.style.left = '-9999px';
-  textarea.setAttribute('aria-hidden', 'true');
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-
-  let success = false;
-  try {
-    success = document.execCommand('copy');
-  } catch {
-    // execCommand not supported — success remains false
-  } finally {
-    document.body.removeChild(textarea);
-  }
-  return success;
-}
+export { execCommandFallback } from '@/lib/clipboardFallback';
 
 // ---------------------------------------------------------------------------
 // CopyIdButton — accessible copy control for a single reputation event ID
