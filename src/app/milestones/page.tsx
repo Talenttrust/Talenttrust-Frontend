@@ -15,10 +15,8 @@ import MilestoneFilter, {
   type MilestoneStatusFilter,
 } from '../../components/milestones/MilestoneFilter';
 import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
-import MilestonesErrorBoundary from '../../components/milestones/MilestonesErrorBoundary';
-import { listMilestones } from '@/lib/repository';
 import { useOptimisticMilestoneMutation } from '@/hooks/useOptimisticMilestoneMutation';
-import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository';
+import { listMilestones } from '@/lib/repository';
 import { getItem, setItem } from '@/lib/safeStorage';
 import { useToast } from '@/components/toast/toast-provider';
 import SafeBoundary from '@/components/SafeBoundary';
@@ -61,7 +59,8 @@ const MilestonesContent: React.FC = () => {
   const [milestones, setMilestones] = useState<Milestone[]>(SAMPLE_MILESTONES);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
   const searchParams = useSearchParams();
-  const router = useRouter();  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const router = useRouter();
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
   const startFromScratchRef = useRef<HTMLButtonElement | null>(null);
 
   const initialStatus = getValidStatus(searchParams.get('status'));
@@ -190,19 +189,6 @@ const MilestonesContent: React.FC = () => {
     setShowForm(false);
   }, []);
 
-  /**
-   * Inline-edit save handler.
-   *
-   * Persistence layer:
-   *   1. Call `updateMilestone(id, patch)` to push the change into
-   *      localStorage Returns `true` on success, `false` if the milestone
-   *      no longer exists in storage.
-   *   2. Refresh local state from storage so the UI immediately reflects the
-   *      persisted version (defensive against stale React state).
-   *
-   * Returning the boolean up to `MilestonesList` lets it surface a failure
-   * announcement to assistive technologies.
-   */
   const handleUpdateMilestone = useCallback(
     (id: string, patch: Partial<Milestone>): boolean => {
       const result = optimisticUpdate(id, patch);
@@ -221,18 +207,6 @@ const MilestonesContent: React.FC = () => {
   );
 
   return (
-    /*
-     * ACCESSIBILITY LANDMARK STRUCTURE (WCAG 2.1 AA / issue #682)
-     *
-     * No <main> landmark here — the root layout (src/app/layout.tsx) already
-     * provides the single <main id="main-content" tabIndex={-1}> landmark that
-     * RouteAnnouncer targets for focus-on-route-change (WCAG 2.4.3). A nested
-     * <main> would produce duplicate landmarks and break that focus management.
-     * Same fix applied to loading.tsx below.
-     *
-     * Heading hierarchy: <h1> is used here (correct, since layout's <header>
-     * does not render an <h1> — the app name is a <span>, not a heading).
-     */
     <div className="min-h-screen p-8">
       <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold mb-6 focus:outline-none">
         Milestones
