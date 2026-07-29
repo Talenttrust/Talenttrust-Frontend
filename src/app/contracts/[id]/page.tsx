@@ -78,6 +78,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
       currency: data.currency,
       status,
       createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
       milestoneCount: data.milestones.length,
       version,
     }),
@@ -257,6 +258,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
                   currency={contractData.currency}
                   status={contractData.status}
                   createdAt={contractData.createdAt}
+                  updatedAt={contractData.updatedAt}
                   milestoneCount={milestones.length}
                 />
               ) : null}

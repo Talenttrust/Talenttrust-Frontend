@@ -2,7 +2,7 @@
 
 import React, { memo } from 'react';
 import type { Contract } from '@/types/domain';
-import type { ContractsDensity } from '@/lib/preferences';
+import { LastUpdated } from '@/components/LastUpdated';
 
 export interface ContractListItemProps {
   contract: Contract;
@@ -30,30 +30,26 @@ export interface ContractListItemProps {
  * ```
  */
 const ContractListItem = memo(
-  ({ contract, index, density = 'comfortable' }: ContractListItemProps) => {
-    const isCompact = density === 'compact';
-    return (
-      <li
-        key={`${contract.contractName}-${index}`}
-        className={`rounded-3xl border border-slate-200 bg-white shadow-sm transition-[padding] ${
-          isCompact ? 'p-2.5' : 'p-4'
-        }`}
-      >
-        <p className="font-semibold text-slate-900">{contract.contractName}</p>
-        <p className={`text-sm text-slate-500 ${isCompact ? 'mt-0.5' : 'mt-1'}`}>
-          {contract.status} · Created {contract.createdAt}
-        </p>
-      </li>
-    );
-  },
+  ({ contract, index }: ContractListItemProps) => (
+    <li
+      key={`${contract.contractName}-${index}`}
+      className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+    >
+      <p className="font-semibold text-slate-900">{contract.contractName}</p>
+      <p className="text-sm text-slate-500">
+        {contract.status} · Created {contract.createdAt}
+      </p>
+      {contract.updatedAt && <LastUpdated updatedAt={contract.updatedAt} />}
+    </li>
+  ),
   (prevProps, nextProps) => {
     // Custom equality check: return true if props are equal (don't re-render)
     return (
       prevProps.contract.contractName === nextProps.contract.contractName &&
       prevProps.contract.status === nextProps.contract.status &&
       prevProps.contract.createdAt === nextProps.contract.createdAt &&
-      prevProps.index === nextProps.index &&
-      prevProps.density === nextProps.density
+      prevProps.contract.updatedAt === nextProps.contract.updatedAt &&
+      prevProps.index === nextProps.index
     );
   },
 );

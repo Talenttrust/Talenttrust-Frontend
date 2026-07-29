@@ -105,7 +105,8 @@ const ContractsList = memo(
       if (
         prev.contractName !== next.contractName ||
         prev.status !== next.status ||
-        prev.createdAt !== next.createdAt
+        prev.createdAt !== next.createdAt ||
+        prev.updatedAt !== next.updatedAt
       ) {
         return false;
       }

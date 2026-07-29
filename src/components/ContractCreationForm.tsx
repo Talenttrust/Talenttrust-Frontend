@@ -187,6 +187,7 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
           month: 'short',
           day: 'numeric',
         }),
+        updatedAt: new Date().toISOString(),
         milestoneCount: 0,
       };
 

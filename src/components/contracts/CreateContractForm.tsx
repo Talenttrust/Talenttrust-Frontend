@@ -121,6 +121,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
         month: 'short',
         day: 'numeric',
       }),
+      updatedAt: new Date().toISOString(),
       milestoneCount: 0,
     };
 
