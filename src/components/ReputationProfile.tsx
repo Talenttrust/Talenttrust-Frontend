@@ -462,7 +462,12 @@ export default function ReputationProfile({
       <div className="rounded-3xl border-[var(--border)] bg-[var(--card)] p-6 shadow-sm sm:p-8">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-[var(--foreground)]">Reputation history</h2>
+            <h2
+              id="reputation-history-heading"
+              className="text-xl font-semibold text-[var(--foreground)]"
+            >
+              Reputation history
+            </h2>
             <p className="mt-1 text-sm text-[var(--muted-foreground)]">
               History is shown as safe, aggregated events with no wallet or personal metadata by default.
             </p>
@@ -587,12 +592,22 @@ export default function ReputationProfile({
                 </button>
               </div>
             </div>
-            <ol className="space-y-4">
+            <ol
+              aria-labelledby="reputation-history-heading"
+              className="space-y-4"
+            >
               {visibleHistory.map((event) => {
                 const isValidDate = event.date && !Number.isNaN(Date.parse(event.date));
                 const isSelected = selectedIds.includes(event.id);
+                const typeId = `reputation-event-type-${event.id}`;
+                const summaryId = `reputation-event-summary-${event.id}`;
+                const dateId = `reputation-event-date-${event.id}`;
                 return (
-                  <li key={event.id} className={`rounded-3xl border p-5 ${isSelected ? 'border-[var(--foreground)] bg-[var(--muted)]' : 'border-[var(--border)] bg-[var(--card)]'}`}>
+                  <li
+                    key={event.id}
+                    aria-labelledby={`${typeId} ${summaryId} ${dateId}`}
+                    className={`rounded-3xl border p-5 ${isSelected ? 'border-[var(--foreground)] bg-[var(--muted)]' : 'border-[var(--border)] bg-[var(--card)]'}`}
+                  >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <label className="flex items-start gap-3">
                         <input
@@ -603,12 +618,23 @@ export default function ReputationProfile({
                           className="mt-1 h-4 w-4 rounded border-[var(--border)] text-[var(--foreground)] focus:ring-[var(--ring)]"
                         />
                         <span>
-                          <span className="block text-sm font-medium text-[var(--muted-foreground)]">{event.type}</span>
-                          <span className="mt-1 block text-base font-semibold text-[var(--foreground)]">{event.summary}</span>
+                          <span
+                            id={typeId}
+                            className="block text-sm font-medium text-[var(--muted-foreground)]"
+                          >
+                            {event.type}
+                          </span>
+                          <span
+                            id={summaryId}
+                            className="mt-1 block text-base font-semibold text-[var(--foreground)]"
+                          >
+                            {event.summary}
+                          </span>
                         </span>
                       </label>
                       <div className="flex items-center gap-2 sm:flex-col sm:items-end">
                         <time
+                          id={dateId}
                           className="text-sm text-[var(--muted-foreground)] sm:text-right"
                           {...(isValidDate ? { dateTime: event.date } : {})}
                         >
