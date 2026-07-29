@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import EmptyState from '../../components/EmptyState';
 import ContractsList from '../../components/contracts/ContractsList';
 import { ContractCreationForm } from '../../components/ContractCreationForm';
@@ -26,6 +26,8 @@ const getInitialFetchState = (): ContractsFetchState => {
 const ContractsPage: React.FC = () => {
   const [fetchState, setFetchState] = useState<ContractsFetchState>(getInitialFetchState);
   const [showForm, setShowForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'date-desc' | 'date-asc' | 'value-desc' | 'value-asc'>('date-desc');
   const { showError } = useToast();
   const { preferences, updatePreference } = usePreferences();
   const { contracts } = fetchState;
@@ -72,6 +74,7 @@ const ContractsPage: React.FC = () => {
         contracts: [...current.contracts, contract],
       }));
       setShowForm(false);
+      setSearchQuery('');
 
       const persisted = saveContract(contract);
       if (!persisted) {
@@ -94,6 +97,38 @@ const ContractsPage: React.FC = () => {
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
   }, []);
+
+  const filteredContracts = useMemo(() => {
+    if (!searchQuery.trim()) return contracts;
+    const lowerQuery = searchQuery.toLowerCase();
+    return contracts.filter((c) => {
+      const matchName = c.contractName.toLowerCase().includes(lowerQuery);
+      const matchParty = c.parties.some((p) => p.label.toLowerCase().includes(lowerQuery));
+      return matchName || matchParty;
+    });
+  }, [contracts, searchQuery]);
+
+  const sortedContracts = useMemo(() => {
+    const result = [...filteredContracts];
+    result.sort((a, b) => {
+      if (sortOrder === 'value-desc' || sortOrder === 'value-asc') {
+        const diff = a.totalValue - b.totalValue;
+        if (diff !== 0) {
+          return sortOrder === 'value-desc' ? -diff : diff;
+        }
+      }
+      
+      const timeA = Date.parse(a.createdAt);
+      const timeB = Date.parse(b.createdAt);
+      // fallback to date if values are equal, or if sorting by date
+      if (sortOrder === 'date-desc' || sortOrder === 'value-desc' || sortOrder === 'value-asc') {
+        return timeB - timeA;
+      }
+      return timeA - timeB; // date-asc
+    });
+    return result;
+  }, [filteredContracts, sortOrder]);
+
   return (
     <main className="min-h-screen p-8 pb-24">
       <h1 className="text-2xl font-bold mb-6">Contracts</h1>
@@ -105,7 +140,7 @@ const ContractsPage: React.FC = () => {
             ? 'Unable to load contracts'
             : contracts.length === 0
               ? 'No contracts found'
-              : `${contracts.length} ${contracts.length === 1 ? 'contract' : 'contracts'} loaded`}
+              : `${sortedContracts.length} ${sortedContracts.length === 1 ? 'contract' : 'contracts'} found`}
       </p>
 
       {fetchState.status === 'loading' && !showForm && (
@@ -150,15 +185,48 @@ const ContractsPage: React.FC = () => {
 
       {fetchState.status === 'success' && !showForm && contracts.length > 0 && (
         <>
-          <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-1 items-center gap-4">
+              <div className="relative flex-1 max-w-sm">
+                <input
+                  type="search"
+                  placeholder="Search contracts or parties..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 pl-10 pr-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  aria-label="Search contracts"
+                />
+                <svg
+                  className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <label htmlFor="contracts-sort" className="sr-only">Sort by</label>
+              <select
+                id="contracts-sort"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as any)}
+                className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="date-desc">Newest first</option>
+                <option value="date-asc">Oldest first</option>
+                <option value="value-desc">Value (High to Low)</option>
+                <option value="value-asc">Value (Low to High)</option>
+              </select>
+            </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">
-                {contracts.length}{" "}
-                {contracts.length === 1 ? "contract" : "contracts"}
+              <span className="text-sm text-slate-500 hidden md:inline-block">
+                {sortedContracts.length}{" "}
+                {sortedContracts.length === 1 ? "result" : "results"}
               </span>
               <button
                 type="button"
-                onClick={() => downloadContractsCsv(contracts)}
+                onClick={() => downloadContractsCsv(sortedContracts)}
                 className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-400 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                 aria-label="Export contracts as CSV"
               >
@@ -166,27 +234,37 @@ const ContractsPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => downloadContractsJson(contracts)}
+                onClick={() => downloadContractsJson(sortedContracts)}
                 className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-400 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                 aria-label="Export contracts as JSON"
               >
                 JSON
               </button>
+              <button
+                type="button"
+                onClick={handleCreateContract}
+                className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              >
+                Create Contract
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleCreateContract}
-              className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-            >
-              Create Contract
-            </button>
           </div>
 
-          <ContractsList
-            contracts={contracts}
-            density={contractsDensity}
-            onToggleDensity={handleToggleDensity}
-          />
+          {sortedContracts.length === 0 ? (
+            <EmptyState
+              illustration="contracts"
+              title="No contracts match your search"
+              description="We couldn't find any contracts matching your current search terms. Try adjusting your query or clearing the search."
+              actionLabel="Clear Search"
+              onAction={() => setSearchQuery('')}
+            />
+          ) : (
+            <ContractsList
+              contracts={sortedContracts}
+              density={contractsDensity}
+              onToggleDensity={handleToggleDensity}
+            />
+          )}
         </>
       )}
 
