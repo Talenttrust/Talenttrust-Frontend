@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { usePreferences, type FormDensity, type UserPreferences } from '@/lib/preferences';
+import React, { useRef, useEffect, useCallback, memo } from 'react';
+import { usePreferences, type UserPreferences } from '@/lib/preferences';
 import { useToast } from '@/components/toast/toast-provider';
 import { reportError } from '@/lib/errorReporter';
 import { ErrorSummary } from '@/components/ErrorSummary';
@@ -11,7 +11,23 @@ import { MIN_IDLE_DISCONNECT_MS, MAX_IDLE_DISCONNECT_MS } from '@/lib/validatePr
 const FOCUSABLE_SELECTORS =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-function RadioGroup<T extends string>({
+const THEME_OPTIONS = ['light', 'dark', 'system'] as const;
+const CURRENCY_OPTIONS = ['usd', 'ngn', 'compact'] as const;
+const TOAST_DENSITY_OPTIONS = ['relaxed', 'compact'] as const;
+const FORM_DENSITY_OPTIONS = ['comfortable', 'compact'] as const;
+const CONTRACTS_DENSITY_OPTIONS = ['comfortable', 'compact'] as const;
+
+interface RadioGroupProps {
+  options: readonly string[];
+  value: string;
+  onChange: (val: string) => void;
+  labelId: string;
+  ariaLabel: string;
+  containerClassName: string;
+  textClassName: string;
+}
+
+const RadioGroup = memo(function RadioGroup({
   options,
   value,
   onChange,
@@ -19,19 +35,10 @@ function RadioGroup<T extends string>({
   ariaLabel,
   containerClassName,
   textClassName,
-  error,
-  errorId,
-}: {
-  options: readonly T[];
-  value: T;
-  onChange: (val: T) => void;
-  labelId: string;
-  ariaLabel: string;
-  containerClassName: string;
-  textClassName: string;
-  error?: string;
-  errorId?: string;
-}) {
+}: RadioGroupProps) {
+  const renderCount = React.useRef(0);
+  renderCount.current += 1;
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(e.key)) {
       e.preventDefault();
@@ -48,47 +55,193 @@ function RadioGroup<T extends string>({
   };
 
   return (
-    <div>
-      <div
-        className={containerClassName}
-        role="radiogroup"
-        aria-labelledby={labelId}
-        aria-label={ariaLabel}
-        aria-describedby={error && errorId ? errorId : undefined}
-        aria-invalid={error ? 'true' : undefined}
-        onKeyDown={handleKeyDown}
-      >
-        {options.map((option) => (
-          <button
-            key={option}
-            onClick={() => onChange(option)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onChange(option);
-              }
-            }}
-            role="radio"
-            aria-checked={value === option}
-            tabIndex={value === option ? 0 : -1}
-            className={`px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${textClassName} ${
-              value === option
-                ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]'
-                : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]'
-            }`}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
-      {error && errorId && (
-        <p id={errorId} className="mt-1 text-sm text-red-600 font-medium" role="alert">
-          {error}
-        </p>
-      )}
+    <div
+      data-testid={`${ariaLabel.toLowerCase().replace(/\s+/g, '-')}-group`}
+      data-render-count={renderCount.current}
+      className={containerClassName}
+      role="radiogroup"
+      aria-labelledby={labelId}
+      aria-label={ariaLabel}
+      onKeyDown={handleKeyDown}
+    >
+      {options.map((option) => (
+        <button
+          key={option}
+          onClick={() => onChange(option)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onChange(option);
+            }
+          }}
+          role="radio"
+          aria-checked={value === option}
+          tabIndex={value === option ? 0 : -1}
+          className={`px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${textClassName} ${
+            value === option
+              ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]'
+              : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]'
+          }`}
+        >
+          {option}
+        </button>
+      ))}
     </div>
   );
+});
+
+RadioGroup.displayName = 'RadioGroup';
+
+interface AppearanceSectionProps {
+  theme: UserPreferences['theme'];
+  amountFormat: UserPreferences['amountFormat'];
+  onThemeChange: (value: UserPreferences['theme']) => void;
+  onAmountFormatChange: (value: UserPreferences['amountFormat']) => void;
 }
+
+const AppearanceSection = memo(function AppearanceSection({
+  theme,
+  amountFormat,
+  onThemeChange,
+  onAmountFormatChange,
+}: AppearanceSectionProps) {
+  const renderCount = React.useRef(0);
+  renderCount.current += 1;
+
+  return (
+    <section data-testid="appearance-section" data-render-count={renderCount.current} className="space-y-4">
+      <h3 className="text-sm font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Appearance</h3>
+
+      <div className="space-y-4">
+        <ThemeErrorBoundary>
+          <div>
+            <label id="theme-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Theme</label>
+            <RadioGroup
+              options={THEME_OPTIONS}
+              value={theme}
+              onChange={onThemeChange}
+              labelId="theme-label"
+              ariaLabel="Theme"
+              containerClassName="grid grid-cols-3 gap-2"
+              textClassName="capitalize"
+            />
+          </div>
+        </ThemeErrorBoundary>
+
+        <div>
+          <label id="currency-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Currency Display</label>
+          <RadioGroup
+            options={CURRENCY_OPTIONS}
+            value={amountFormat}
+            onChange={onAmountFormatChange}
+            labelId="currency-label"
+            ariaLabel="Currency Display"
+            containerClassName="grid grid-cols-3 gap-2"
+            textClassName="uppercase"
+          />
+        </div>
+      </div>
+    </section>
+  );
+});
+
+AppearanceSection.displayName = 'AppearanceSection';
+
+interface PreferenceControlsProps {
+  toastDensity: UserPreferences['toastDensity'];
+  formDensity: UserPreferences['formDensity'];
+  contractsDensity: UserPreferences['contractsDensity'];
+  quietMode: boolean;
+  onToastDensityChange: (value: UserPreferences['toastDensity']) => void;
+  onFormDensityChange: (value: UserPreferences['formDensity']) => void;
+  onContractsDensityChange: (value: UserPreferences['contractsDensity']) => void;
+  onQuietModeToggle: () => void;
+}
+
+const PreferenceControls = memo(function PreferenceControls({
+  toastDensity,
+  formDensity,
+  contractsDensity,
+  quietMode,
+  onToastDensityChange,
+  onFormDensityChange,
+  onContractsDensityChange,
+  onQuietModeToggle,
+}: PreferenceControlsProps) {
+  const renderCount = React.useRef(0);
+  renderCount.current += 1;
+
+  return (
+    <section data-testid="preference-controls" data-render-count={renderCount.current} className="space-y-4">
+      <h3 className="text-sm font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Notifications</h3>
+
+      <div className="space-y-4">
+        <div>
+          <label id="density-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Toast Density</label>
+          <RadioGroup
+            options={TOAST_DENSITY_OPTIONS}
+            value={toastDensity}
+            onChange={onToastDensityChange}
+            labelId="density-label"
+            ariaLabel="Toast Density"
+            containerClassName="grid grid-cols-2 gap-2"
+            textClassName="capitalize"
+          />
+        </div>
+
+        <div>
+          <label id="form-density-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Form Density</label>
+          <RadioGroup
+            options={FORM_DENSITY_OPTIONS}
+            value={formDensity}
+            onChange={onFormDensityChange}
+            labelId="form-density-label"
+            ariaLabel="Form Density"
+            containerClassName="grid grid-cols-2 gap-2"
+            textClassName="capitalize"
+          />
+        </div>
+
+        <div>
+          <label id="contracts-density-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Contracts Density</label>
+          <RadioGroup
+            options={CONTRACTS_DENSITY_OPTIONS}
+            value={contractsDensity}
+            onChange={onContractsDensityChange}
+            labelId="contracts-density-label"
+            ariaLabel="Contracts Density"
+            containerClassName="grid grid-cols-2 gap-2"
+            textClassName="capitalize"
+          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <label id="quiet-mode-label" className="text-sm font-medium text-[var(--foreground)]">Quiet Mode</label>
+            <p className="text-xs text-[var(--muted-foreground)]">Suppress success notifications</p>
+          </div>
+          <button
+            onClick={onQuietModeToggle}
+            role="switch"
+            aria-checked={quietMode}
+            aria-labelledby="quiet-mode-label"
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${
+              quietMode ? 'bg-[var(--primary)]' : 'bg-[var(--muted)]'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                quietMode ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+});
+
+PreferenceControls.displayName = 'PreferenceControls';
 
 export class ThemeErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -176,13 +329,55 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     return result.length === 0;
   }, [preferences, idleInput]);
 
-  const handleUpdate = async <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => {
-    try {
-      await updatePreference(key, value);
-    } catch {
-      showError({ title: 'Failed to update settings. Please try again.' });
-    }
-  };
+  const handleUpdate = useCallback(
+    async <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => {
+      try {
+        await updatePreference(key, value);
+      } catch {
+        showError({ title: 'Failed to update settings. Please try again.' });
+      }
+    },
+    [showError, updatePreference],
+  );
+
+  const setTheme = useCallback(
+    (theme: UserPreferences['theme']) => {
+      void handleUpdate('theme', theme);
+    },
+    [handleUpdate],
+  );
+
+  const setAmountFormat = useCallback(
+    (amountFormat: UserPreferences['amountFormat']) => {
+      void handleUpdate('amountFormat', amountFormat);
+    },
+    [handleUpdate],
+  );
+
+  const setToastDensity = useCallback(
+    (toastDensity: UserPreferences['toastDensity']) => {
+      void handleUpdate('toastDensity', toastDensity);
+    },
+    [handleUpdate],
+  );
+
+  const setFormDensity = useCallback(
+    (formDensity: UserPreferences['formDensity']) => {
+      void handleUpdate('formDensity', formDensity);
+    },
+    [handleUpdate],
+  );
+
+  const setContractsDensity = useCallback(
+    (contractsDensity: UserPreferences['contractsDensity']) => {
+      void handleUpdate('contractsDensity', contractsDensity);
+    },
+    [handleUpdate],
+  );
+
+  const toggleQuietMode = useCallback(() => {
+    void handleUpdate('quietMode', !preferences.quietMode);
+  }, [handleUpdate, preferences.quietMode]);
 
   const handleRadioChange = (key: keyof UserPreferences, value: string) => {
     clearError(`pref-${key}`);
@@ -346,174 +541,23 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
-          {errorList.length > 0 && (
-            <div ref={errorSummaryRef} tabIndex={-1}>
-              <ErrorSummary errors={errorList} />
-            </div>
-          )}
+          <AppearanceSection
+            theme={preferences.theme}
+            amountFormat={preferences.amountFormat}
+            onThemeChange={setTheme}
+            onAmountFormatChange={setAmountFormat}
+          />
 
-          {/* Appearance Section */}
-          <section className="space-y-4">
-            <h3 className="text-sm font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Appearance</h3>
-            
-            <div className="space-y-4">
-              <ThemeErrorBoundary>
-                <div>
-                  <label id="theme-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Theme</label>
-                  <RadioGroup
-                    options={['light', 'dark', 'system'] as const}
-                    value={preferences.theme}
-                    onChange={(val) => handleRadioChange('theme', val)}
-                    labelId="theme-label"
-                    ariaLabel="Theme"
-                    containerClassName="grid grid-cols-3 gap-2"
-                    textClassName="capitalize"
-                    error={errors['pref-theme']}
-                    errorId="pref-theme-error"
-                  />
-                </div>
-              </ThemeErrorBoundary>
-
-              <div>
-                <label id="currency-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Currency Display</label>
-                <RadioGroup
-                  options={['usd', 'ngn', 'compact'] as const}
-                  value={preferences.amountFormat}
-                  onChange={(val) => handleRadioChange('amountFormat', val)}
-                  labelId="currency-label"
-                  ariaLabel="Currency Display"
-                  containerClassName="grid grid-cols-3 gap-2"
-                  textClassName="uppercase"
-                  error={errors['pref-amountFormat']}
-                  errorId="pref-amountFormat-error"
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* Notifications Section */}
-          <section className="space-y-4">
-            <h3 className="text-sm font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Notifications</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label id="density-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Toast Density</label>
-                <RadioGroup
-                  options={['relaxed', 'compact'] as const}
-                  value={preferences.toastDensity}
-                  onChange={(val) => handleRadioChange('toastDensity', val)}
-                  labelId="density-label"
-                  ariaLabel="Toast Density"
-                  containerClassName="grid grid-cols-2 gap-2"
-                  textClassName="capitalize"
-                  error={errors['pref-toastDensity']}
-                  errorId="pref-toastDensity-error"
-                />
-              </div>
-
-              <div>
-                <label id="form-density-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Form Density</label>
-                <div
-                  className="grid grid-cols-2 gap-2"
-                  role="radiogroup"
-                  aria-labelledby="form-density-label"
-                  aria-label="Form Density"
-                  aria-describedby={errors['pref-formDensity'] ? 'pref-formDensity-error' : undefined}
-                  aria-invalid={errors['pref-formDensity'] ? 'true' : undefined}
-                >
-                  {(['comfortable', 'compact'] as FormDensity[]).map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => handleRadioChange('formDensity', d)}
-                      role="radio"
-                      aria-checked={preferences.formDensity === d}
-                      className={`px-3 py-2 text-sm rounded-md border capitalize transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${
-                        preferences.formDensity === d
-                          ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]'
-                          : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]'
-                      }`}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
-                {errors['pref-formDensity'] && (
-                  <p id="pref-formDensity-error" className="mt-1 text-sm text-red-600 font-medium" role="alert">
-                    {errors['pref-formDensity']}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label id="contracts-density-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Contracts Density</label>
-                <RadioGroup
-                  options={['comfortable', 'compact'] as const}
-                  value={preferences.contractsDensity}
-                  onChange={(val) => handleRadioChange('contractsDensity', val)}
-                  labelId="contracts-density-label"
-                  ariaLabel="Contracts Density"
-                  containerClassName="grid grid-cols-2 gap-2"
-                  textClassName="capitalize"
-                  error={errors['pref-contractsDensity']}
-                  errorId="pref-contractsDensity-error"
-                />
-              </div>
-
-              <div>
-                <label id="quiet-mode-label" className="block text-sm font-medium mb-2 text-[var(--foreground)]">Quiet Mode</label>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-[var(--muted-foreground)]">Suppress success notifications</p>
-                  <button
-                    onClick={() => {
-                      clearError('pref-quietMode');
-                      handleUpdate('quietMode', !preferences.quietMode);
-                    }}
-                    role="switch"
-                    aria-checked={preferences.quietMode}
-                    aria-labelledby="quiet-mode-label"
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${
-                      preferences.quietMode ? 'bg-[var(--primary)]' : 'bg-[var(--muted)]'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        preferences.quietMode ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="pref-idleDisconnectMs" className="block text-sm font-medium mb-2 text-[var(--foreground)]">
-                  Idle Disconnect Timeout
-                </label>
-                <p className="text-xs text-[var(--muted-foreground)] mb-2">
-                  Auto-disconnect after inactivity. Set to 0 to disable, or {MIN_IDLE_DISCONNECT_MS}–{MAX_IDLE_DISCONNECT_MS} ms.
-                </p>
-                <input
-                  id="pref-idleDisconnectMs"
-                  type="text"
-                  inputMode="numeric"
-                  value={idleInput}
-                  onChange={handleIdleChange}
-                  onBlur={handleIdleBlur}
-                  aria-invalid={!!errors['pref-idleDisconnectMs']}
-                  aria-describedby={errors['pref-idleDisconnectMs'] ? 'pref-idleDisconnectMs-error' : undefined}
-                  className={`w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${
-                    errors['pref-idleDisconnectMs']
-                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                      : 'border-[var(--border)]'
-                  }`}
-                />
-                {errors['pref-idleDisconnectMs'] && (
-                  <p id="pref-idleDisconnectMs-error" className="mt-1 text-sm text-red-600 font-medium" role="alert">
-                    {errors['pref-idleDisconnectMs']}
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
+          <PreferenceControls
+            toastDensity={preferences.toastDensity}
+            formDensity={preferences.formDensity}
+            contractsDensity={preferences.contractsDensity}
+            quietMode={preferences.quietMode}
+            onToastDensityChange={setToastDensity}
+            onFormDensityChange={setFormDensity}
+            onContractsDensityChange={setContractsDensity}
+            onQuietModeToggle={toggleQuietMode}
+          />
         </div>
 
         <div className="p-6 border-t border-[var(--border)] bg-[var(--surface)]">
