@@ -179,6 +179,10 @@ const MilestonesContent: React.FC = () => {
         description: result.stale
           ? 'This milestone was updated in another session. Please reload and try again.'
           : 'Your milestone could not be saved. Please try again.',
+        action: result.stale ? undefined : {
+          label: 'Retry',
+          onClick: () => handleSubmitMilestone(milestone),
+        },
       });
       return;
     }
@@ -212,6 +216,10 @@ const MilestonesContent: React.FC = () => {
           description: result.stale
             ? 'This milestone was updated in another session. Please reload and try again.'
             : 'Your milestone could not be saved. Please try again.',
+          action: result.stale ? undefined : {
+            label: 'Retry',
+            onClick: () => handleUpdateMilestone(id, patch),
+          },
         });
         return false;
       }
