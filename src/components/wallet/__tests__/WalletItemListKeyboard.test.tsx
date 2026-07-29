@@ -168,7 +168,8 @@ describe('WalletItemList — keyboard operation', () => {
       />
     );
 
-    // tab through select-all, row 1 checkbox, row 1 copy-address, row 1 delete
+    // tab through select-all, row 1 checkbox, row 1 copy-address, row 1 edit, row 1 delete
+    await user.tab();
     await user.tab();
     await user.tab();
     await user.tab();
@@ -312,7 +313,7 @@ describe('WalletItemList — keyboard operation', () => {
       const allButtons = screen.getAllByRole('button');
       const focusableOrder = [...allCheckboxes, ...allButtons];
 
-      const actualLabels = Array.from(focusableElements)
+      const actualLabels = Array.from(focusableOrder)
         .filter(el => el.getAttribute('aria-label'))
         .map(el => el.getAttribute('aria-label'));
 
@@ -322,10 +323,11 @@ describe('WalletItemList — keyboard operation', () => {
         'Select USD Coin (USDC)',
         'Select Archived Client Token',
         'Copy wallet address for Stellar Lumens (XLM)',
+        'Edit Stellar Lumens (XLM)',
         'Delete Stellar Lumens (XLM)',
         'Copy wallet address for USD Coin (USDC)',
+        'Edit USD Coin (USDC)',
         'Delete USD Coin (USDC)',
-        'Select Archived Client Token',
         'Edit Archived Client Token',
         'Delete Archived Client Token',
       ];

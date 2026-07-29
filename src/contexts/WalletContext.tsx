@@ -174,6 +174,7 @@ export function WalletProvider({
   const [address, setAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState<string>('');
 
   const { showSuccess, showError } = useSafeToast();
 
@@ -184,6 +185,36 @@ export function WalletProvider({
    * inside stale closures.
    */
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Ref to track whether a connection attempt is currently in progress.
+   * Prevents concurrent connect() calls that could race and create
+   * inconsistent state.
+   */
+  const isConnectingRef = useRef(false);
+
+  /**
+   * Ref for the debounce timer used to delay announcements to the
+   * screen-reader live region. Prevents announcement spam when rapid
+   * connect/disconnect cycles occur.
+   */
+  const announceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Announces a wallet operation result to screen readers via a debounced
+   * polite live region. Clears any pending announcement and schedules the
+   * new message after a 150ms delay.
+   */
+  const announceResult = useCallback((message: string) => {
+    if (announceTimerRef.current !== null) {
+      clearTimeout(announceTimerRef.current);
+      announceTimerRef.current = null;
+    }
+    announceTimerRef.current = setTimeout(() => {
+      setAnnouncement(message);
+      announceTimerRef.current = null;
+    }, 150);
+  }, []);
 
   /**
    * Terminates the active wallet session.
@@ -343,7 +374,7 @@ export function WalletProvider({
       isConnectingRef.current = false;
       setIsConnecting(false);
     }
-  }, [showError]);
+  }, [showError, announceResult]);
 
   return (
     <WalletContext.Provider value={{ address, isConnecting, error, connect, disconnect }}>

@@ -545,7 +545,7 @@ describe('WalletContext persistence', () => {
 
       expect(screen.getByTestId('address')).toHaveTextContent('No address');
       // No "Session expired" toast should have appeared.
-      expect(screen.queryByRole('status')).toBeNull();
+      expect(screen.queryByText('Session expired')).not.toBeInTheDocument();
     });
 
     it('cleans up event listeners and timer on unmount', async () => {

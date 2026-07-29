@@ -891,12 +891,15 @@ describe('a11y: WalletItemList - keyboard navigation', () => {
     expect(itemCheckbox).toHaveFocus();
 
     // w-1 has an address, so its copy-address button is the next tab stop
-    // before the delete button.
+    // before the edit button and then delete button.
     await user.tab();
     expect(copyAddressBtn).toHaveFocus();
 
     await user.tab();
-    expect(deleteBtns[0]).toHaveFocus();
+    expect(screen.getByTestId('edit-item-btn-w-1')).toHaveFocus();
+
+    await user.tab();
+    expect(deleteBtn).toHaveFocus();
   }, 10000);
 
   it('Enter toggles checkbox state', async () => {

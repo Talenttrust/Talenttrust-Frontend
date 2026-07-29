@@ -5,6 +5,7 @@ import type { WalletItem } from '@/types/domain';
 import { useToast } from '@/components/toast/toast-provider';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { execCommandFallback } from '@/lib/clipboardFallback';
+import EditableWalletRow from './EditableWalletRow';
 
 interface CopyWalletAddressButtonProps {
   /** Full (untruncated) wallet address/identifier to copy. */
@@ -156,28 +157,26 @@ export const WalletItemList: React.FC<WalletItemListProps> = ({
             const isSelected = selectedIds.has(item.id);
             const isEditing = editingId === item.id;
 
-            const editProps = {
-              item,
-              selected: isSelected,
-              onToggleSelect,
-              onEdit: onEditItem ?? (() => {}),
-              onSave: onSaveEdit ?? (() => {}),
-              onCancel: onCancelEdit ?? (() => {}),
-              onDelete: hasDelete ? handleDelete : undefined,
-            };
-
+            // Editing path: delegate entirely to EditableWalletRow (renders its own <tr>)
             if (isEditing && onSaveEdit && onCancelEdit && onEditItem) {
               return (
                 <EditableWalletRow
                   key={item.id}
+                  item={item}
                   editing
-                  {...editProps}
+                  selected={isSelected}
+                  onToggleSelect={onToggleSelect}
+                  onEdit={onEditItem}
+                  onSave={onSaveEdit}
+                  onCancel={onCancelEdit}
+                  onDelete={hasDelete ? handleDelete : undefined}
                 />
               );
             }
 
+            // Non-editing path: render row directly with copy-address button
             return (
-              <EditableWalletRow
+              <tr
                 key={item.id}
                 data-testid={`wallet-item-row-${item.id}`}
                 data-selected={isSelected || undefined}
@@ -226,18 +225,31 @@ export const WalletItemList: React.FC<WalletItemListProps> = ({
                 </td>
                 <td className="px-4 py-4 text-xs text-slate-500 dark:text-slate-400">{item.createdAt}</td>
                 <td className="px-4 py-4 text-right">
-                  {onDeleteItem && (
+                  <div className="flex items-center justify-end gap-1">
                     <button
                       type="button"
-                      onClick={() => handleDelete(item.id)}
-                      className="rounded-lg p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 dark:hover:bg-rose-950/50"
-                      aria-label={`Delete ${item.name}`}
+                      onClick={() => onEditItem?.(item.id)}
+                      aria-label={`Edit ${item.name}`}
+                      data-testid={`edit-item-btn-${item.id}`}
+                      className="rounded-lg p-1.5 text-slate-400 transition hover:bg-blue-50 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:hover:bg-blue-950/50"
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
-                  )}
+                    {onDeleteItem && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        className="rounded-lg p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 dark:hover:bg-rose-950/50"
+                        aria-label={`Delete ${item.name}`}
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             );
