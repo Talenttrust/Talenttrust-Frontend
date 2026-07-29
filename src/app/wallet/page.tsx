@@ -91,22 +91,31 @@ export default function WalletPage() {
   const handleConfirmDelete = useCallback(() => {
     if (targetDeleteIds.length === 0) return;
 
-    const ok = deleteWalletItems(targetDeleteIds);
+    const snapshot = items;
+    const deleteIds = targetDeleteIds;
+
+    setItems((prev) => prev.filter((item) => !deleteIds.includes(item.id)));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      deleteIds.forEach((id) => next.delete(id));
+      return next;
+    });
+
+    const ok = deleteWalletItems(deleteIds);
     if (ok) {
-      const updated = listWalletItems();
-      setItems(updated);
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        targetDeleteIds.forEach((id) => next.delete(id));
-        return next;
-      });
       showSuccess({
         title: 'Items deleted',
-        description: `Successfully deleted ${targetDeleteIds.length} ${
-          targetDeleteIds.length === 1 ? 'item' : 'items'
+        description: `Successfully deleted ${deleteIds.length} ${
+          deleteIds.length === 1 ? 'item' : 'items'
         }.`,
       });
     } else {
+      setItems(snapshot);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        deleteIds.forEach((id) => next.add(id));
+        return next;
+      });
       showError({
         title: 'Delete failed',
         description: 'Failed to remove selected wallet items.',
@@ -115,7 +124,7 @@ export default function WalletPage() {
 
     setIsDeleteModalOpen(false);
     setTargetDeleteIds([]);
-  }, [targetDeleteIds, showSuccess, showError]);
+  }, [items, targetDeleteIds, showSuccess, showError]);
 
   const handleCancelDelete = useCallback(() => {
     setIsDeleteModalOpen(false);

@@ -1,7 +1,7 @@
-import { render, screen, waitFor, within, act } from '@testing-library/react';
+import { render, screen, waitFor, within, act, fireEvent } from '@testing-library/react';
 import ContractDetailPage from '../page';
 import * as contractResolver from '@/lib/contractResolver';
-import { upsertContract, listMilestonesByContract } from '@/lib/repository';
+import { upsertContract, listMilestonesByContract, updateMilestone } from '@/lib/repository';
 import { useWallet } from '@/contexts/WalletContext';
 import { ToastProvider } from '@/components/toast/toast-provider';
 import userEvent from '@testing-library/user-event';
@@ -29,6 +29,7 @@ jest.mock('@/contexts/WalletContext', () => ({
 
 const mockedResolveContractData = jest.mocked(contractResolver.resolveContractData);
 const mockedUpsertContract = jest.mocked(upsertContract);
+const mockedUpdateMilestone = jest.mocked(updateMilestone);
 const mockedListMilestonesByContract = jest.mocked(listMilestonesByContract);
 const mockedUseWallet = useWallet as jest.MockedFunction<typeof useWallet>;
 
@@ -593,6 +594,100 @@ describe('ContractDetailPage', () => {
     ])('calls notFound() for invalid id: %s', async (_label, _id) => {
       // Validation is tested via isValidContractId in lib tests
       // Direct component call skipped due to React 19 use() hook requirements
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Optimistic milestone update
+  // ---------------------------------------------------------------------------
+
+  describe('optimistic milestone update', () => {
+    beforeEach(() => {
+      mockedListMilestonesByContract.mockReturnValue(contractData.milestones);
+    });
+
+    it('applies milestone patch optimistically before persistence', async () => {
+      await renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Design and review')).toBeInTheDocument();
+      });
+
+      const editBtn = screen.getByRole('button', { name: 'Edit milestone Design and review' });
+      fireEvent.click(editBtn);
+
+      const titleInput = screen.getByDisplayValue('Design and review');
+      fireEvent.change(titleInput, { target: { value: 'Design and review (updated)' } });
+
+      fireEvent.click(screen.getByTestId('save-milestone-ms-2'));
+
+      // UI updates optimistically before updateMilestone returns
+      expect(screen.getByText('Design and review (updated)')).toBeInTheDocument();
+      expect(mockedUpdateMilestone).toHaveBeenCalledWith(
+        'ms-2',
+        expect.objectContaining({ title: 'Design and review (updated)' }),
+      );
+    });
+
+    it('rolls back the optimistic milestone update when persistence fails', async () => {
+      mockedUpdateMilestone.mockReturnValue(false);
+      await renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Design and review')).toBeInTheDocument();
+      });
+
+      const editBtn = screen.getByRole('button', { name: 'Edit milestone Design and review' });
+      fireEvent.click(editBtn);
+
+      const titleInput = screen.getByDisplayValue('Design and review');
+      fireEvent.change(titleInput, { target: { value: 'Design and review (updated)' } });
+
+      fireEvent.click(screen.getByTestId('save-milestone-ms-2'));
+
+      // On failure, the other milestones should still show original data
+      expect(screen.getByText('Kickoff and scope approval')).toBeInTheDocument();
+      expect(screen.getByText('Final delivery')).toBeInTheDocument();
+    });
+
+    it('calls updateMilestone with the correct id and patch on save', async () => {
+      await renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Final delivery')).toBeInTheDocument();
+      });
+
+      const editBtn = screen.getByRole('button', { name: 'Edit milestone Final delivery' });
+      fireEvent.click(editBtn);
+
+      const titleInput = screen.getByDisplayValue('Final delivery');
+      fireEvent.change(titleInput, { target: { value: 'Final delivery v2' } });
+
+      fireEvent.click(screen.getByTestId('save-milestone-ms-3'));
+
+      expect(mockedUpdateMilestone).toHaveBeenCalledWith(
+        'ms-3',
+        expect.objectContaining({ title: 'Final delivery v2' }),
+      );
+    });
+
+    it('keeps the edit form open when the save fails', async () => {
+      mockedUpdateMilestone.mockReturnValue(false);
+      await renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Kickoff and scope approval')).toBeInTheDocument();
+      });
+
+      const editBtn = screen.getByRole('button', { name: 'Edit milestone Kickoff and scope approval' });
+      fireEvent.click(editBtn);
+
+      expect(screen.getByTestId('milestone-edit-form-ms-1')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('save-milestone-ms-1'));
+
+      // Edit form stays open so user can retry
+      expect(screen.getByTestId('milestone-edit-form-ms-1')).toBeInTheDocument();
     });
   });
 });

@@ -196,4 +196,76 @@ describe('WalletPage Integration & Bulk Selection', () => {
 
     expect(mockDeleteWalletItems).toHaveBeenCalledWith(['w-1']);
   });
+
+  // ---------------------------------------------------------------------------
+  // Optimistic delete — success and rollback
+  // ---------------------------------------------------------------------------
+
+  it('removes items from UI optimistically before delete persists', async () => {
+    mockListWalletItems.mockReturnValue(SAMPLE_WALLET_ITEMS);
+    renderWithProviders(<WalletPage />);
+
+    // Select first item and confirm delete
+    fireEvent.click(screen.getByTestId('select-item-checkbox-w-1'));
+    fireEvent.click(screen.getByRole('button', { name: /delete 1 selected item/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    // Items are removed from the DOM immediately (optimistic), before
+    // deleteWalletItems is even called.
+    expect(screen.queryByText('Stellar Lumens (XLM)')).not.toBeInTheDocument();
+
+    expect(mockDeleteWalletItems).toHaveBeenCalledWith(['w-1']);
+  });
+
+  it('rolls back the optimistic delete when persistence fails and shows an error toast', async () => {
+    mockDeleteWalletItems.mockReturnValue(false);
+    mockListWalletItems.mockReturnValue(SAMPLE_WALLET_ITEMS);
+    renderWithProviders(<WalletPage />);
+
+    // Select first item
+    fireEvent.click(screen.getByTestId('select-item-checkbox-w-1'));
+    fireEvent.click(screen.getByRole('button', { name: /delete 1 selected item/i }));
+
+    // Confirm delete
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    // On failure, items should be restored to the list
+    await waitFor(() => {
+      expect(screen.getByText('Stellar Lumens (XLM)')).toBeInTheDocument();
+    });
+
+    // Error toast is shown
+    expect(screen.getByText('Delete failed')).toBeInTheDocument();
+  });
+
+  it('rolls back correctly when a single item delete fails', async () => {
+    mockDeleteWalletItems.mockReturnValue(false);
+    mockListWalletItems.mockReturnValue(SAMPLE_WALLET_ITEMS);
+    renderWithProviders(<WalletPage />);
+
+    const rowDeleteBtn = screen.getByRole('button', { name: 'Delete Stellar Lumens (XLM)' });
+    fireEvent.click(rowDeleteBtn);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Stellar Lumens (XLM)')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Delete failed')).toBeInTheDocument();
+  });
+
+  it('rolls back selection state when delete fails', async () => {
+    mockDeleteWalletItems.mockReturnValue(false);
+    mockListWalletItems.mockReturnValue(SAMPLE_WALLET_ITEMS);
+    renderWithProviders(<WalletPage />);
+
+    fireEvent.click(screen.getByTestId('select-item-checkbox-w-1'));
+    fireEvent.click(screen.getByRole('button', { name: /delete 1 selected item/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Stellar Lumens (XLM)')).toBeInTheDocument();
+    });
+  });
 });
