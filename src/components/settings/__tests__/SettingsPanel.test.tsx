@@ -290,6 +290,57 @@ describe('SettingsPanel', () => {
     expect(saved.formDensity).toBe('compact');
   });
 
+  it('does not re-render memoized settings sections when unrelated state changes', () => {
+    const UnrelatedStateWrapper = ({ children }: { children: React.ReactNode }) => {
+      const [count, setCount] = React.useState(0);
+      return (
+        <>
+          <button data-testid="unrelated-state-button" onClick={() => setCount((curr) => curr + 1)}>
+            {count}
+          </button>
+          {children}
+        </>
+      );
+    };
+
+    const { getByTestId } = renderWithProvider(
+      <UnrelatedStateWrapper>
+        <SettingsPanel isOpen={true} onClose={() => {}} />
+      </UnrelatedStateWrapper>
+    );
+
+    const appearanceSection = getByTestId('appearance-section');
+    const preferenceControls = getByTestId('preference-controls');
+
+    const initialAppearanceRenders = Number(appearanceSection.dataset.renderCount);
+    const initialPreferenceRenders = Number(preferenceControls.dataset.renderCount);
+
+    fireEvent.click(getByTestId('unrelated-state-button'));
+
+    expect(Number(appearanceSection.dataset.renderCount)).toBe(initialAppearanceRenders);
+    expect(Number(preferenceControls.dataset.renderCount)).toBe(initialPreferenceRenders);
+  });
+
+  it('re-renders only the affected section when a related preference changes', async () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+
+    const appearanceSection = screen.getByTestId('appearance-section');
+    const preferenceControls = screen.getByTestId('preference-controls');
+
+    const initialAppearanceRenders = Number(appearanceSection.dataset.renderCount);
+    const initialPreferenceRenders = Number(preferenceControls.dataset.renderCount);
+
+    const darkButton = screen.getByRole('radio', { name: /dark/i });
+    fireEvent.click(darkButton);
+
+    await waitFor(() => {
+      expect(darkButton).toHaveAttribute('aria-checked', 'true');
+    });
+
+    expect(Number(appearanceSection.dataset.renderCount)).toBeGreaterThan(initialAppearanceRenders);
+    expect(Number(preferenceControls.dataset.renderCount)).toBe(initialPreferenceRenders);
+  });
+
   it('restores preferences from localStorage on remount (simulated reload)', () => {
     localStorage.setItem(
       'talenttrust-user-preferences',

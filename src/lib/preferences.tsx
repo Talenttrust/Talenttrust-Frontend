@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { getItem, setItem } from './safeStorage';
 
@@ -271,9 +271,14 @@ export function sanitizePreferences(raw: unknown): UserPreferences {
  */
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
+  const preferencesRef = useRef<UserPreferences>(DEFAULT_PREFERENCES);
   const [isHydrated, setIsHydrated] = useState(false);
   const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)');
   const pendingUpdates = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    preferencesRef.current = preferences;
+  }, [preferences]);
 
   // Load from localStorage on mount. Every value is routed through
   // `sanitizePreferences` so tampered, corrupted, or prototype-polluting
@@ -316,51 +321,57 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     applyTheme(preferences.theme);
   }, [preferences.theme, systemPrefersDark]);
 
-  const updatePreference = async <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => {
-    const previous = preferences[key];
-    const currentReq = (pendingUpdates.current[key as string] || 0) + 1;
-    pendingUpdates.current[key as string] = currentReq;
+  const updatePreference = useCallback(
+    async <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => {
+      const previous = preferencesRef.current[key];
+      const currentReq = (pendingUpdates.current[key as string] || 0) + 1;
+      pendingUpdates.current[key as string] = currentReq;
 
-    setPreferences(prev => ({ ...prev, [key]: value }));
+      setPreferences(prev => ({ ...prev, [key]: value }));
 
-    try {
-      await new Promise<void>((resolve, reject) => {
-        setTimeout(() => {
-          if (typeof window !== 'undefined' && (window as any).__SIMULATE_SETTINGS_ERROR) {
-            reject(new Error('Failed to save settings'));
-          } else {
-            resolve();
-          }
-        }, 600);
-      });
-    } catch (error) {
-      if (pendingUpdates.current[key as string] === currentReq) {
-        setPreferences(prev => ({ ...prev, [key]: previous }));
+      try {
+        await new Promise<void>((resolve, reject) => {
+          setTimeout(() => {
+            if (typeof window !== 'undefined' && (window as any).__SIMULATE_SETTINGS_ERROR) {
+              reject(new Error('Failed to save settings'));
+            } else {
+              resolve();
+            }
+          }, 600);
+        });
+      } catch (error) {
+        if (pendingUpdates.current[key as string] === currentReq) {
+          setPreferences(prev => ({ ...prev, [key]: previous }));
+        }
+        throw error;
       }
-      throw error;
-    }
-  };
+    },
+    [],
+  );
 
   /**
    * Format monetary values using the active amount preference.
    * USD keeps the caller-provided currency, NGN forces Nigerian Naira,
    * and compact keeps the caller-provided currency with compact notation.
    */
-  const formatAmount = (amount: number, currency: string = 'USD') => {
-    const { amountFormat } = preferences;
-    
-    // Determine which currency to use based on settings
-    const activeCurrency = amountFormat === 'ngn' ? 'NGN' : currency;
-    const locale = amountFormat === 'ngn' ? 'en-NG' : 'en-US';
+  const formatAmount = useMemo(
+    () => (amount: number, currency: string = 'USD') => {
+      const { amountFormat } = preferences;
+      
+      // Determine which currency to use based on settings
+      const activeCurrency = amountFormat === 'ngn' ? 'NGN' : currency;
+      const locale = amountFormat === 'ngn' ? 'en-NG' : 'en-US';
 
-    if (amountFormat === 'compact') {
-      return safeCurrencyFormat(amount, activeCurrency, 'en-US', {
-        notation: 'compact',
-      });
-    }
+      if (amountFormat === 'compact') {
+        return safeCurrencyFormat(amount, activeCurrency, 'en-US', {
+          notation: 'compact',
+        });
+      }
 
-    return safeCurrencyFormat(amount, activeCurrency, locale);
-  };
+      return safeCurrencyFormat(amount, activeCurrency, locale);
+    },
+    [preferences.amountFormat],
+  );
 
   return (
     <PreferencesContext.Provider value={{ preferences, updatePreference, formatAmount }}>
