@@ -1,14 +1,11 @@
 import React from 'react';
 import { render, screen, waitFor, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import MilestonesPage, { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from '../page';
-import { listMilestones } from '@/lib/repository';
-import * as repository from '@/lib/repository';
 import MilestonesPage from '../page';
 import { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from '../constants';
-import { listMilestones, saveMilestone } from '@/lib/repository';
+import { listMilestones } from '@/lib/repository';
+import * as repository from '@/lib/repository';
 import type { Milestone } from '@/types/domain';
-
 // ---------------------------------------------------------------------------
 // useCopyToClipboard mock — MilestoneCard uses useCopyToClipboard for IDs
 // These mutable variables let tests control the hook's return value and
@@ -958,7 +955,7 @@ describe('MilestonesPage — focus management (issue #682)', () => {
 
       await waitFor(() => expect(screen.getByText('Repository Kickoff')).toBeInTheDocument());
 
-      await user.click(screen.getByRole('button', { name: /add milestone/i }));
+      await user.click(screen.getByRole('button', { name: /add\.\.\./i }));
       await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
 
       const dialog = screen.getByRole('dialog');
