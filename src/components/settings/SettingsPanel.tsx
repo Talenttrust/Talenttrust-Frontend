@@ -4,6 +4,9 @@ import React, { useRef, useEffect, useCallback, memo } from 'react';
 import { usePreferences, type UserPreferences } from '@/lib/preferences';
 import { useToast } from '@/components/toast/toast-provider';
 import { reportError } from '@/lib/errorReporter';
+import { ErrorSummary } from '@/components/ErrorSummary';
+import { validatePreferences } from '@/lib/validatePreferences';
+import { MIN_IDLE_DISCONNECT_MS, MAX_IDLE_DISCONNECT_MS } from '@/lib/validatePreferences';
 
 const FOCUSABLE_SELECTORS =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -282,6 +285,49 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { showError } = useToast();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
+
+  const [idleInput, setIdleInput] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (isOpen) {
+      setIdleInput(String(preferences.idleDisconnectMs));
+      setErrors({});
+    }
+  }, [isOpen, preferences.idleDisconnectMs]);
+
+  const clearError = (fieldId: string) => {
+    setErrors((prev) => {
+      if (!prev[fieldId]) return prev;
+      const next = { ...prev };
+      delete next[fieldId];
+      return next;
+    });
+  };
+
+  const runValidation = useCallback(() => {
+    const result = validatePreferences({
+      theme: preferences.theme,
+      amountFormat: preferences.amountFormat,
+      toastDensity: preferences.toastDensity,
+      formDensity: preferences.formDensity,
+      milestonesDensity: preferences.milestonesDensity,
+      walletDensity: preferences.walletDensity,
+      contractsDensity: preferences.contractsDensity,
+      quietMode: preferences.quietMode,
+      toastDuration: preferences.toastDuration,
+      idleDisconnectMs: idleInput,
+    });
+
+    const errorMap: Record<string, string> = {};
+    for (const err of result) {
+      errorMap[err.fieldId] = err.message;
+    }
+
+    setErrors(errorMap);
+    return result.length === 0;
+  }, [preferences, idleInput]);
 
   const handleUpdate = useCallback(
     async <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => {
@@ -333,6 +379,72 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     void handleUpdate('quietMode', !preferences.quietMode);
   }, [handleUpdate, preferences.quietMode]);
 
+  const handleRadioChange = (key: keyof UserPreferences, value: string) => {
+    clearError(`pref-${key}`);
+    handleUpdate(key as any, value as any);
+  };
+
+  const handleIdleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setIdleInput(val);
+    if (errors['pref-idleDisconnectMs']) {
+      const testErrors = validatePreferences({
+        theme: preferences.theme,
+        amountFormat: preferences.amountFormat,
+        toastDensity: preferences.toastDensity,
+        formDensity: preferences.formDensity,
+        milestonesDensity: preferences.milestonesDensity,
+        walletDensity: preferences.walletDensity,
+        contractsDensity: preferences.contractsDensity,
+        quietMode: preferences.quietMode,
+        toastDuration: preferences.toastDuration,
+        idleDisconnectMs: val,
+      });
+      const idleErr = testErrors.find((e) => e.fieldId === 'pref-idleDisconnectMs');
+      if (idleErr) {
+        setErrors((prev) => ({ ...prev, 'pref-idleDisconnectMs': idleErr.message }));
+      } else {
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next['pref-idleDisconnectMs'];
+          return next;
+        });
+      }
+    }
+  };
+
+  const handleIdleBlur = () => {
+    if (idleInput === String(preferences.idleDisconnectMs)) return;
+    const testErrors = validatePreferences({
+      theme: preferences.theme,
+      amountFormat: preferences.amountFormat,
+      toastDensity: preferences.toastDensity,
+      formDensity: preferences.formDensity,
+      milestonesDensity: preferences.milestonesDensity,
+      walletDensity: preferences.walletDensity,
+      contractsDensity: preferences.contractsDensity,
+      quietMode: preferences.quietMode,
+      toastDuration: preferences.toastDuration,
+      idleDisconnectMs: idleInput,
+    });
+    const idleErr = testErrors.find((e) => e.fieldId === 'pref-idleDisconnectMs');
+    if (idleErr) {
+      setErrors((prev) => ({ ...prev, 'pref-idleDisconnectMs': idleErr.message }));
+    } else {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next['pref-idleDisconnectMs'];
+        return next;
+      });
+      const parsed = parseInt(idleInput, 10);
+      if (!isNaN(parsed) && idleInput.trim() !== '') {
+        handleUpdate('idleDisconnectMs', parsed);
+      }
+    }
+  };
+
+  const errorList = Object.entries(errors).map(([fieldId, message]) => ({ fieldId, message }));
+
   /**
    * Focus management effect for modal dialog accessibility.
    * - Sets initial focus to the close button when dialog opens
@@ -382,6 +494,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       previouslyFocused?.focus();
     };
   }, [isOpen, onClose]);
+
+  const handleDone = () => {
+    if (runValidation()) {
+      onClose();
+    } else {
+      // Focus the error summary so screen readers announce the errors
+      requestAnimationFrame(() => {
+        errorSummaryRef.current?.focus();
+      });
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -439,7 +562,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
         <div className="p-6 border-t border-[var(--border)] bg-[var(--surface)]">
           <button 
-            onClick={onClose}
+            onClick={handleDone}
             className="w-full py-2 px-4 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-md font-medium hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
           >
             Done

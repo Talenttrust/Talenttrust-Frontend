@@ -68,36 +68,38 @@ exports[`SettingsPanel – currency display states matches snapshot when amountF
               >
                 Theme
               </label>
-              <div
-                aria-label="Theme"
-                aria-labelledby="theme-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Theme"
+                  aria-labelledby="theme-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  light
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  dark
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  system
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    light
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    dark
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    system
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -107,36 +109,38 @@ exports[`SettingsPanel – currency display states matches snapshot when amountF
               >
                 Currency Display
               </label>
-              <div
-                aria-label="Currency Display"
-                aria-labelledby="currency-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Currency Display"
+                  aria-labelledby="currency-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  usd
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  ngn
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    usd
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    ngn
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -159,28 +163,30 @@ exports[`SettingsPanel – currency display states matches snapshot when amountF
               >
                 Toast Density
               </label>
-              <div
-                aria-label="Toast Density"
-                aria-labelledby="density-label"
-                class="grid grid-cols-2 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Toast Density"
+                  aria-labelledby="density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  relaxed
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    relaxed
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -212,32 +218,90 @@ exports[`SettingsPanel – currency display states matches snapshot when amountF
                 </button>
               </div>
             </div>
-            <div
-              class="flex items-center justify-between"
-            >
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="contracts-density-label"
+              >
+                Contracts Density
+              </label>
               <div>
-                <label
-                  class="text-sm font-medium text-[var(--foreground)]"
-                  id="quiet-mode-label"
+                <div
+                  aria-label="Contracts Density"
+                  aria-labelledby="contracts-density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  Quiet Mode
-                </label>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    comfortable
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="quiet-mode-label"
+              >
+                Quiet Mode
+              </label>
+              <div
+                class="flex items-center justify-between"
+              >
                 <p
                   class="text-xs text-[var(--muted-foreground)]"
                 >
                   Suppress success notifications
                 </p>
+                <button
+                  aria-checked="false"
+                  aria-labelledby="quiet-mode-label"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
+                  role="switch"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
+                  />
+                </button>
               </div>
-              <button
-                aria-checked="false"
-                aria-labelledby="quiet-mode-label"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
-                role="switch"
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                for="pref-idleDisconnectMs"
               >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
-                />
-              </button>
+                Idle Disconnect Timeout
+              </label>
+              <p
+                class="text-xs text-[var(--muted-foreground)] mb-2"
+              >
+                Auto-disconnect after inactivity. Set to 0 to disable, or 
+                5000
+                –
+                30000
+                 ms.
+              </p>
+              <input
+                aria-invalid="false"
+                class="w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 border-[var(--border)]"
+                id="pref-idleDisconnectMs"
+                inputmode="numeric"
+                type="text"
+                value="0"
+              />
             </div>
           </div>
         </section>
@@ -322,36 +386,38 @@ exports[`SettingsPanel – currency display states matches snapshot when amountF
               >
                 Theme
               </label>
-              <div
-                aria-label="Theme"
-                aria-labelledby="theme-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Theme"
+                  aria-labelledby="theme-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  light
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  dark
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  system
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    light
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    dark
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    system
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -361,36 +427,38 @@ exports[`SettingsPanel – currency display states matches snapshot when amountF
               >
                 Currency Display
               </label>
-              <div
-                aria-label="Currency Display"
-                aria-labelledby="currency-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Currency Display"
+                  aria-labelledby="currency-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  usd
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  ngn
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    usd
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    ngn
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -413,28 +481,30 @@ exports[`SettingsPanel – currency display states matches snapshot when amountF
               >
                 Toast Density
               </label>
-              <div
-                aria-label="Toast Density"
-                aria-labelledby="density-label"
-                class="grid grid-cols-2 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Toast Density"
+                  aria-labelledby="density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  relaxed
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    relaxed
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -466,32 +536,90 @@ exports[`SettingsPanel – currency display states matches snapshot when amountF
                 </button>
               </div>
             </div>
-            <div
-              class="flex items-center justify-between"
-            >
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="contracts-density-label"
+              >
+                Contracts Density
+              </label>
               <div>
-                <label
-                  class="text-sm font-medium text-[var(--foreground)]"
-                  id="quiet-mode-label"
+                <div
+                  aria-label="Contracts Density"
+                  aria-labelledby="contracts-density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  Quiet Mode
-                </label>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    comfortable
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="quiet-mode-label"
+              >
+                Quiet Mode
+              </label>
+              <div
+                class="flex items-center justify-between"
+              >
                 <p
                   class="text-xs text-[var(--muted-foreground)]"
                 >
                   Suppress success notifications
                 </p>
+                <button
+                  aria-checked="false"
+                  aria-labelledby="quiet-mode-label"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
+                  role="switch"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
+                  />
+                </button>
               </div>
-              <button
-                aria-checked="false"
-                aria-labelledby="quiet-mode-label"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
-                role="switch"
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                for="pref-idleDisconnectMs"
               >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
-                />
-              </button>
+                Idle Disconnect Timeout
+              </label>
+              <p
+                class="text-xs text-[var(--muted-foreground)] mb-2"
+              >
+                Auto-disconnect after inactivity. Set to 0 to disable, or 
+                5000
+                –
+                30000
+                 ms.
+              </p>
+              <input
+                aria-invalid="false"
+                class="w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 border-[var(--border)]"
+                id="pref-idleDisconnectMs"
+                inputmode="numeric"
+                type="text"
+                value="0"
+              />
             </div>
           </div>
         </section>
@@ -576,36 +704,38 @@ exports[`SettingsPanel – currency display states matches snapshot when amountF
               >
                 Theme
               </label>
-              <div
-                aria-label="Theme"
-                aria-labelledby="theme-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Theme"
+                  aria-labelledby="theme-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  light
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  dark
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  system
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    light
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    dark
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    system
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -615,36 +745,38 @@ exports[`SettingsPanel – currency display states matches snapshot when amountF
               >
                 Currency Display
               </label>
-              <div
-                aria-label="Currency Display"
-                aria-labelledby="currency-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Currency Display"
+                  aria-labelledby="currency-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  usd
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  ngn
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    usd
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    ngn
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -667,28 +799,30 @@ exports[`SettingsPanel – currency display states matches snapshot when amountF
               >
                 Toast Density
               </label>
-              <div
-                aria-label="Toast Density"
-                aria-labelledby="density-label"
-                class="grid grid-cols-2 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Toast Density"
+                  aria-labelledby="density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  relaxed
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    relaxed
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -720,32 +854,90 @@ exports[`SettingsPanel – currency display states matches snapshot when amountF
                 </button>
               </div>
             </div>
-            <div
-              class="flex items-center justify-between"
-            >
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="contracts-density-label"
+              >
+                Contracts Density
+              </label>
               <div>
-                <label
-                  class="text-sm font-medium text-[var(--foreground)]"
-                  id="quiet-mode-label"
+                <div
+                  aria-label="Contracts Density"
+                  aria-labelledby="contracts-density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  Quiet Mode
-                </label>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    comfortable
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="quiet-mode-label"
+              >
+                Quiet Mode
+              </label>
+              <div
+                class="flex items-center justify-between"
+              >
                 <p
                   class="text-xs text-[var(--muted-foreground)]"
                 >
                   Suppress success notifications
                 </p>
+                <button
+                  aria-checked="false"
+                  aria-labelledby="quiet-mode-label"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
+                  role="switch"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
+                  />
+                </button>
               </div>
-              <button
-                aria-checked="false"
-                aria-labelledby="quiet-mode-label"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
-                role="switch"
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                for="pref-idleDisconnectMs"
               >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
-                />
-              </button>
+                Idle Disconnect Timeout
+              </label>
+              <p
+                class="text-xs text-[var(--muted-foreground)] mb-2"
+              >
+                Auto-disconnect after inactivity. Set to 0 to disable, or 
+                5000
+                –
+                30000
+                 ms.
+              </p>
+              <input
+                aria-invalid="false"
+                class="w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 border-[var(--border)]"
+                id="pref-idleDisconnectMs"
+                inputmode="numeric"
+                type="text"
+                value="0"
+              />
             </div>
           </div>
         </section>
@@ -830,36 +1022,38 @@ exports[`SettingsPanel – fully-loaded state matches snapshot when all preferen
               >
                 Theme
               </label>
-              <div
-                aria-label="Theme"
-                aria-labelledby="theme-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Theme"
+                  aria-labelledby="theme-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  light
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  dark
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  system
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    light
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    dark
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    system
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -869,36 +1063,38 @@ exports[`SettingsPanel – fully-loaded state matches snapshot when all preferen
               >
                 Currency Display
               </label>
-              <div
-                aria-label="Currency Display"
-                aria-labelledby="currency-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Currency Display"
+                  aria-labelledby="currency-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  usd
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  ngn
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    usd
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    ngn
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -921,28 +1117,30 @@ exports[`SettingsPanel – fully-loaded state matches snapshot when all preferen
               >
                 Toast Density
               </label>
-              <div
-                aria-label="Toast Density"
-                aria-labelledby="density-label"
-                class="grid grid-cols-2 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Toast Density"
+                  aria-labelledby="density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  relaxed
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    relaxed
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -974,32 +1172,90 @@ exports[`SettingsPanel – fully-loaded state matches snapshot when all preferen
                 </button>
               </div>
             </div>
-            <div
-              class="flex items-center justify-between"
-            >
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="contracts-density-label"
+              >
+                Contracts Density
+              </label>
               <div>
-                <label
-                  class="text-sm font-medium text-[var(--foreground)]"
-                  id="quiet-mode-label"
+                <div
+                  aria-label="Contracts Density"
+                  aria-labelledby="contracts-density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  Quiet Mode
-                </label>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    comfortable
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="quiet-mode-label"
+              >
+                Quiet Mode
+              </label>
+              <div
+                class="flex items-center justify-between"
+              >
                 <p
                   class="text-xs text-[var(--muted-foreground)]"
                 >
                   Suppress success notifications
                 </p>
+                <button
+                  aria-checked="true"
+                  aria-labelledby="quiet-mode-label"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--primary)]"
+                  role="switch"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6"
+                  />
+                </button>
               </div>
-              <button
-                aria-checked="true"
-                aria-labelledby="quiet-mode-label"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--primary)]"
-                role="switch"
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                for="pref-idleDisconnectMs"
               >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6"
-                />
-              </button>
+                Idle Disconnect Timeout
+              </label>
+              <p
+                class="text-xs text-[var(--muted-foreground)] mb-2"
+              >
+                Auto-disconnect after inactivity. Set to 0 to disable, or 
+                5000
+                –
+                30000
+                 ms.
+              </p>
+              <input
+                aria-invalid="false"
+                class="w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 border-[var(--border)]"
+                id="pref-idleDisconnectMs"
+                inputmode="numeric"
+                type="text"
+                value="0"
+              />
             </div>
           </div>
         </section>
@@ -1084,36 +1340,38 @@ exports[`SettingsPanel – open, default preferences matches snapshot with all d
               >
                 Theme
               </label>
-              <div
-                aria-label="Theme"
-                aria-labelledby="theme-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Theme"
+                  aria-labelledby="theme-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  light
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  dark
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  system
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    light
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    dark
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    system
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -1123,36 +1381,38 @@ exports[`SettingsPanel – open, default preferences matches snapshot with all d
               >
                 Currency Display
               </label>
-              <div
-                aria-label="Currency Display"
-                aria-labelledby="currency-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Currency Display"
+                  aria-labelledby="currency-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  usd
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  ngn
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    usd
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    ngn
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1175,28 +1435,30 @@ exports[`SettingsPanel – open, default preferences matches snapshot with all d
               >
                 Toast Density
               </label>
-              <div
-                aria-label="Toast Density"
-                aria-labelledby="density-label"
-                class="grid grid-cols-2 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Toast Density"
+                  aria-labelledby="density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  relaxed
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    relaxed
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -1228,32 +1490,90 @@ exports[`SettingsPanel – open, default preferences matches snapshot with all d
                 </button>
               </div>
             </div>
-            <div
-              class="flex items-center justify-between"
-            >
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="contracts-density-label"
+              >
+                Contracts Density
+              </label>
               <div>
-                <label
-                  class="text-sm font-medium text-[var(--foreground)]"
-                  id="quiet-mode-label"
+                <div
+                  aria-label="Contracts Density"
+                  aria-labelledby="contracts-density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  Quiet Mode
-                </label>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    comfortable
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="quiet-mode-label"
+              >
+                Quiet Mode
+              </label>
+              <div
+                class="flex items-center justify-between"
+              >
                 <p
                   class="text-xs text-[var(--muted-foreground)]"
                 >
                   Suppress success notifications
                 </p>
+                <button
+                  aria-checked="false"
+                  aria-labelledby="quiet-mode-label"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
+                  role="switch"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
+                  />
+                </button>
               </div>
-              <button
-                aria-checked="false"
-                aria-labelledby="quiet-mode-label"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
-                role="switch"
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                for="pref-idleDisconnectMs"
               >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
-                />
-              </button>
+                Idle Disconnect Timeout
+              </label>
+              <p
+                class="text-xs text-[var(--muted-foreground)] mb-2"
+              >
+                Auto-disconnect after inactivity. Set to 0 to disable, or 
+                5000
+                –
+                30000
+                 ms.
+              </p>
+              <input
+                aria-invalid="false"
+                class="w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 border-[var(--border)]"
+                id="pref-idleDisconnectMs"
+                inputmode="numeric"
+                type="text"
+                value="0"
+              />
             </div>
           </div>
         </section>
@@ -1338,36 +1658,38 @@ exports[`SettingsPanel – quiet mode states matches snapshot when quietMode is 
               >
                 Theme
               </label>
-              <div
-                aria-label="Theme"
-                aria-labelledby="theme-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Theme"
+                  aria-labelledby="theme-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  light
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  dark
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  system
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    light
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    dark
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    system
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -1377,36 +1699,38 @@ exports[`SettingsPanel – quiet mode states matches snapshot when quietMode is 
               >
                 Currency Display
               </label>
-              <div
-                aria-label="Currency Display"
-                aria-labelledby="currency-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Currency Display"
+                  aria-labelledby="currency-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  usd
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  ngn
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    usd
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    ngn
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1429,28 +1753,30 @@ exports[`SettingsPanel – quiet mode states matches snapshot when quietMode is 
               >
                 Toast Density
               </label>
-              <div
-                aria-label="Toast Density"
-                aria-labelledby="density-label"
-                class="grid grid-cols-2 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Toast Density"
+                  aria-labelledby="density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  relaxed
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    relaxed
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -1482,32 +1808,90 @@ exports[`SettingsPanel – quiet mode states matches snapshot when quietMode is 
                 </button>
               </div>
             </div>
-            <div
-              class="flex items-center justify-between"
-            >
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="contracts-density-label"
+              >
+                Contracts Density
+              </label>
               <div>
-                <label
-                  class="text-sm font-medium text-[var(--foreground)]"
-                  id="quiet-mode-label"
+                <div
+                  aria-label="Contracts Density"
+                  aria-labelledby="contracts-density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  Quiet Mode
-                </label>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    comfortable
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="quiet-mode-label"
+              >
+                Quiet Mode
+              </label>
+              <div
+                class="flex items-center justify-between"
+              >
                 <p
                   class="text-xs text-[var(--muted-foreground)]"
                 >
                   Suppress success notifications
                 </p>
+                <button
+                  aria-checked="false"
+                  aria-labelledby="quiet-mode-label"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
+                  role="switch"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
+                  />
+                </button>
               </div>
-              <button
-                aria-checked="false"
-                aria-labelledby="quiet-mode-label"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
-                role="switch"
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                for="pref-idleDisconnectMs"
               >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
-                />
-              </button>
+                Idle Disconnect Timeout
+              </label>
+              <p
+                class="text-xs text-[var(--muted-foreground)] mb-2"
+              >
+                Auto-disconnect after inactivity. Set to 0 to disable, or 
+                5000
+                –
+                30000
+                 ms.
+              </p>
+              <input
+                aria-invalid="false"
+                class="w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 border-[var(--border)]"
+                id="pref-idleDisconnectMs"
+                inputmode="numeric"
+                type="text"
+                value="0"
+              />
             </div>
           </div>
         </section>
@@ -1592,36 +1976,38 @@ exports[`SettingsPanel – quiet mode states matches snapshot when quietMode is 
               >
                 Theme
               </label>
-              <div
-                aria-label="Theme"
-                aria-labelledby="theme-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Theme"
+                  aria-labelledby="theme-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  light
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  dark
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  system
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    light
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    dark
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    system
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -1631,36 +2017,38 @@ exports[`SettingsPanel – quiet mode states matches snapshot when quietMode is 
               >
                 Currency Display
               </label>
-              <div
-                aria-label="Currency Display"
-                aria-labelledby="currency-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Currency Display"
+                  aria-labelledby="currency-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  usd
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  ngn
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    usd
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    ngn
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1683,28 +2071,30 @@ exports[`SettingsPanel – quiet mode states matches snapshot when quietMode is 
               >
                 Toast Density
               </label>
-              <div
-                aria-label="Toast Density"
-                aria-labelledby="density-label"
-                class="grid grid-cols-2 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Toast Density"
+                  aria-labelledby="density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  relaxed
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    relaxed
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -1736,32 +2126,90 @@ exports[`SettingsPanel – quiet mode states matches snapshot when quietMode is 
                 </button>
               </div>
             </div>
-            <div
-              class="flex items-center justify-between"
-            >
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="contracts-density-label"
+              >
+                Contracts Density
+              </label>
               <div>
-                <label
-                  class="text-sm font-medium text-[var(--foreground)]"
-                  id="quiet-mode-label"
+                <div
+                  aria-label="Contracts Density"
+                  aria-labelledby="contracts-density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  Quiet Mode
-                </label>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    comfortable
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="quiet-mode-label"
+              >
+                Quiet Mode
+              </label>
+              <div
+                class="flex items-center justify-between"
+              >
                 <p
                   class="text-xs text-[var(--muted-foreground)]"
                 >
                   Suppress success notifications
                 </p>
+                <button
+                  aria-checked="true"
+                  aria-labelledby="quiet-mode-label"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--primary)]"
+                  role="switch"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6"
+                  />
+                </button>
               </div>
-              <button
-                aria-checked="true"
-                aria-labelledby="quiet-mode-label"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--primary)]"
-                role="switch"
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                for="pref-idleDisconnectMs"
               >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6"
-                />
-              </button>
+                Idle Disconnect Timeout
+              </label>
+              <p
+                class="text-xs text-[var(--muted-foreground)] mb-2"
+              >
+                Auto-disconnect after inactivity. Set to 0 to disable, or 
+                5000
+                –
+                30000
+                 ms.
+              </p>
+              <input
+                aria-invalid="false"
+                class="w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 border-[var(--border)]"
+                id="pref-idleDisconnectMs"
+                inputmode="numeric"
+                type="text"
+                value="0"
+              />
             </div>
           </div>
         </section>
@@ -1846,36 +2294,38 @@ exports[`SettingsPanel – theme states matches snapshot when theme is "dark" 1`
               >
                 Theme
               </label>
-              <div
-                aria-label="Theme"
-                aria-labelledby="theme-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Theme"
+                  aria-labelledby="theme-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  light
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  dark
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  system
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    light
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    dark
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    system
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -1885,36 +2335,38 @@ exports[`SettingsPanel – theme states matches snapshot when theme is "dark" 1`
               >
                 Currency Display
               </label>
-              <div
-                aria-label="Currency Display"
-                aria-labelledby="currency-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Currency Display"
+                  aria-labelledby="currency-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  usd
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  ngn
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    usd
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    ngn
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1937,28 +2389,30 @@ exports[`SettingsPanel – theme states matches snapshot when theme is "dark" 1`
               >
                 Toast Density
               </label>
-              <div
-                aria-label="Toast Density"
-                aria-labelledby="density-label"
-                class="grid grid-cols-2 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Toast Density"
+                  aria-labelledby="density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  relaxed
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    relaxed
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -1990,32 +2444,90 @@ exports[`SettingsPanel – theme states matches snapshot when theme is "dark" 1`
                 </button>
               </div>
             </div>
-            <div
-              class="flex items-center justify-between"
-            >
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="contracts-density-label"
+              >
+                Contracts Density
+              </label>
               <div>
-                <label
-                  class="text-sm font-medium text-[var(--foreground)]"
-                  id="quiet-mode-label"
+                <div
+                  aria-label="Contracts Density"
+                  aria-labelledby="contracts-density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  Quiet Mode
-                </label>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    comfortable
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="quiet-mode-label"
+              >
+                Quiet Mode
+              </label>
+              <div
+                class="flex items-center justify-between"
+              >
                 <p
                   class="text-xs text-[var(--muted-foreground)]"
                 >
                   Suppress success notifications
                 </p>
+                <button
+                  aria-checked="false"
+                  aria-labelledby="quiet-mode-label"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
+                  role="switch"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
+                  />
+                </button>
               </div>
-              <button
-                aria-checked="false"
-                aria-labelledby="quiet-mode-label"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
-                role="switch"
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                for="pref-idleDisconnectMs"
               >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
-                />
-              </button>
+                Idle Disconnect Timeout
+              </label>
+              <p
+                class="text-xs text-[var(--muted-foreground)] mb-2"
+              >
+                Auto-disconnect after inactivity. Set to 0 to disable, or 
+                5000
+                –
+                30000
+                 ms.
+              </p>
+              <input
+                aria-invalid="false"
+                class="w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 border-[var(--border)]"
+                id="pref-idleDisconnectMs"
+                inputmode="numeric"
+                type="text"
+                value="0"
+              />
             </div>
           </div>
         </section>
@@ -2100,36 +2612,38 @@ exports[`SettingsPanel – theme states matches snapshot when theme is "light" 1
               >
                 Theme
               </label>
-              <div
-                aria-label="Theme"
-                aria-labelledby="theme-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Theme"
+                  aria-labelledby="theme-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  light
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  dark
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  system
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    light
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    dark
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    system
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -2139,36 +2653,38 @@ exports[`SettingsPanel – theme states matches snapshot when theme is "light" 1
               >
                 Currency Display
               </label>
-              <div
-                aria-label="Currency Display"
-                aria-labelledby="currency-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Currency Display"
+                  aria-labelledby="currency-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  usd
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  ngn
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    usd
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    ngn
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2191,28 +2707,30 @@ exports[`SettingsPanel – theme states matches snapshot when theme is "light" 1
               >
                 Toast Density
               </label>
-              <div
-                aria-label="Toast Density"
-                aria-labelledby="density-label"
-                class="grid grid-cols-2 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Toast Density"
+                  aria-labelledby="density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  relaxed
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    relaxed
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -2244,32 +2762,90 @@ exports[`SettingsPanel – theme states matches snapshot when theme is "light" 1
                 </button>
               </div>
             </div>
-            <div
-              class="flex items-center justify-between"
-            >
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="contracts-density-label"
+              >
+                Contracts Density
+              </label>
               <div>
-                <label
-                  class="text-sm font-medium text-[var(--foreground)]"
-                  id="quiet-mode-label"
+                <div
+                  aria-label="Contracts Density"
+                  aria-labelledby="contracts-density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  Quiet Mode
-                </label>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    comfortable
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="quiet-mode-label"
+              >
+                Quiet Mode
+              </label>
+              <div
+                class="flex items-center justify-between"
+              >
                 <p
                   class="text-xs text-[var(--muted-foreground)]"
                 >
                   Suppress success notifications
                 </p>
+                <button
+                  aria-checked="false"
+                  aria-labelledby="quiet-mode-label"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
+                  role="switch"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
+                  />
+                </button>
               </div>
-              <button
-                aria-checked="false"
-                aria-labelledby="quiet-mode-label"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
-                role="switch"
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                for="pref-idleDisconnectMs"
               >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
-                />
-              </button>
+                Idle Disconnect Timeout
+              </label>
+              <p
+                class="text-xs text-[var(--muted-foreground)] mb-2"
+              >
+                Auto-disconnect after inactivity. Set to 0 to disable, or 
+                5000
+                –
+                30000
+                 ms.
+              </p>
+              <input
+                aria-invalid="false"
+                class="w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 border-[var(--border)]"
+                id="pref-idleDisconnectMs"
+                inputmode="numeric"
+                type="text"
+                value="0"
+              />
             </div>
           </div>
         </section>
@@ -2354,36 +2930,38 @@ exports[`SettingsPanel – theme states matches snapshot when theme is "system" 
               >
                 Theme
               </label>
-              <div
-                aria-label="Theme"
-                aria-labelledby="theme-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Theme"
+                  aria-labelledby="theme-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  light
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  dark
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  system
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    light
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    dark
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    system
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -2393,36 +2971,38 @@ exports[`SettingsPanel – theme states matches snapshot when theme is "system" 
               >
                 Currency Display
               </label>
-              <div
-                aria-label="Currency Display"
-                aria-labelledby="currency-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Currency Display"
+                  aria-labelledby="currency-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  usd
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  ngn
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    usd
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    ngn
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2445,28 +3025,30 @@ exports[`SettingsPanel – theme states matches snapshot when theme is "system" 
               >
                 Toast Density
               </label>
-              <div
-                aria-label="Toast Density"
-                aria-labelledby="density-label"
-                class="grid grid-cols-2 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Toast Density"
+                  aria-labelledby="density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  relaxed
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    relaxed
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -2498,32 +3080,90 @@ exports[`SettingsPanel – theme states matches snapshot when theme is "system" 
                 </button>
               </div>
             </div>
-            <div
-              class="flex items-center justify-between"
-            >
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="contracts-density-label"
+              >
+                Contracts Density
+              </label>
               <div>
-                <label
-                  class="text-sm font-medium text-[var(--foreground)]"
-                  id="quiet-mode-label"
+                <div
+                  aria-label="Contracts Density"
+                  aria-labelledby="contracts-density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  Quiet Mode
-                </label>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    comfortable
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="quiet-mode-label"
+              >
+                Quiet Mode
+              </label>
+              <div
+                class="flex items-center justify-between"
+              >
                 <p
                   class="text-xs text-[var(--muted-foreground)]"
                 >
                   Suppress success notifications
                 </p>
+                <button
+                  aria-checked="false"
+                  aria-labelledby="quiet-mode-label"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
+                  role="switch"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
+                  />
+                </button>
               </div>
-              <button
-                aria-checked="false"
-                aria-labelledby="quiet-mode-label"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
-                role="switch"
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                for="pref-idleDisconnectMs"
               >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
-                />
-              </button>
+                Idle Disconnect Timeout
+              </label>
+              <p
+                class="text-xs text-[var(--muted-foreground)] mb-2"
+              >
+                Auto-disconnect after inactivity. Set to 0 to disable, or 
+                5000
+                –
+                30000
+                 ms.
+              </p>
+              <input
+                aria-invalid="false"
+                class="w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 border-[var(--border)]"
+                id="pref-idleDisconnectMs"
+                inputmode="numeric"
+                type="text"
+                value="0"
+              />
             </div>
           </div>
         </section>
@@ -2608,36 +3248,38 @@ exports[`SettingsPanel – toast density states matches snapshot when toastDensi
               >
                 Theme
               </label>
-              <div
-                aria-label="Theme"
-                aria-labelledby="theme-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Theme"
+                  aria-labelledby="theme-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  light
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  dark
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  system
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    light
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    dark
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    system
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -2647,36 +3289,38 @@ exports[`SettingsPanel – toast density states matches snapshot when toastDensi
               >
                 Currency Display
               </label>
-              <div
-                aria-label="Currency Display"
-                aria-labelledby="currency-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Currency Display"
+                  aria-labelledby="currency-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  usd
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  ngn
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    usd
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    ngn
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2699,28 +3343,30 @@ exports[`SettingsPanel – toast density states matches snapshot when toastDensi
               >
                 Toast Density
               </label>
-              <div
-                aria-label="Toast Density"
-                aria-labelledby="density-label"
-                class="grid grid-cols-2 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Toast Density"
+                  aria-labelledby="density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  relaxed
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    relaxed
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -2752,32 +3398,90 @@ exports[`SettingsPanel – toast density states matches snapshot when toastDensi
                 </button>
               </div>
             </div>
-            <div
-              class="flex items-center justify-between"
-            >
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="contracts-density-label"
+              >
+                Contracts Density
+              </label>
               <div>
-                <label
-                  class="text-sm font-medium text-[var(--foreground)]"
-                  id="quiet-mode-label"
+                <div
+                  aria-label="Contracts Density"
+                  aria-labelledby="contracts-density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  Quiet Mode
-                </label>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    comfortable
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="quiet-mode-label"
+              >
+                Quiet Mode
+              </label>
+              <div
+                class="flex items-center justify-between"
+              >
                 <p
                   class="text-xs text-[var(--muted-foreground)]"
                 >
                   Suppress success notifications
                 </p>
+                <button
+                  aria-checked="false"
+                  aria-labelledby="quiet-mode-label"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
+                  role="switch"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
+                  />
+                </button>
               </div>
-              <button
-                aria-checked="false"
-                aria-labelledby="quiet-mode-label"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
-                role="switch"
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                for="pref-idleDisconnectMs"
               >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
-                />
-              </button>
+                Idle Disconnect Timeout
+              </label>
+              <p
+                class="text-xs text-[var(--muted-foreground)] mb-2"
+              >
+                Auto-disconnect after inactivity. Set to 0 to disable, or 
+                5000
+                –
+                30000
+                 ms.
+              </p>
+              <input
+                aria-invalid="false"
+                class="w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 border-[var(--border)]"
+                id="pref-idleDisconnectMs"
+                inputmode="numeric"
+                type="text"
+                value="0"
+              />
             </div>
           </div>
         </section>
@@ -2862,36 +3566,38 @@ exports[`SettingsPanel – toast density states matches snapshot when toastDensi
               >
                 Theme
               </label>
-              <div
-                aria-label="Theme"
-                aria-labelledby="theme-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
+              <div>
+                <div
+                  aria-label="Theme"
+                  aria-labelledby="theme-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  light
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  dark
-                </button>
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
-                >
-                  system
-                </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    light
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    dark
+                  </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    system
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -2901,36 +3607,38 @@ exports[`SettingsPanel – toast density states matches snapshot when toastDensi
               >
                 Currency Display
               </label>
-              <div
-                aria-label="Currency Display"
-                aria-labelledby="currency-label"
-                class="grid grid-cols-3 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Currency Display"
+                  aria-labelledby="currency-label"
+                  class="grid grid-cols-3 gap-2"
+                  role="radiogroup"
                 >
-                  usd
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  ngn
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    usd
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    ngn
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 uppercase border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2953,28 +3661,30 @@ exports[`SettingsPanel – toast density states matches snapshot when toastDensi
               >
                 Toast Density
               </label>
-              <div
-                aria-label="Toast Density"
-                aria-labelledby="density-label"
-                class="grid grid-cols-2 gap-2"
-                role="radiogroup"
-              >
-                <button
-                  aria-checked="true"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
-                  role="radio"
-                  tabindex="0"
+              <div>
+                <div
+                  aria-label="Toast Density"
+                  aria-labelledby="density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  relaxed
-                </button>
-                <button
-                  aria-checked="false"
-                  class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-                  role="radio"
-                  tabindex="-1"
-                >
-                  compact
-                </button>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    relaxed
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -3006,32 +3716,90 @@ exports[`SettingsPanel – toast density states matches snapshot when toastDensi
                 </button>
               </div>
             </div>
-            <div
-              class="flex items-center justify-between"
-            >
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="contracts-density-label"
+              >
+                Contracts Density
+              </label>
               <div>
-                <label
-                  class="text-sm font-medium text-[var(--foreground)]"
-                  id="quiet-mode-label"
+                <div
+                  aria-label="Contracts Density"
+                  aria-labelledby="contracts-density-label"
+                  class="grid grid-cols-2 gap-2"
+                  role="radiogroup"
                 >
-                  Quiet Mode
-                </label>
+                  <button
+                    aria-checked="true"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    role="radio"
+                    tabindex="0"
+                  >
+                    comfortable
+                  </button>
+                  <button
+                    aria-checked="false"
+                    class="px-3 py-2 text-sm rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 capitalize border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                    role="radio"
+                    tabindex="-1"
+                  >
+                    compact
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                id="quiet-mode-label"
+              >
+                Quiet Mode
+              </label>
+              <div
+                class="flex items-center justify-between"
+              >
                 <p
                   class="text-xs text-[var(--muted-foreground)]"
                 >
                   Suppress success notifications
                 </p>
+                <button
+                  aria-checked="false"
+                  aria-labelledby="quiet-mode-label"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
+                  role="switch"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
+                  />
+                </button>
               </div>
-              <button
-                aria-checked="false"
-                aria-labelledby="quiet-mode-label"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 bg-[var(--muted)]"
-                role="switch"
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium mb-2 text-[var(--foreground)]"
+                for="pref-idleDisconnectMs"
               >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"
-                />
-              </button>
+                Idle Disconnect Timeout
+              </label>
+              <p
+                class="text-xs text-[var(--muted-foreground)] mb-2"
+              >
+                Auto-disconnect after inactivity. Set to 0 to disable, or 
+                5000
+                –
+                30000
+                 ms.
+              </p>
+              <input
+                aria-invalid="false"
+                class="w-full px-3 py-2 text-sm rounded-md border bg-[var(--surface)] text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 border-[var(--border)]"
+                id="pref-idleDisconnectMs"
+                inputmode="numeric"
+                type="text"
+                value="0"
+              />
             </div>
           </div>
         </section>

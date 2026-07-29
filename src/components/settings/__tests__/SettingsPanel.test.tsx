@@ -652,4 +652,165 @@ describe('SettingsPanel', () => {
     expect(themeButtons[1]).toHaveAccessibleName('dark');
     expect(themeButtons[2]).toHaveAccessibleName('system');
   });
+
+  // --- Validation: idle disconnect input ---
+
+  it('renders the idle disconnect timeout input with the default value', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    const input = screen.getByLabelText('Idle Disconnect Timeout') as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.value).toBe('0');
+  });
+
+  it('shows the idle disconnect error inline and in the ErrorSummary when invalid', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    const input = screen.getByLabelText('Idle Disconnect Timeout');
+    fireEvent.change(input, { target: { value: '10.5' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+
+    const errorElements = screen.getAllByText('Idle disconnect must be a whole number');
+    expect(errorElements).toHaveLength(2);
+  });
+
+  it('does not close when Done is clicked with invalid input', () => {
+    const onClose = jest.fn();
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={onClose} />);
+    const input = screen.getByLabelText('Idle Disconnect Timeout');
+    fireEvent.change(input, { target: { value: 'abc' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('closes when Done is clicked after error is corrected', () => {
+    const onClose = jest.fn();
+    const { container } = renderWithProvider(<SettingsPanel isOpen={true} onClose={onClose} />);
+    const input = screen.getByLabelText('Idle Disconnect Timeout');
+
+    fireEvent.change(input, { target: { value: '10.5' } });
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+    expect(container.querySelector('#pref-idleDisconnectMs-error')).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: '10000' } });
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('validates idleDisconnectMs on blur with an invalid value', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    const input = screen.getByLabelText('Idle Disconnect Timeout');
+
+    fireEvent.change(input, { target: { value: '10.5' } });
+    fireEvent.blur(input);
+
+    const errors = screen.getAllByText('Idle disconnect must be a whole number');
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows ErrorSummary when validation errors exist', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    const input = screen.getByLabelText('Idle Disconnect Timeout');
+
+    fireEvent.change(input, { target: { value: 'abc' } });
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+
+    expect(screen.getByText('There is a problem')).toBeInTheDocument();
+  });
+
+  it('sets aria-invalid and aria-describedby on the input when there is an error', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    const input = screen.getByLabelText('Idle Disconnect Timeout');
+
+    fireEvent.change(input, { target: { value: 'abc' } });
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe('pref-idleDisconnectMs-error');
+  });
+
+  it('clears aria-invalid when the value becomes valid again', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    const input = screen.getByLabelText('Idle Disconnect Timeout');
+
+    fireEvent.change(input, { target: { value: 'abc' } });
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+
+    fireEvent.change(input, { target: { value: '5000' } });
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+
+    expect(input.getAttribute('aria-invalid')).toBe('false');
+  });
+
+  it('shows range error when idleDisconnectMs is below the minimum', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    const input = screen.getByLabelText('Idle Disconnect Timeout');
+
+    fireEvent.change(input, { target: { value: '100' } });
+    fireEvent.blur(input);
+
+    const errors = screen.getAllByText(/0 \(disabled\) or between/i);
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows range error when idleDisconnectMs exceeds the maximum', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    const input = screen.getByLabelText('Idle Disconnect Timeout');
+
+    fireEvent.change(input, { target: { value: '99999' } });
+    fireEvent.blur(input);
+
+    const errors = screen.getAllByText(/0 \(disabled\) or between/i);
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('clears errors when panel reopens', () => {
+    const { rerender, container } = renderWithProvider(
+      <SettingsPanel isOpen={true} onClose={() => {}} />
+    );
+    const input = screen.getByLabelText('Idle Disconnect Timeout');
+
+    fireEvent.change(input, { target: { value: 'abc' } });
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+    expect(container.querySelector('#pref-idleDisconnectMs-error')).toBeInTheDocument();
+
+    // Close and reopen
+    rerender(
+      <SettingsPanel isOpen={false} onClose={() => {}} />
+    );
+    rerender(
+      <SettingsPanel isOpen={true} onClose={() => {}} />
+    );
+
+    expect(screen.queryByText('Idle disconnect must be a whole number')).not.toBeInTheDocument();
+  });
+
+  it('shows inline error text with role="alert" on the inline element', () => {
+    const { container } = renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    const input = screen.getByLabelText('Idle Disconnect Timeout');
+
+    fireEvent.change(input, { target: { value: 'abc' } });
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+
+    const inlineError = container.querySelector('#pref-idleDisconnectMs-error');
+    expect(inlineError).toBeInTheDocument();
+    expect(inlineError).toHaveTextContent('Idle disconnect must be a whole number');
+    expect(inlineError?.getAttribute('role')).toBe('alert');
+  });
+
+  it('does not show errors for valid idleDisconnectMs values', () => {
+    renderWithProvider(<SettingsPanel isOpen={true} onClose={() => {}} />);
+    const input = screen.getByLabelText('Idle Disconnect Timeout');
+
+    fireEvent.change(input, { target: { value: '0' } });
+    fireEvent.blur(input);
+    expect(screen.queryByText('Idle disconnect must be a whole number')).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: '15000' } });
+    fireEvent.blur(input);
+    expect(screen.queryByText('Idle disconnect must be a whole number')).not.toBeInTheDocument();
+  });
 });
