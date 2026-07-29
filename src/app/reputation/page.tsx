@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Reputation } from '@/types/domain';
 import ReputationPageClient from './ReputationPageClient';
-import { listReputationEvents } from '@/lib/repository';
 
 const ReputationPage: React.FC = () => {
   const [reputationData, setReputationData] = useState<Reputation | null>(null);

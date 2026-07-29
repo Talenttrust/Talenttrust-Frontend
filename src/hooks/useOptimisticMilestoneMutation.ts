@@ -3,7 +3,6 @@
 import { useCallback, useRef } from 'react';
 import { upsertMilestone, getMilestoneVersion, deleteMilestones } from '@/lib/repository';
 import type { Milestone } from '@/components/MilestonesList';
-import type { MilestoneUpsertResult } from '@/lib/repository';
 
 /**
  * Result returned by optimistic mutation operations.
