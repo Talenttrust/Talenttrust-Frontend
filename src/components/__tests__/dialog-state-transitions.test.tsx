@@ -34,8 +34,6 @@ import ActionPanel from '../ActionPanel';
 // Import hooks so jest.mocked() can resolve their types.
 import { useWallet } from '@/contexts/WalletContext';
 import { useToast } from '@/components/toast/toast-provider';
-// Import stellarAddress so its jest.mock below can resolve the module path.
-import * as stellarAddress from '@/lib/stellarAddress';
 
 // ---------------------------------------------------------------------------
 // Declare module mocks.
