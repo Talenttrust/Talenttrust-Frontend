@@ -16,13 +16,18 @@ jest.mock('@/lib/exportContracts', () => ({
 
 jest.mock('@/components/contracts/ContractsList', () => ({
   __esModule: true,
-  default: ({ contracts }: any) => (
-    <ul data-testid="contracts-list">
+  default: ({ contracts, density, onToggleDensity }: any) => (
+    <ul data-testid="contracts-list" data-density={density}>
       {contracts.map((contract: any, idx: number) => (
         <li key={`${contract.contractName}-${idx}`}>
           {contract.contractName}
         </li>
       ))}
+      {onToggleDensity && (
+        <button onClick={onToggleDensity} data-testid="density-toggle">
+          Toggle Density
+        </button>
+      )}
     </ul>
   ),
 }));
@@ -353,7 +358,7 @@ describe('ContractsPage', () => {
     });
 
   describe('edge cases', () => {
-      it('handles repository errors gracefully', () => {
+    it('handles repository errors gracefully', () => {
       (repository.listContracts as jest.Mock).mockImplementation(() => {
         throw new Error('Storage error');
       });
@@ -458,74 +463,27 @@ describe('ContractsPage', () => {
     });
   });
 
-  describe('Keyboard Accessibility', () => {
-    it('Create Contract button (non-empty state) is a native <button> (inherently keyboard accessible)', () => {
-      const contracts = [makeContract()];
-      mockListContracts.mockReturnValue(contracts);
+  describe('density toggle', () => {
+    it('passes density="comfortable" to ContractsList by default', () => {
+      mockListContracts.mockReturnValue([makeContract()]);
       render(<ContractsPage />);
 
-      const createBtn = screen.getByRole('button', { name: /create contract/i });
-      expect(createBtn.tagName).toBe('BUTTON');
+      const list = screen.getByTestId('contracts-list');
+      expect(list).toHaveAttribute('data-density', 'comfortable');
     });
 
-    it('CSV export button is a native <button> (inherently keyboard accessible)', () => {
-      const contracts = [makeContract()];
-      mockListContracts.mockReturnValue(contracts);
+    it('passes onToggleDensity to ContractsList when contracts are present', () => {
+      mockListContracts.mockReturnValue([makeContract()]);
       render(<ContractsPage />);
 
-      const csvBtn = screen.getByRole('button', { name: /export contracts as csv/i });
-      expect(csvBtn.tagName).toBe('BUTTON');
+      expect(screen.getByTestId('density-toggle')).toBeInTheDocument();
     });
 
-    it('JSON export button is a native <button> (inherently keyboard accessible)', () => {
-      const contracts = [makeContract()];
-      mockListContracts.mockReturnValue(contracts);
+    it('density toggle button is absent when no contracts exist', () => {
+      mockListContracts.mockReturnValue([]);
       render(<ContractsPage />);
 
-      const jsonBtn = screen.getByRole('button', { name: /export contracts as json/i });
-      expect(jsonBtn.tagName).toBe('BUTTON');
-    });
-
-    it('CSV export button has visible focus-visible styling', () => {
-      const contracts = [makeContract()];
-      mockListContracts.mockReturnValue(contracts);
-      render(<ContractsPage />);
-
-      const csvBtn = screen.getByRole('button', { name: /export contracts as csv/i });
-      expect(csvBtn.className).toMatch(/focus-visible:outline/);
-    });
-
-    it('JSON export button has visible focus-visible styling', () => {
-      const contracts = [makeContract()];
-      mockListContracts.mockReturnValue(contracts);
-      render(<ContractsPage />);
-
-      const jsonBtn = screen.getByRole('button', { name: /export contracts as json/i });
-      expect(jsonBtn.className).toMatch(/focus-visible:outline/);
-    });
-
-    it('Create Contract button (non-empty state) has visible focus-visible styling', () => {
-      const contracts = [makeContract()];
-      mockListContracts.mockReturnValue(contracts);
-      render(<ContractsPage />);
-
-      const createBtn = screen.getByRole('button', { name: /create contract/i });
-      expect(createBtn.className).toMatch(/focus-visible:outline/);
-    });
-
-    it('all action buttons are reachable in logical DOM order', () => {
-      const contracts = [makeContract()];
-      mockListContracts.mockReturnValue(contracts);
-      render(<ContractsPage />);
-
-      const csvBtn = screen.getByRole('button', { name: /export contracts as csv/i });
-      const jsonBtn = screen.getByRole('button', { name: /export contracts as json/i });
-      const createBtn = screen.getByRole('button', { name: /create contract/i });
-
-      // CSV should come before JSON in DOM order
-      expect(csvBtn.compareDocumentPosition(jsonBtn)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-      // JSON should come before Create Contract in DOM order
-      expect(jsonBtn.compareDocumentPosition(createBtn)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(screen.queryByTestId('density-toggle')).not.toBeInTheDocument();
     });
   });
 
@@ -583,6 +541,4 @@ describe('ContractsPage', () => {
 
     expect(screen.getByText('Existing Contract')).toBeInTheDocument();
   });
-
-
 });

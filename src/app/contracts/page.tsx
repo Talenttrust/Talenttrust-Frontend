@@ -1,38 +1,14 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
-import dynamic from "next/dynamic";
-import EmptyState from "../../components/EmptyState";
-import ContractsList from "../../components/contracts/ContractsList";
-import { listContracts, saveContract } from "@/lib/repository";
-import {
-  downloadContractsCsv,
-  downloadContractsJson,
-} from "@/lib/exportContracts";
-import { useToast } from "@/components/toast/toast-provider";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import type { Contract } from "@/types/domain";
-
-const ContractCreationFormFallback = () => (
-  <div
-    data-testid="contract-form-loading"
-    className="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg"
-  >
-    <LoadingSkeleton rows={4} className="mb-4" />
-    <LoadingSkeleton rows={1} width="w-3/4" />
-  </div>
-);
-
-const ContractCreationForm = dynamic(
-  () =>
-    import("@/components/ContractCreationForm").then(
-      (mod) => mod.ContractCreationForm,
-    ),
-  {
-    ssr: false,
-    loading: ContractCreationFormFallback,
-  },
-);
+import React, { useCallback, useState } from 'react';
+import EmptyState from '../../components/EmptyState';
+import ContractsList from '../../components/contracts/ContractsList';
+import { ContractCreationForm } from '../../components/ContractCreationForm';
+import { listContracts, saveContract } from '@/lib/repository';
+import { downloadContractsCsv, downloadContractsJson } from '@/lib/exportContracts';
+import { useToast } from '@/components/toast/toast-provider';
+import { usePreferences } from '@/lib/preferences';
+import type { Contract } from '@/types/domain';
 
 type ContractsFetchState =
   | { status: 'loading'; contracts: Contract[] }
@@ -51,7 +27,16 @@ const ContractsPage: React.FC = () => {
   const [fetchState, setFetchState] = useState<ContractsFetchState>(getInitialFetchState);
   const [showForm, setShowForm] = useState(false);
   const { showError } = useToast();
+  const { preferences, updatePreference } = usePreferences();
   const { contracts } = fetchState;
+
+  const contractsDensity = preferences.contractsDensity;
+
+  /** Toggles between compact and comfortable density and persists the choice. */
+  const handleToggleDensity = useCallback(() => {
+    const next = contractsDensity === 'compact' ? 'comfortable' : 'compact';
+    updatePreference('contractsDensity', next);
+  }, [contractsDensity, updatePreference]);
 
   /** Re-reads persisted contracts after a recoverable load failure. */
   const loadContracts = useCallback(() => {
@@ -197,7 +182,11 @@ const ContractsPage: React.FC = () => {
             </button>
           </div>
 
-          <ContractsList contracts={contracts} />
+          <ContractsList
+            contracts={contracts}
+            density={contractsDensity}
+            onToggleDensity={handleToggleDensity}
+          />
         </>
       )}
 
