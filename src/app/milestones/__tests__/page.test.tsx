@@ -955,7 +955,7 @@ describe('MilestonesPage — focus management (issue #682)', () => {
 
       await waitFor(() => expect(screen.getByText('Repository Kickoff')).toBeInTheDocument());
 
-      await user.click(screen.getByRole('button', { name: /add milestone/i }));
+      await user.click(screen.getByRole('button', { name: /add\.\.\./i }));
       await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
 
       const dialog = screen.getByRole('dialog');

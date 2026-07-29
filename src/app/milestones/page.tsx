@@ -24,12 +24,6 @@ import { downloadMilestonesICS } from '@/lib/icsExport';
 import type { Milestone } from '@/types/domain';
 import { SAMPLE_DISMISSED_KEY, SAMPLE_MILESTONES } from './constants';
 
-/**
- * MilestonesList paginates internally via its own `pageSize` prop, but that
- * cap is fixed at mount (see MilestonesList's `displayCount` state). This
- * page doesn't want an arbitrary "Load More" click gating milestones the
- * user just added, so it opts the list out of pagination entirely.
- */
 const UNPAGINATED_LIST_SIZE = 9999;
 
 const VALID_STATUSES: MilestoneStatusFilter[] = [
@@ -76,13 +70,11 @@ const MilestonesContent: React.FC = () => {
     setMilestones,
   );
 
-  // Sync state if searchParams change externally (e.g. back/forward navigation)
   useEffect(() => {
     setStatusFilter(getValidStatus(searchParams.get('status')));
     setSortOrder(getValidSortOption(searchParams.get('sort')));
   }, [searchParams]);
 
-  // Sync filter/sort state changes to the URL without adding browser history entries.
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
@@ -105,7 +97,6 @@ const MilestonesContent: React.FC = () => {
     return () => window.clearTimeout(timeoutId);
   }, [statusFilter, sortOrder, router, searchParams]);
 
-  // Rehydrate from localStorage after the client mounts to avoid SSR mismatches.
   useEffect(() => {
     const persisted = listMilestones();
     if (persisted.length > 0) {
@@ -126,7 +117,7 @@ const MilestonesContent: React.FC = () => {
     try {
       setItem(SAMPLE_DISMISSED_KEY, 'true');
     } catch {
-      // safeStorage failure resilience
+      // safeStorage resilience
     }
     setIsDismissed(true);
     setMilestones([]);
@@ -183,8 +174,8 @@ const MilestonesContent: React.FC = () => {
     }
 
     setIsDismissed(true);
+    setMilestones((prev) => [...prev, milestone]);
   }, [optimisticCreate, showError]);
-
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
   }, []);
@@ -293,6 +284,7 @@ const MilestonesContent: React.FC = () => {
               </button>
               <button
                 type="button"
+                aria-label="Add Milestone"
                 onClick={handleAddMilestone}
                 className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
               >
