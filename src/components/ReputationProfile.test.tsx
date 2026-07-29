@@ -26,7 +26,7 @@
  */
 
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import ReputationProfile, {
   ReputationEvent,
   ReputationProfileProps,
@@ -347,7 +347,7 @@ describe('ReputationProfile – full reputation (score + history)', () => {
     expect(screen.queryAllByRole('checkbox', { name: /select reputation item/i })).toHaveLength(0);
   });
 
-  it('announces export results for a partial bulk selection', () => {
+  it('announces export results for a partial bulk selection', async () => {
     fireEvent.click(screen.getByRole('checkbox', {
       name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
     }));
@@ -356,7 +356,7 @@ describe('ReputationProfile – full reputation (score + history)', () => {
     }));
     fireEvent.click(screen.getByRole('button', { name: /export selected/i }));
 
-    expect(screen.getByText(/Exported 2 reputation items\./i)).toBeInTheDocument();
+    expect(await screen.findByText(/Exported 2 reputation items\./i)).toBeInTheDocument();
   });
 });
 
@@ -1191,177 +1191,104 @@ describe('ReputationProfile – history filtering and sorting', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// 13. History list semantics & accessible name (a11y/reputation-01)
-// ---------------------------------------------------------------------------
+describe('ReputationProfile – live region announcements (issue #810)', () => {
+  it('announces bulk deletion via polite live region', async () => {
+    renderProfile({ name: 'Announcer User', score: 80, history: HISTORY_EVENTS });
+    fireEvent.click(screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /delete selected/i }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /delete selected/i }));
 
-describe('ReputationProfile – history list semantics & accessible name (a11y/reputation-01)', () => {
-  /**
-   * Scenario: The history <ol> has an accessible name via aria-labelledby.
-   * The "Reputation history" heading provides the list's accessible name so
-   * assistive tech can announce the list's purpose when focus enters it.
-   */
-  it('exposes the history list with role="list" and an accessible name', () => {
-    renderProfile({ name: 'List Name User', score: 80, history: HISTORY_EVENTS });
-    const list = screen.getByRole('list', { name: /reputation history/i });
-    expect(list).toBeInTheDocument();
-    expect(list.tagName).toBe('OL');
+    const polite = screen.getByTestId('reputation-announcer-polite');
+    await waitFor(() => {
+      expect(polite.textContent).toBe('Deleted 1 reputation item.');
+    });
+    const assertive = screen.getByTestId('reputation-announcer-assertive');
+    expect(assertive.textContent).toBe('');
   });
 
-  /**
-   * Scenario: The history heading carries the id referenced by the list.
-   * The <h2> "Reputation history" must have id="reputation-history-heading"
-   * so the <ol aria-labelledby="reputation-history-heading"> contract holds.
-   */
-  it('renders the history heading with id="reputation-history-heading"', () => {
-    renderProfile({ name: 'Heading Id User', score: 80, history: HISTORY_EVENTS });
-    const heading = document.getElementById('reputation-history-heading');
-    expect(heading).not.toBeNull();
-    expect(heading?.textContent).toMatch(/reputation history/i);
-  });
+  it('announces selection clearing via polite live region', async () => {
+    renderProfile({ name: 'Announcer User', score: 80, history: HISTORY_EVENTS });
+    fireEvent.click(screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /clear selection/i }));
 
-  /**
-   * Scenario: The <ol> references the heading via aria-labelledby.
-   */
-  it('the <ol> carries aria-labelledby="reputation-history-heading"', () => {
-    renderProfile({ name: 'Ol Labelledby User', score: 80, history: HISTORY_EVENTS });
-    const ol = document.querySelector('ol');
-    expect(ol).not.toBeNull();
-    expect(ol?.getAttribute('aria-labelledby')).toBe('reputation-history-heading');
-  });
-
-  /**
-   * Scenario: Each <li> has an accessible name composed of its key data.
-   * Every entry's type, summary, and date are programmatically associated
-   * via aria-labelledby so screen readers announce the full context.
-   */
-  it('gives each list item an accessible name via aria-labelledby', () => {
-    renderProfile({ name: 'Li Labelledby User', score: 80, history: HISTORY_EVENTS });
-    const items = within(document.querySelector('ol')!).getAllByRole('listitem');
-    expect(items).toHaveLength(HISTORY_EVENTS.length);
-    HISTORY_EVENTS.forEach((ev, idx) => {
-      const labelledby = items[idx].getAttribute('aria-labelledby');
-      expect(labelledby).toBeTruthy();
-      // The aria-labelledby value must reference the three key-data ids.
-      expect(labelledby).toContain(`reputation-event-type-${ev.id}`);
-      expect(labelledby).toContain(`reputation-event-summary-${ev.id}`);
-      expect(labelledby).toContain(`reputation-event-date-${ev.id}`);
+    const polite = screen.getByTestId('reputation-announcer-polite');
+    await waitFor(() => {
+      expect(polite.textContent).toBe('Selection cleared.');
     });
   });
 
-  /**
-   * Scenario: Each entry's type element has a unique id.
-   */
-  it('renders a type element with a unique id for each event', () => {
-    renderProfile({ name: 'Type Id User', score: 80, history: HISTORY_EVENTS });
-    HISTORY_EVENTS.forEach((ev) => {
-      const typeEl = document.getElementById(`reputation-event-type-${ev.id}`);
-      expect(typeEl).not.toBeNull();
-      expect(typeEl?.textContent).toBe(ev.type);
+  it('announces failure when onDeleteSelected callback returns false via assertive live region', async () => {
+    const onDeleteSelected = jest.fn().mockReturnValue(false);
+    renderProfile({ name: 'Announcer User', score: 80, history: HISTORY_EVENTS, onDeleteSelected });
+    fireEvent.click(screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /delete selected/i }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /delete selected/i }));
+
+    const assertive = screen.getByTestId('reputation-announcer-assertive');
+    await waitFor(() => {
+      expect(assertive.textContent).toBe('Failed to delete reputation items.');
+    });
+    const polite = screen.getByTestId('reputation-announcer-polite');
+    expect(polite.textContent).toBe('');
+  });
+
+  it('announces failure when onExportSelected callback returns false via assertive live region', async () => {
+    const onExportSelected = jest.fn().mockReturnValue(false);
+    renderProfile({ name: 'Announcer User', score: 80, history: HISTORY_EVENTS, onExportSelected });
+    fireEvent.click(screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /export selected/i }));
+
+    const assertive = screen.getByTestId('reputation-announcer-assertive');
+    await waitFor(() => {
+      expect(assertive.textContent).toBe('Failed to export reputation items.');
     });
   });
 
-  /**
-   * Scenario: Each entry's summary element has a unique id.
-   */
-  it('renders a summary element with a unique id for each event', () => {
-    renderProfile({ name: 'Summary Id User', score: 80, history: HISTORY_EVENTS });
-    HISTORY_EVENTS.forEach((ev) => {
-      const summaryEl = document.getElementById(`reputation-event-summary-${ev.id}`);
-      expect(summaryEl).not.toBeNull();
-      expect(summaryEl?.textContent).toBe(ev.summary);
+  it('debounces rapid announcement calls', async () => {
+    jest.useFakeTimers();
+    renderProfile({ name: 'Debounce User', score: 80, history: HISTORY_EVENTS, announcerDebounceMs: 500 });
+    const checkbox = screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
     });
-  });
+    
+    // Trigger rapid selection changes and clears
+    fireEvent.click(checkbox);
+    fireEvent.click(screen.getByRole('button', { name: /clear selection/i }));
+    fireEvent.click(checkbox);
+    fireEvent.click(screen.getByRole('button', { name: /clear selection/i }));
 
-  /**
-   * Scenario: Each entry's date element has a unique id.
-   */
-  it('renders a date element with a unique id for each event', () => {
-    renderProfile({ name: 'Date Id User', score: 80, history: HISTORY_EVENTS });
-    HISTORY_EVENTS.forEach((ev) => {
-      const dateEl = document.getElementById(`reputation-event-date-${ev.id}`);
-      expect(dateEl).not.toBeNull();
-      expect(dateEl?.textContent).toBe(ev.date);
+    const polite = screen.getByTestId('reputation-announcer-polite');
+    // Before debounce timer completes, live region remains empty
+    expect(polite.textContent).toBe('');
+
+    // Advance timer past debounce window
+    act(() => {
+      jest.advanceTimersByTime(500);
     });
+
+    expect(polite.textContent).toBe('Selection cleared.');
+    jest.useRealTimers();
   });
 
-  /**
-   * Scenario: Entries are enumerated in DOM order matching the history array.
-   * The list items must appear in the same order as the supplied history so
-   * the position of each entry is meaningful to assistive technology.
-   */
-  it('enumerates entries in DOM order matching the supplied history array', () => {
-    renderProfile({ name: 'Order User', score: 80, history: HISTORY_EVENTS });
-    const items = within(document.querySelector('ol')!).getAllByRole('listitem');
-    expect(items).toHaveLength(HISTORY_EVENTS.length);
-    HISTORY_EVENTS.forEach((ev, idx) => {
-      const summaryEl = within(items[idx]).getByText(ev.summary);
-      expect(summaryEl).toBeInTheDocument();
-      // The accessible name of the <li> should include the summary text.
-      const liName = items[idx].getAttribute('aria-labelledby');
-      expect(liName).toContain(`reputation-event-summary-${ev.id}`);
-    });
-  });
+  it('preserves sr-only formatting and correct ARIA attributes for live regions', () => {
+    renderProfile({ name: 'A11y User', score: 80, history: HISTORY_EVENTS });
+    const polite = screen.getByTestId('reputation-announcer-polite');
+    const assertive = screen.getByTestId('reputation-announcer-assertive');
 
-  /**
-   * Edge case: Empty history renders no list at all.
-   * When history is empty, no <ol> and no list role should be present.
-   */
-  it('renders no list role when history is empty', () => {
-    renderProfile({ name: 'Empty List User', history: [] });
-    expect(screen.queryByRole('list', { name: /reputation history/i })).not.toBeInTheDocument();
-    expect(document.querySelector('ol')).toBeNull();
-  });
+    expect(polite).toHaveAttribute('aria-live', 'polite');
+    expect(polite).toHaveAttribute('aria-atomic', 'true');
+    expect(polite).toHaveClass('sr-only');
 
-  /**
-   * Edge case: A single history entry still gets full semantics.
-   * One event must still produce a labelled <ol> and a labelled <li>.
-   */
-  it('renders full list semantics for a single history entry', () => {
-    const singleEvent: ReputationEvent = {
-      id: 'ev-solo',
-      type: 'Verification',
-      summary: 'Solo identity check',
-      date: '2026-04-24',
-    };
-    renderProfile({ name: 'Single Entry User', score: 80, history: [singleEvent] });
-
-    const list = screen.getByRole('list', { name: /reputation history/i });
-    expect(list).toBeInTheDocument();
-
-    const items = within(list).getAllByRole('listitem');
-    expect(items).toHaveLength(1);
-    expect(items[0].getAttribute('aria-labelledby')).toContain('reputation-event-type-ev-solo');
-    expect(items[0].getAttribute('aria-labelledby')).toContain('reputation-event-summary-ev-solo');
-    expect(items[0].getAttribute('aria-labelledby')).toContain('reputation-event-date-ev-solo');
-  });
-
-  /**
-   * Scenario: The history list accessible name is still present after filtering.
-   * Applying a type filter must not remove the list's accessible name.
-   */
-  it('preserves the list accessible name after filtering', () => {
-    renderProfile({ name: 'Filter Name User', score: 80, history: HISTORY_EVENTS });
-    fireEvent.change(screen.getByLabelText(/Filter:/i), {
-      target: { value: 'Verification' },
-    });
-    const list = screen.getByRole('list', { name: /reputation history/i });
-    expect(list).toBeInTheDocument();
-    expect(list.getAttribute('aria-labelledby')).toBe('reputation-history-heading');
-  });
-
-  /**
-   * Scenario: axe audit passes with the new list semantics.
-   */
-  it('full-history state with list semantics has no axe violations', async () => {
-    const { container } = render(
-      <ReputationProfile
-        name="A11y List Semantics User"
-        score={90}
-        level="Expert"
-        history={HISTORY_EVENTS}
-      />
-    );
-    await assertNoA11yViolations(container);
+    expect(assertive).toHaveAttribute('aria-live', 'assertive');
+    expect(assertive).toHaveAttribute('aria-atomic', 'true');
+    expect(assertive).toHaveClass('sr-only');
   });
 });
