@@ -7,6 +7,7 @@ import { listMilestones } from '@/lib/repository';
 import { resetCache } from '@/lib/safeStorage';
 import * as repository from '@/lib/repository';
 import type { Milestone } from '@/types/domain';
+
 // ---------------------------------------------------------------------------
 // useCopyToClipboard mock — MilestoneCard uses useCopyToClipboard for IDs
 // These mutable variables let tests control the hook's return value and

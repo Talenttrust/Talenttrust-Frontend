@@ -143,6 +143,7 @@ exports[`MilestonesList structural/snapshot tests edge cases matches the structu
     <article
       aria-label="Local milestone"
       class="rounded-3xl border p-4 shadow-sm transition-colors border-slate-200 bg-slate-50"
+      data-milestone-row="true"
       data-selected="false"
       id="milestone-m1"
     >
@@ -238,6 +239,7 @@ exports[`MilestonesList structural/snapshot tests edge cases matches the structu
     <article
       aria-label="Foreign milestone"
       class="rounded-3xl border p-4 shadow-sm transition-colors border-slate-200 bg-slate-50"
+      data-milestone-row="true"
       data-selected="false"
       id="milestone-m2"
     >
@@ -496,6 +498,7 @@ exports[`MilestonesList structural/snapshot tests edge cases matches the structu
     <article
       aria-label="Urgent milestone"
       class="rounded-3xl border p-4 shadow-sm transition-colors border-slate-200 bg-slate-50"
+      data-milestone-row="true"
       data-selected="false"
       id="milestone-m1"
     >
@@ -709,6 +712,7 @@ exports[`MilestonesList structural/snapshot tests edge cases renders "Due TBD" a
     <article
       aria-label="Undated milestone"
       class="rounded-3xl border p-4 shadow-sm transition-colors border-slate-200 bg-slate-50"
+      data-milestone-row="true"
       data-selected="false"
       id="milestone-m1"
     >
@@ -1027,6 +1031,7 @@ exports[`MilestonesList structural/snapshot tests loaded state matches the struc
     <article
       aria-label="Kickoff call"
       class="rounded-3xl border p-4 shadow-sm transition-colors border-slate-200 bg-slate-50"
+      data-milestone-row="true"
       data-selected="false"
       id="milestone-m1"
     >
@@ -1122,6 +1127,7 @@ exports[`MilestonesList structural/snapshot tests loaded state matches the struc
     <article
       aria-label="Design handoff"
       class="rounded-3xl border p-4 shadow-sm transition-colors border-slate-200 bg-slate-50"
+      data-milestone-row="true"
       data-selected="false"
       id="milestone-m2"
     >
@@ -1217,6 +1223,7 @@ exports[`MilestonesList structural/snapshot tests loaded state matches the struc
     <article
       aria-label="Final delivery"
       class="rounded-3xl border p-4 shadow-sm transition-colors border-slate-200 bg-slate-50"
+      data-milestone-row="true"
       data-selected="false"
       id="milestone-m3"
     >
