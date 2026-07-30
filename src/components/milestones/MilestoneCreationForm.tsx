@@ -87,6 +87,10 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
   const [dueDate, setDueDate] = useState('');
   const [errors, setErrors] = useState<Array<{ fieldId: string; message: string }>>([]);
 
+  const { validateAndSubmit, hasErrors, hasSubmitted } = useFormValidation({
+    onErrors: setErrors,
+  });
+
   // Inline validators for real-time validation
   const validateTitleField = combineValidators([
     validateRequired('Title'),
