@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import StatusBadge, { StatusType, statusColorMap, statusIconMap } from './StatusBadge';
+import DueBadge from './DueBadge';
 import { usePreferences } from '@/lib/preferences';
 import { isDueSoon } from '@/lib/dueSoon';
 import { findCurrencyMismatches, normalizeCurrencyCode } from '@/lib/currencyMismatch';
@@ -184,7 +185,10 @@ const MilestonesList = ({ milestones, contractCurrency }: MilestonesListProps) =
                 <p className="text-sm font-medium text-slate-600">{milestone.title}</p>
                 <p className="mt-1 text-sm text-slate-500">Due {milestone.dueDate ?? 'TBD'}</p>
               </div>
-              <StatusBadge status={milestone.status} />
+              <div className="flex items-center gap-2 flex-wrap">
+                <DueBadge dueDate={milestone.dueDate} status={milestone.status} today={today} />
+                <StatusBadge status={milestone.status} />
+              </div>
             </div>
             <div className="mt-4 flex items-center justify-between gap-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
               <p>Payout</p>
