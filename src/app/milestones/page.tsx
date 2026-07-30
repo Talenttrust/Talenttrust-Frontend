@@ -15,6 +15,8 @@ import MilestoneFilter, {
   type MilestoneStatusFilter,
 } from '../../components/milestones/MilestoneFilter';
 import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
+import { useOptimisticMilestoneMutation } from '@/hooks/useOptimisticMilestoneMutation';
+import { listMilestones } from '@/lib/repository';
 import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository';
 import { getItem, setItem } from '@/lib/safeStorage';
 import { useToast } from '@/components/toast/toast-provider';
@@ -159,6 +161,7 @@ const MilestonesContent: React.FC = () => {
     saveMilestone(milestone);
     setIsDismissed(true);
     setMilestones((prev) => [...prev, milestone]);
+  }, [optimisticCreate, showError]);
   }, []);
 
   const handleCancelForm = useCallback(() => {
@@ -270,6 +273,9 @@ const MilestonesContent: React.FC = () => {
               </button>
               <button
                 type="button"
+                aria-label="Add Milestone"
+                onClick={handleAddMilestone}
+                className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                 onClick={() => downloadMilestonesICS(sortedMilestones)}
                 aria-label="Add to calendar"
                 className="flex-shrink-0 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
