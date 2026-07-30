@@ -141,6 +141,12 @@ Accessibility markers worth knowing:
 - The profile card is a `<section>` with `aria-labelledby="profile-heading"`;
   the heading itself is `sr-only`.
 - The level legend is a `<ul aria-labelledby="reputation-legend-title">`.
+- The history list is an `<ol aria-labelledby="reputation-history-heading">`
+  so assistive tech announces the list's purpose. Each `<li>` carries
+  `aria-labelledby` referencing three ids — `reputation-event-type-{id}`,
+  `reputation-event-summary-{id}`, and `reputation-event-date-{id}` — so
+  every entry's type, summary, and date are programmatically associated
+  into a single accessible name.
 
 ---
 
@@ -240,6 +246,8 @@ The list below documents only behaviors that are implemented in the current code
 - The profile region uses a named `<section>` with `aria-labelledby="profile-heading"` in [src/components/ReputationProfile.tsx](../../src/components/ReputationProfile.tsx).
 - The reputation score is exposed with `role="meter"` and related ARIA values in [src/components/ReputationProfile.tsx](../../src/components/ReputationProfile.tsx).
 - The reputation legend is labelled with `aria-labelledby="reputation-legend-title"` in [src/components/ReputationProfile.tsx](../../src/components/ReputationProfile.tsx).
+- The history list is an `<ol>` with `aria-labelledby="reputation-history-heading"` so it has an accessible name in [src/components/ReputationProfile.tsx](../../src/components/ReputationProfile.tsx).
+- Each history `<li>` uses `aria-labelledby` to associate its type, summary, and date into one accessible name in [src/components/ReputationProfile.tsx](../../src/components/ReputationProfile.tsx).
 - The page wrapper renders a focusable `<main>` element in [src/app/reputation/ReputationPageClient.tsx](../../src/app/reputation/ReputationPageClient.tsx).
 
 ### Keyboard interactions

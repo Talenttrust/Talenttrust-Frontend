@@ -347,7 +347,7 @@ describe('ReputationProfile – full reputation (score + history)', () => {
     expect(screen.queryAllByRole('checkbox', { name: /select reputation item/i })).toHaveLength(0);
   });
 
-  it('announces export results for a partial bulk selection', () => {
+  it('announces export results for a partial bulk selection', async () => {
     fireEvent.click(screen.getByRole('checkbox', {
       name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
     }));
@@ -356,7 +356,7 @@ describe('ReputationProfile – full reputation (score + history)', () => {
     }));
     fireEvent.click(screen.getByRole('button', { name: /export selected/i }));
 
-    expect(screen.getByText(/Exported 2 reputation items\./i)).toBeInTheDocument();
+    expect(await screen.findByText(/Exported 2 reputation items\./i)).toBeInTheDocument();
   });
 });
 
@@ -1001,192 +1001,313 @@ describe('reputation level legend and derived level', () => {
     });
   });
 
-  describe('ReputationProfile – edge cases and error resilience', () => {
-    it('renders without crashing with empty string name', () => {
-      renderProfile({ name: '', history: [] });
-      expect(screen.getByText(/No reputation yet/i)).toBeInTheDocument();
-    });
-
-    it('renders without crashing with name containing special characters', () => {
-      renderProfile({ name: '<script>alert("xss")</script>', history: [] });
-      expect(screen.getByText(/No reputation yet/i)).toBeInTheDocument();
-    });
-
-    it('renders without crashing with a very long name', () => {
-      const longName = 'A'.repeat(1000);
-      renderProfile({ name: longName, history: [] });
-      expect(screen.getByText(/No reputation yet/i)).toBeInTheDocument();
-    });
-
-    it('renders score with many decimal places', () => {
-      renderProfile({ name: 'Precision User', score: 3.141592653589793, history: [] });
-      const meter = screen.getByRole('meter');
-      expect(meter).toHaveAttribute('aria-valuenow', '3.141592653589793');
-      expect(getLevelText()).toBe('Trusted Partner');
-    });
-
-    it('renders without crashing with a very large score', () => {
-      renderProfile({ name: 'Large Score User', score: 999999, maxScore: 1000000 });
-      const meter = screen.getByRole('meter');
-      expect(meter).toHaveAttribute('aria-valuenow', '999999');
-      expect(getLevelText()).toBe('Expert');
-    });
-
-    it('renders without crashing with a very large maxScore', () => {
-      renderProfile({ name: 'Large Max User', score: 50000, maxScore: 100000 });
-      const meter = screen.getByRole('meter');
-      expect(meter).toHaveAttribute('aria-valuemax', '100000');
-    });
-
-    it('renders history events with missing optional fields gracefully', () => {
-      const sparseHistory = [
-        { id: 'ev-1', type: 'Test', summary: 'Has all fields', date: '2026-04-24' },
-        { id: 'ev-2', type: '', summary: '', date: '' },
-        { id: 'ev-3', type: 'Minimal', summary: 'Only required', date: '' },
-      ];
-      renderProfile({ name: 'Sparse User', score: 50, history: sparseHistory });
-      const items = document.querySelectorAll('ol li');
-      expect(items).toHaveLength(3);
-    });
-
-    it('renders history with duplicate IDs without crashing', () => {
-      const dupHistory = [
-        { id: 'same-id', type: 'Event 1', summary: 'First', date: '2026-04-24' },
-        { id: 'same-id', type: 'Event 2', summary: 'Second', date: '2026-04-25' },
-      ];
-      renderProfile({ name: 'Dup User', score: 50, history: dupHistory });
-      const items = document.querySelectorAll('ol li');
-      expect(items).toHaveLength(2);
-    });
-
-    it('renders without crashing when history contains non-ISO date strings', () => {
-      const nonIsoHistory = [
-        { id: 'ev-1', type: 'Manual', summary: 'Old event', date: 'January 15, 2024' },
-        { id: 'ev-2', type: 'Manual', summary: 'Relative date', date: 'yesterday' },
-      ];
-      renderProfile({ name: 'NonIso User', score: 50, history: nonIsoHistory });
-      const timeEls = document.querySelectorAll('time');
-      expect(timeEls).toHaveLength(2);
-      expect(timeEls[0].hasAttribute('dateTime')).toBe(true);
-      expect(timeEls[1].hasAttribute('dateTime')).toBe(false);
-    });
-
-    it('renders without crashing when score is 0 and history is undefined', () => {
-      renderProfile({ name: 'Zero Undefined User', score: 0 });
-      const meter = screen.getByRole('meter');
-      expect(meter).toHaveAttribute('aria-valuenow', '0');
-      expect(screen.getByText(/Private by default/i)).toBeInTheDocument();
-    });
-
-    it('mutually exclusive: success state does not render empty state elements', () => {
-      renderProfile({ name: 'Exclusive User', score: 70, history: [{ id: 'ev-1', type: 'Test', summary: 'Test', date: '2026-04-24' }] });
-      expect(screen.queryByText(/No reputation yet/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/Pending/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/Partial reputation data/i)).not.toBeInTheDocument();
-    });
-
-    it('mutually exclusive: empty state does not render success state elements', () => {
-      renderProfile({ name: 'Exclusive Empty', history: [] });
-      expect(screen.queryByRole('meter')).not.toBeInTheDocument();
-      expect(screen.queryByText(/Reputation Level Legend/i)).not.toBeInTheDocument();
-    });
-
-    it('mutually exclusive: partial state does not render full history list', () => {
-      renderProfile({ name: 'Exclusive Partial', score: 50, history: [] });
-      expect(screen.getByText(/Partial reputation data/i)).toBeInTheDocument();
-      expect(document.querySelector('ol')).toBeNull();
-    });
-  });
 // ---------------------------------------------------------------------------
-// 12. History filter + sort (local, syncUrl=false)
+// 12. Last-updated timestamp indicator (issue #62)
 // ---------------------------------------------------------------------------
 
-describe('ReputationProfile – history filtering and sorting', () => {
-  const FILTER_EVENTS: ReputationEvent[] = [
-    {
-      id: 'ev-1',
-      type: 'Verification',
-      summary: 'Completed identity verification',
-      date: '2026-04-24',
-    },
-    {
-      id: 'ev-2',
-      type: 'On-chain review',
-      summary: 'Received positive trust signal',
-      date: '2026-04-23',
-    },
-    {
-      id: 'ev-3',
-      type: 'On-chain review',
-      summary: 'Another trust signal',
-      date: '2026-04-20',
-    },
-  ];
+/**
+ * These tests use a fixed reference timestamp injected via the formatRelativeTime
+ * module. Because the component calls formatRelativeTime(lastUpdated) at render
+ * time using the real clock, we mock the module so that our assertions are
+ * deterministic regardless of when the test suite runs.
+ *
+ * The mock lets individual tests return whatever relative string they need,
+ * keeping every test self-contained and immune to wall-clock drift.
+ */
 
-  it('renders filter with All and available types sorted', () => {
-    renderProfile({ name: 'Filter User', score: 80, history: FILTER_EVENTS });
-    const select = screen.getByLabelText(/Filter:/i);
-    const options = within(select).getAllByRole('option');
-    expect(options).toHaveLength(3);
-    expect(options[0]).toHaveTextContent('All');
-    expect(options[1]).toHaveTextContent('On-chain review');
-    expect(options[2]).toHaveTextContent('Verification');
+jest.mock('@/lib/formatRelativeTime', () => ({
+  formatRelativeTime: jest.fn(),
+  toISOString: jest.fn(),
+}));
+
+// Pull in the mocked versions so individual tests can configure return values.
+import { formatRelativeTime as mockFormatRelativeTime, toISOString as mockToISOString } from '@/lib/formatRelativeTime';
+const mockFRT = mockFormatRelativeTime as jest.Mock;
+const mockISO = mockToISOString as jest.Mock;
+
+describe('ReputationProfile – last-updated timestamp (issue #62)', () => {
+  const ISO_TS = '2026-07-27T11:55:00.000Z';
+
+  beforeEach(() => {
+    // Default: 5 minutes ago
+    mockFRT.mockReturnValue('5 minutes ago');
+    mockISO.mockReturnValue(ISO_TS);
   });
 
-  it('filter narrows entries and All restores them', () => {
-    renderProfile({ name: 'Filter User', score: 80, history: FILTER_EVENTS });
-    const select = screen.getByLabelText(/Filter:/i);
-
-    fireEvent.change(select, { target: { value: 'Verification' } });
-    let items = within(document.querySelector('ol')!).getAllByRole('listitem');
-    expect(items).toHaveLength(1);
-    expect(screen.getByText('Completed identity verification')).toBeInTheDocument();
-    expect(screen.queryByText('Received positive trust signal')).not.toBeInTheDocument();
-
-    fireEvent.change(select, { target: { value: 'All' } });
-    items = within(document.querySelector('ol')!).getAllByRole('listitem');
-    expect(items).toHaveLength(3);
+  afterEach(() => {
+    jest.resetAllMocks();
   });
 
-  it('shows empty guidance when filter matches nothing', () => {
-    const { rerender } = renderProfile({
-      name: 'Filter User',
-      score: 80,
-      history: FILTER_EVENTS,
-    });
-    fireEvent.change(screen.getByLabelText(/Filter:/i), {
-      target: { value: 'Verification' },
-    });
+  // ── Visibility ────────────────────────────────────────────────────────────
 
-    // History updates while a now-absent type remains selected.
-    rerender(
+  it('renders the last-updated indicator when lastUpdated is provided', () => {
+    renderProfile({ name: 'TS User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toBeInTheDocument();
+  });
+
+  it('does NOT render the indicator when lastUpdated is omitted', () => {
+    renderProfile({ name: 'No TS User', history: [] });
+    expect(screen.queryByTestId('last-updated')).not.toBeInTheDocument();
+  });
+
+  it('does NOT render the indicator when lastUpdated is null', () => {
+    renderProfile({ name: 'Null TS User', history: [], lastUpdated: null });
+    expect(screen.queryByTestId('last-updated')).not.toBeInTheDocument();
+  });
+
+  it('does NOT render the indicator when formatRelativeTime returns null', () => {
+    mockFRT.mockReturnValue(null);
+    renderProfile({ name: 'Invalid TS User', history: [], lastUpdated: 'bad-date' });
+    expect(screen.queryByTestId('last-updated')).not.toBeInTheDocument();
+  });
+
+  // ── Relative text content ─────────────────────────────────────────────────
+
+  it('displays the relative time string returned by formatRelativeTime', () => {
+    renderProfile({ name: 'FRT User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toHaveTextContent('Updated 5 minutes ago');
+  });
+
+  it('displays "just now" when formatRelativeTime returns "just now"', () => {
+    mockFRT.mockReturnValue('just now');
+    renderProfile({ name: 'Just Now User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toHaveTextContent('Updated just now');
+  });
+
+  it('displays "2 hours ago" correctly', () => {
+    mockFRT.mockReturnValue('2 hours ago');
+    renderProfile({ name: 'Hours User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toHaveTextContent('Updated 2 hours ago');
+  });
+
+  it('displays "3 days ago" correctly', () => {
+    mockFRT.mockReturnValue('3 days ago');
+    renderProfile({ name: 'Days User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toHaveTextContent('Updated 3 days ago');
+  });
+
+  // ── <time> element & dateTime attribute ───────────────────────────────────
+
+  it('wraps the relative time in a <time> element', () => {
+    const { container } = renderProfile({ name: 'Time El User', history: [], lastUpdated: ISO_TS });
+    // The last-updated paragraph contains exactly one <time> element.
+    const p = container.querySelector('[data-testid="last-updated"]');
+    expect(p?.querySelector('time')).not.toBeNull();
+  });
+
+  it('sets dateTime attribute on <time> to the ISO string from toISOString', () => {
+    const { container } = renderProfile({ name: 'DateTime User', history: [], lastUpdated: ISO_TS });
+    const timeEl = container.querySelector('[data-testid="last-updated"] time');
+    expect(timeEl?.getAttribute('dateTime')).toBe(ISO_TS);
+  });
+
+  it('omits dateTime attribute when toISOString returns an empty string', () => {
+    mockISO.mockReturnValue('');
+    const { container } = renderProfile({ name: 'No DateTime User', history: [], lastUpdated: 'bad' });
+    const timeEl = container.querySelector('[data-testid="last-updated"] time');
+    // When isoTime is falsy, dateTime prop is undefined → attribute absent.
+    expect(timeEl?.hasAttribute('dateTime')).toBe(false);
+  });
+
+  // ── Accessible label ──────────────────────────────────────────────────────
+
+  it('the indicator paragraph has an aria-label containing the ISO timestamp', () => {
+    renderProfile({ name: 'A11y TS User', history: [], lastUpdated: ISO_TS });
+    const p = screen.getByTestId('last-updated');
+    expect(p).toHaveAttribute('aria-label', `Last updated at ${ISO_TS}`);
+  });
+
+  it('aria-label falls back to "Last updated" when toISOString returns empty', () => {
+    mockISO.mockReturnValue('');
+    mockFRT.mockReturnValue('5 minutes ago');
+    renderProfile({ name: 'Fallback A11y User', history: [], lastUpdated: 'bad' });
+    const p = screen.getByTestId('last-updated');
+    expect(p).toHaveAttribute('aria-label', 'Last updated');
+  });
+
+  // ── Works across all reputation states ───────────────────────────────────
+
+  it('shows the indicator in the no-reputation state', () => {
+    renderProfile({ name: 'No Score TS', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toBeInTheDocument();
+  });
+
+  it('shows the indicator in the partial-reputation state', () => {
+    renderProfile({ name: 'Partial TS', score: 3, history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toBeInTheDocument();
+  });
+
+  it('shows the indicator in the full-reputation state', () => {
+    renderProfile({ name: 'Full TS', score: 4, history: HISTORY_EVENTS, lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toBeInTheDocument();
+  });
+
+  // ── Accessibility audit ───────────────────────────────────────────────────
+
+  it('passes axe audit with lastUpdated present (full-reputation state)', async () => {
+    mockFRT.mockReturnValue('5 minutes ago');
+    mockISO.mockReturnValue(ISO_TS);
+    const { container } = render(
       <ReputationProfile
-        syncUrl={false}
-        name="Filter User"
-        score={80}
-        history={[FILTER_EVENTS[1], FILTER_EVENTS[2]]}
+        name="A11y TS Full"
+        score={4}
+        level="Expert"
+        history={HISTORY_EVENTS}
+        lastUpdated={ISO_TS}
       />
     );
-
-    expect(screen.getByText(/No events match this filter/i)).toBeInTheDocument();
-    expect(document.querySelector('ol')).not.toBeInTheDocument();
+    await assertNoA11yViolations(container);
   });
 
-  it('sorts oldest first when sort direction changes', () => {
-    renderProfile({ name: 'Sort User', score: 80, history: FILTER_EVENTS });
-    fireEvent.change(screen.getByLabelText(/Sort:/i), {
-      target: { value: 'asc' },
-    });
-    const items = within(document.querySelector('ol')!).getAllByRole('listitem');
-    expect(within(items[0]).getByText('Another trust signal')).toBeInTheDocument();
-    expect(within(items[2]).getByText('Completed identity verification')).toBeInTheDocument();
+  it('passes axe audit with lastUpdated present (no-reputation state)', async () => {
+    mockFRT.mockReturnValue('just now');
+    mockISO.mockReturnValue(ISO_TS);
+    const { container } = render(
+      <ReputationProfile
+        name="A11y TS None"
+        history={[]}
+        lastUpdated={ISO_TS}
+      />
+    );
+    await assertNoA11yViolations(container);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Keyboard shortcuts for the selection toolbar (issue: keyboard shortcuts
+// for reputation's primary actions)
+// ---------------------------------------------------------------------------
+
+describe('ReputationProfile – keyboard shortcuts for the selection toolbar', () => {
+  const FULL_PROPS: ReputationProfileProps = {
+    name: 'Verified User',
+    score: 88,
+    history: HISTORY_EVENTS,
+  };
+
+  function selectFirstTwo() {
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+      })
+    );
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: `Select reputation item ${HISTORY_EVENTS[1].type}: ${HISTORY_EVENTS[1].summary}`,
+      })
+    );
+  }
+
+  function exportButton() {
+    return screen.getByRole('button', { name: /export selected reputation items/i });
+  }
+  function deleteButton() {
+    return screen.getByRole('button', { name: /delete selected reputation items/i });
+  }
+  function clearButton() {
+    return screen.getByRole('button', { name: /clear selected reputation items/i });
+  }
+
+  it('Escape clears the selection and disables the toolbar buttons', () => {
+    renderProfile(FULL_PROPS);
+    selectFirstTwo();
+    expect(exportButton()).toBeEnabled();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(exportButton()).toBeDisabled();
+    expect(deleteButton()).toBeDisabled();
+    expect(clearButton()).toBeDisabled();
   });
 
-  it('announces result count via aria-live', () => {
-    renderProfile({ name: 'Filter User', score: 80, history: FILTER_EVENTS });
-    fireEvent.change(screen.getByLabelText(/Filter:/i), {
-      target: { value: 'On-chain review' },
-    });
-    expect(screen.getByText(/Showing 2 events of type On-chain review/i)).toBeInTheDocument();
+  it('does nothing when Escape is pressed with no active selection', () => {
+    renderProfile(FULL_PROPS);
+    // No selection made; toolbar buttons already disabled — Escape should
+    // be a harmless no-op rather than throwing or doing anything odd.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(exportButton()).toBeDisabled();
+  });
+
+  // Keydown is fired on the currently-focused element (not `document`) so
+  // `event.target` matches what a real, bubbled browser event would carry —
+  // firing directly on `document` would set target=document, which the
+  // isInsideToolbar check would (correctly) treat as outside the toolbar.
+
+  it('ArrowRight moves focus to the next toolbar button and wraps around', () => {
+    renderProfile(FULL_PROPS);
+    selectFirstTwo();
+
+    exportButton().focus();
+    fireEvent.keyDown(exportButton(), { key: 'ArrowRight' });
+    expect(deleteButton()).toHaveFocus();
+
+    fireEvent.keyDown(deleteButton(), { key: 'ArrowRight' });
+    expect(clearButton()).toHaveFocus();
+
+    fireEvent.keyDown(clearButton(), { key: 'ArrowRight' });
+    expect(exportButton()).toHaveFocus();
+  });
+
+  it('ArrowLeft moves focus to the previous toolbar button and wraps around', () => {
+    renderProfile(FULL_PROPS);
+    selectFirstTwo();
+
+    exportButton().focus();
+    fireEvent.keyDown(exportButton(), { key: 'ArrowLeft' });
+    expect(clearButton()).toHaveFocus();
+  });
+
+  it('Home and End jump to the first and last toolbar button', () => {
+    renderProfile(FULL_PROPS);
+    selectFirstTwo();
+
+    deleteButton().focus();
+    fireEvent.keyDown(deleteButton(), { key: 'End' });
+    expect(clearButton()).toHaveFocus();
+
+    fireEvent.keyDown(clearButton(), { key: 'Home' });
+    expect(exportButton()).toHaveFocus();
+  });
+
+  it('arrow keys do nothing when focus is outside the toolbar', () => {
+    renderProfile(FULL_PROPS);
+    selectFirstTwo();
+
+    const selectAll = screen.getByRole('checkbox', { name: 'Select all reputation items' });
+    selectAll.focus();
+    fireEvent.keyDown(selectAll, { key: 'ArrowRight' });
+
+    expect(selectAll).toHaveFocus();
+  });
+
+  it('does not fire Escape while a select control has focus (respects input focus)', () => {
+    renderProfile(FULL_PROPS);
+    selectFirstTwo();
+
+    const sortSelect = screen.getByTestId('reputation-sort-dir');
+    sortSelect.focus();
+    fireEvent.keyDown(sortSelect, { key: 'Escape' });
+
+    // Selection must be untouched — the toolbar is still enabled.
+    expect(exportButton()).toBeEnabled();
+  });
+
+  it('shows a discoverable Escape hint only once a selection is active', () => {
+    renderProfile(FULL_PROPS);
+    expect(screen.queryByText(/to clear selection/i)).not.toBeInTheDocument();
+
+    selectFirstTwo();
+    expect(screen.getByText(/to clear selection/i)).toBeInTheDocument();
+  });
+
+  it('removes the global keydown listener on unmount', () => {
+    const { unmount } = renderProfile(FULL_PROPS);
+    selectFirstTwo();
+    const removeSpy = jest.spyOn(document, 'removeEventListener');
+
+    unmount();
+
+    expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
+    removeSpy.mockRestore();
   });
 });

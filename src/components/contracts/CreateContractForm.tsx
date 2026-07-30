@@ -5,11 +5,12 @@ import { FormField } from '@/components/FormField';
 import { ErrorSummary } from '@/components/ErrorSummary';
 import { WalletAddressInput } from '@/components/WalletAddressInput';
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
+import { useFormValidation } from '@/hooks/useFormValidation';
 import { useToast } from '@/components/toast/toast-provider';
 import { saveContract } from '@/lib/repository';
 import { normalizeStellarAddress } from '@/lib/stellarAddress';
 import { validateContract } from '@/lib/validateContract';
-import type { ValidationError } from '@/lib/validateLogin';
+import { combineValidators, validateRequired, validatePositiveNumber } from '@/lib/fieldValidators';
 import type { Contract } from '@/types/domain';
 
 /**
@@ -69,7 +70,22 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
   const [freelancerAddress, setFreelancerAddress] = useState('');
   const [totalValue, setTotalValue] = useState('');
   const [currency, setCurrency] = useState<string>(CURRENCY_OPTIONS[0]);
-  const [errors, setErrors] = useState<ValidationError[]>([]);
+  const { errors, validateAndSubmit, clearFieldError, setFieldError } = useFormValidation();
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  // Inline validators for real-time validation
+  const validateContractName = combineValidators([
+    validateRequired('Contract name'),
+  ]);
+
+  const validateTotalValueField = combineValidators([
+    validateRequired('Total value'),
+    validatePositiveNumber('Total value'),
+  ]);
+
+  const validateCurrencyField = combineValidators([
+    validateRequired('Currency'),
+  ]);
 
   /**
    * Called by WalletAddressInput on blur to update the parent's errors
@@ -77,56 +93,65 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
    */
   const handleWalletValidation = useCallback(
     (fieldId: string, error: string | null) => {
-      setErrors((prev) => {
-        const filtered = prev.filter((e) => e.fieldId !== fieldId);
-        if (error) {
-          return [...filtered, { fieldId, message: error }];
-        }
-        return filtered;
-      });
+      if (error) {
+        setFieldError({ fieldId, message: error });
+      } else {
+        clearFieldError(fieldId);
+      }
     },
-    []
+    [clearFieldError, setFieldError]
   );
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setHasSubmitted(true);
 
-    const validationErrors = validateContract({
+    validateAndSubmit(
+      () => validateContract({
+        contractName,
+        freelancerAddress,
+        totalValue,
+        currency,
+      }),
+      () => {
+        const contract: Contract = {
+          id: crypto.randomUUID(),
+          contractName: contractName.trim(),
+          parties: [
+            { label: 'Client', address: 'TalentTrust Client' },
+            { label: 'Freelancer', address: normalizeStellarAddress(freelancerAddress) },
+          ],
+          totalValue: parseFloat(totalValue),
+          currency,
+          status: 'Pending',
+          createdAt: new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          }),
+          updatedAt: new Date().toISOString(),
+          milestoneCount: 0,
+        };
+
+        saveContract(contract);
+        showSuccess({ title: 'Contract created', description: `"${contract.contractName}" has been saved.` });
+        onSuccess(contract);
+      },
+    );
+  };
+
+  // Check if the form has any validation errors to disable submit button
+  const hasErrors = () => {
+    if (!hasSubmitted) return false;
+    
+    const allErrors = validateContract({
       contractName,
       freelancerAddress,
       totalValue,
       currency,
     });
-
-    if (validationErrors.length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
-    // Clear any previous errors before persisting.
-    setErrors([]);
-
-    const contract: Contract = {
-      id: crypto.randomUUID(),
-      contractName: contractName.trim(),
-      parties: [
-        { label: 'Client', address: 'TalentTrust Client' },
-        { label: 'Freelancer', address: normalizeStellarAddress(freelancerAddress) },
-      ],
-      totalValue: parseFloat(totalValue),
-      currency,
-      status: 'Pending',
-      createdAt: new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      }),
-      milestoneCount: 0,
-    };
-
-    saveContract(contract);
-    showSuccess({ title: 'Contract created', description: `"${contract.contractName}" has been saved.` });
-    onSuccess(contract);
+    
+    return allErrors.length > 0;
   };
 
   const inputClass =
@@ -160,6 +185,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
             id="contractName"
             label="Contract name"
             error={errors.find((e) => e.fieldId === 'contractName')?.message}
+            validate={validateContractName}
             required
           >
             <input
@@ -168,7 +194,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
               value={contractName}
               onChange={(e) => {
                 setContractName(e.target.value);
-                setErrors((prev) => prev.filter((err) => err.fieldId !== 'contractName'));
+                clearFieldError('contractName');
               }}
               placeholder="e.g. Website Redesign"
               autoComplete="off"
@@ -191,6 +217,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
             id="totalValue"
             label="Total value"
             error={errors.find((e) => e.fieldId === 'totalValue')?.message}
+            validate={validateTotalValueField}
             required
           >
             <input
@@ -198,7 +225,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
               value={totalValue}
               onChange={(e) => {
                 setTotalValue(e.target.value);
-                setErrors((prev) => prev.filter((err) => err.fieldId !== 'totalValue'));
+                clearFieldError('totalValue');
               }}
               placeholder="0.00"
               min="0.01"
@@ -211,13 +238,14 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
             id="currency"
             label="Currency"
             error={errors.find((e) => e.fieldId === 'currency')?.message}
+            validate={validateCurrencyField}
             required
           >
             <select
               value={currency}
               onChange={(e) => {
                 setCurrency(e.target.value);
-                setErrors((prev) => prev.filter((err) => err.fieldId !== 'currency'));
+                clearFieldError('currency');
               }}
               className={inputClass}
             >
@@ -232,7 +260,8 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
               type="submit"
-              className="rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              disabled={hasSubmitted && hasErrors()}
+              className="rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create Contract
             </button>

@@ -5,16 +5,25 @@ import EmptyState from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { WalletBulkToolbar } from '../../components/wallet/WalletBulkToolbar';
 import { WalletItemList } from '../../components/wallet/WalletItemList';
-import { listWalletItems, saveWalletItem, deleteWalletItems } from '@/lib/repository';
+import { KbdHint } from '@/components/KbdHint';
+import { listWalletItems, saveWalletItem, updateWalletItem, deleteWalletItems } from '@/lib/repository';
 import { useToast } from '@/components/toast/toast-provider';
 import type { WalletItem } from '@/types/domain';
 import { SAMPLE_WALLET_ITEMS } from './constants';
+
+/** True when `target` is a text-entry element that keyboard shortcuts must not fire over. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+}
 
 export default function WalletPage() {
   const [items, setItems] = useState<WalletItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [targetDeleteIds, setTargetDeleteIds] = useState<string[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { showSuccess, showError } = useToast();
 
   // Load from repository on mount, fallback to sample items if repository is empty
@@ -91,22 +100,31 @@ export default function WalletPage() {
   const handleConfirmDelete = useCallback(() => {
     if (targetDeleteIds.length === 0) return;
 
-    const ok = deleteWalletItems(targetDeleteIds);
+    const snapshot = items;
+    const deleteIds = targetDeleteIds;
+
+    setItems((prev) => prev.filter((item) => !deleteIds.includes(item.id)));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      deleteIds.forEach((id) => next.delete(id));
+      return next;
+    });
+
+    const ok = deleteWalletItems(deleteIds);
     if (ok) {
-      const updated = listWalletItems();
-      setItems(updated);
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        targetDeleteIds.forEach((id) => next.delete(id));
-        return next;
-      });
       showSuccess({
         title: 'Items deleted',
-        description: `Successfully deleted ${targetDeleteIds.length} ${
-          targetDeleteIds.length === 1 ? 'item' : 'items'
+        description: `Successfully deleted ${deleteIds.length} ${
+          deleteIds.length === 1 ? 'item' : 'items'
         }.`,
       });
     } else {
+      setItems(snapshot);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        deleteIds.forEach((id) => next.add(id));
+        return next;
+      });
       showError({
         title: 'Delete failed',
         description: 'Failed to remove selected wallet items.',
@@ -115,12 +133,63 @@ export default function WalletPage() {
 
     setIsDeleteModalOpen(false);
     setTargetDeleteIds([]);
-  }, [targetDeleteIds, showSuccess, showError]);
+  }, [items, targetDeleteIds, showSuccess, showError]);
 
   const handleCancelDelete = useCallback(() => {
     setIsDeleteModalOpen(false);
     setTargetDeleteIds([]);
   }, []);
+
+  const handleEditItem = useCallback((id: string) => {
+    setEditingId(id);
+  }, []);
+
+  const handleSaveEdit = useCallback((id: string, updated: WalletItem) => {
+    const ok = updateWalletItem(id, updated);
+    if (ok) {
+      const reloaded = listWalletItems();
+      setItems(reloaded);
+      setEditingId(null);
+      showSuccess({
+        title: 'Item updated',
+        description: `"${updated.name}" has been updated successfully.`,
+      });
+    } else {
+      showError({
+        title: 'Update failed',
+        description: 'Failed to save changes to the wallet item.',
+      });
+    }
+  }, [showSuccess, showError]);
+
+  const handleCancelEdit = useCallback((_id: string) => {
+    setEditingId(null);
+  }, []);
+
+  // Global wallet shortcuts: Ctrl/Cmd+Shift+A (select all) and
+  // Ctrl/Cmd+Shift+E (export selected). Shift is included specifically to
+  // avoid clashing with the browser's own Ctrl/Cmd+A (select-all-text) and
+  // Ctrl/Cmd+E (address-bar search in some browsers). Ignored while a text
+  // input, textarea, or contenteditable element (e.g. inline item editing)
+  // has focus so normal typing/selecting text is never intercepted.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || !event.shiftKey) return;
+      if (isTypingTarget(event.target)) return;
+
+      const key = event.key.toLowerCase();
+      if (key === 'a') {
+        event.preventDefault();
+        handleToggleSelectAll();
+      } else if (key === 'e') {
+        event.preventDefault();
+        handleExportSelected();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleToggleSelectAll, handleExportSelected]);
 
   const deleteModalTitle = useMemo(() => {
     const count = targetDeleteIds.length;
@@ -145,6 +214,12 @@ export default function WalletPage() {
             Manage your connected assets, security credentials, and escrow keys.
           </p>
         </div>
+        {items.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3">
+            <KbdHint keys={['Ctrl', 'Shift', 'A']} label="select all" />
+            <KbdHint keys={['Ctrl', 'Shift', 'E']} label="export selected" />
+          </div>
+        )}
       </div>
 
       {items.length > 0 && (
@@ -169,6 +244,10 @@ export default function WalletPage() {
           onToggleSelect={handleToggleSelect}
           onToggleSelectAll={handleToggleSelectAll}
           onDeleteItem={handleRequestSingleDelete}
+          editingId={editingId}
+          onEditItem={handleEditItem}
+          onSaveEdit={handleSaveEdit}
+          onCancelEdit={handleCancelEdit}
         />
       )}
 

@@ -3,7 +3,6 @@
 import { useCallback, useRef } from 'react';
 import { upsertMilestone, getMilestoneVersion, deleteMilestones } from '@/lib/repository';
 import type { Milestone } from '@/components/MilestonesList';
-import type { MilestoneUpsertResult } from '@/lib/repository';
 
 /**
  * Result returned by optimistic mutation operations.
@@ -54,6 +53,8 @@ export function useOptimisticMilestoneMutation(
    * Restored on persistence failure to roll back the UI.
    */
   const rollbackRef = useRef<Milestone[]>([]);
+  const milestonesRef = useRef(milestones);
+  milestonesRef.current = milestones;
 
   // ---------------------------------------------------------------------------
   // Optimistic create
@@ -61,7 +62,7 @@ export function useOptimisticMilestoneMutation(
 
   const optimisticCreate = useCallback(
     (milestone: Milestone): OptimisticResult => {
-      rollbackRef.current = milestones;
+      rollbackRef.current = milestonesRef.current;
       setMilestones((prev) => [...prev, milestone]);
 
       const result = upsertMilestone(milestone);
@@ -89,7 +90,7 @@ export function useOptimisticMilestoneMutation(
       rollbackRef.current = [];
       return { ok: true };
     },
-    [milestones],
+    [],
   );
 
   // ---------------------------------------------------------------------------
@@ -98,13 +99,13 @@ export function useOptimisticMilestoneMutation(
 
   const optimisticUpdate = useCallback(
     (id: string, patch: Partial<Milestone>): OptimisticResult => {
-      rollbackRef.current = milestones;
+      rollbackRef.current = milestonesRef.current;
       setMilestones((prev) =>
         prev.map((m) => (m.id === id ? { ...m, ...patch } : m)),
       );
 
       const version = getMilestoneVersion(id);
-      const existing = milestones.find((m) => m.id === id);
+      const existing = milestonesRef.current.find((m) => m.id === id);
       if (!existing) {
         // Milestone not found in current state – roll back and warn.
         if (rollbackRef.current) {
@@ -144,7 +145,7 @@ export function useOptimisticMilestoneMutation(
       rollbackRef.current = [];
       return { ok: true };
     },
-    [milestones],
+    [],
   );
 
   // ---------------------------------------------------------------------------
@@ -153,7 +154,7 @@ export function useOptimisticMilestoneMutation(
 
   const optimisticDelete = useCallback(
     (ids: string[]): OptimisticResult => {
-      rollbackRef.current = milestones;
+      rollbackRef.current = milestonesRef.current;
       setMilestones((prev) => prev.filter((m) => !ids.includes(m.id)));
 
       const removed = deleteMilestones(ids);
@@ -174,7 +175,7 @@ export function useOptimisticMilestoneMutation(
       rollbackRef.current = [];
       return { ok: true };
     },
-    [milestones],
+    [],
   );
 
   return { optimisticCreate, optimisticUpdate, optimisticDelete };

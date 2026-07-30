@@ -17,12 +17,13 @@ import MilestoneFilter, {
 import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
 import { useOptimisticMilestoneMutation } from '@/hooks/useOptimisticMilestoneMutation';
 import { listMilestones } from '@/lib/repository';
+import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository';
 import { getItem, setItem } from '@/lib/safeStorage';
 import { useToast } from '@/components/toast/toast-provider';
 import SafeBoundary from '@/components/SafeBoundary';
 import { downloadMilestonesICS } from '@/lib/icsExport';
+import { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from './constants';
 import type { Milestone } from '@/types/domain';
-import { SAMPLE_DISMISSED_KEY, SAMPLE_MILESTONES } from './constants';
 
 const UNPAGINATED_LIST_SIZE = 9999;
 
@@ -65,10 +66,6 @@ const MilestonesContent: React.FC = () => {
   );
   const [showForm, setShowForm] = useState(false);
   const { showError } = useToast();
-  const { optimisticCreate, optimisticUpdate } = useOptimisticMilestoneMutation(
-    milestones,
-    setMilestones,
-  );
 
   useEffect(() => {
     setStatusFilter(getValidStatus(searchParams.get('status')));
@@ -161,40 +158,33 @@ const MilestonesContent: React.FC = () => {
 
   const handleSubmitMilestone = useCallback((milestone: Milestone) => {
     setShowForm(false);
-
-    const result = optimisticCreate(milestone);
-    if (!result.ok) {
-      showError({
-        title: 'Unable to create milestone',
-        description: result.stale
-          ? 'This milestone was updated in another session. Please reload and try again.'
-          : 'Your milestone could not be saved. Please try again.',
-      });
-      return;
-    }
-
+    saveMilestone(milestone);
     setIsDismissed(true);
     setMilestones((prev) => [...prev, milestone]);
   }, [optimisticCreate, showError]);
+  }, []);
+
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
   }, []);
 
   const handleUpdateMilestone = useCallback(
     (id: string, patch: Partial<Milestone>): boolean => {
-      const result = optimisticUpdate(id, patch);
-      if (!result.ok) {
+      try {
+        updateMilestone(id, patch);
+        setMilestones((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+        );
+        return true;
+      } catch {
         showError({
           title: 'Unable to update milestone',
-          description: result.stale
-            ? 'This milestone was updated in another session. Please reload and try again.'
-            : 'Your milestone could not be saved. Please try again.',
+          description: 'Your milestone could not be saved. Please try again.',
         });
         return false;
       }
-      return true;
     },
-    [optimisticUpdate, showError],
+    [showError],
   );
 
   return (
@@ -275,20 +265,23 @@ const MilestonesContent: React.FC = () => {
               </label>
               <button
                 type="button"
-                onClick={() => downloadMilestonesICS(sortedMilestones)}
-                aria-label="Add milestones to calendar"
-                className="flex-shrink-0 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                aria-label="Add Milestone"
+                onClick={handleAddMilestone}
+                className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
               >
-                <span aria-hidden="true" className="mr-1">📅</span>
-                Add to Calendar
+                Add Milestone
               </button>
               <button
                 type="button"
                 aria-label="Add Milestone"
                 onClick={handleAddMilestone}
                 className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                onClick={() => downloadMilestonesICS(sortedMilestones)}
+                aria-label="Add to calendar"
+                className="flex-shrink-0 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
               >
-                Add Milestone
+                <span aria-hidden="true" className="mr-1">📅</span>
+                Add to Calendar
               </button>
             </div>
           </div>

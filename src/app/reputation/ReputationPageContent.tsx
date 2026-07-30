@@ -3,6 +3,7 @@
 import React, { Suspense } from 'react';
 import EmptyState from '../../components/EmptyState';
 import ReputationProfile from '../../components/ReputationProfile';
+import ReputationSummaryCard from '../../components/ReputationSummaryCard';
 import SafeBoundary from '../../components/SafeBoundary';
 import type { Reputation } from '@/types/domain';
 
@@ -32,6 +33,12 @@ export function ReputationPageContent({
       ) : (
         <main className="min-h-screen p-8">
           <h1 className="text-2xl font-bold mb-6">Reputation</h1>
+          <ReputationSummaryCard
+            name={userName}
+            score={score}
+            level={reputationData.level}
+            history={reputationData.history}
+          />
           <Suspense fallback={null}>
             <ReputationProfile
               name={userName}

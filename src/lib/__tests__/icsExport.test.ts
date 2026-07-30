@@ -375,8 +375,7 @@ describe('downloadMilestonesICS', () => {
       makeMilestone({ id: 'ms-002', dueDate: '' }),
     ];
     expect(() => downloadMilestonesICS(noDueDates)).not.toThrow();
-    // Should still generate a valid calendar with no VEVENTs
-    const content = new Blob([createObjectURLMock.mock.calls[0][0]]).toString();
+    // Should still generate a valid calendar with no VEVENTs.
     // Can't easily test content of Blob, but at minimum no error is thrown
   });
 });

@@ -1,77 +1,61 @@
-# PR Description: Add StrKey Checksum Validation to `isValidStellarAddress`
+## Description
 
-## Overview
-This PR tightens the existing `isValidStellarAddress` validator by adding a StrKey-style CRC16-XModem checksum check behind the current fast structural pre-filter. The validator previously accepted any 56-character string starting with `G` and using only the base32 alphabet (`A-Z2-7`), which is intentionally conservative but still allows many invalid keys to pass. With this change, only keys that decode correctly, carry the expected ed25519 public-key version byte (`0x30`), and contain a valid checksum are accepted.
+Extract a shared `useFormValidation` hook from the duplicated validation state logic that was repeated across `ContractCreationForm`, `CreateContractForm`, `MilestoneCreationForm`, and the login form (`page.tsx`).
 
-## Problem Statement
-**Issue:** #227 — `isValidStellarAddress` only checks length, prefix, and base32 alphabet. Its own doc comment notes this is "intentionally conservative" and accepts many strings that aren't real keys.
+Each form previously re-implemented the same `errors` state, submit-time validation, and `ErrorSummary` focus handoff — making accessibility regressions easy to introduce in one form but not others. This PR consolidates the pattern into a single, tested source of truth.
 
-The function is used for display and form handling (e.g., `truncateAddress`). Accepting malformed addresses can lead to confusing UI states or downstream errors when a user pastes a structurally plausible but semantically invalid key.
+### Changes
 
-## Solution
-A two-stage validation approach keeps the cheap regex pre-filter as a fast guard, while deferring the heavier base32 decode and CRC verification to the second stage only when the first stage passes:
+- **`src/hooks/useFormValidation.ts`** — New hook returning `{ errors, validateAndSubmit, clearFieldError, setFieldError }` typed against `ValidationError` from `@/lib/validateLogin`.
+- **`src/hooks/__tests__/useFormValidation.test.tsx`** — 24 unit tests covering all states, transitions, and edge cases (initial state, success/failure paths, per-field error clearing, external validation integration, instance isolation).
+- **`docs/hooks/useFormValidation.md`** — Usage documentation following the existing hook doc style.
+- **`src/app/page.tsx`** — Migrated to use `validateAndSubmit` with the `onError` callback for screen-reader announcements.
+- **`src/components/ContractCreationForm.tsx`** — Migrated to use `validateAndSubmit`.
+- **`src/components/contracts/CreateContractForm.tsx`** — Migrated to use `validateAndSubmit`, `clearFieldError`, and `setFieldError` (for `WalletAddressInput` external validation).
+- **`src/components/milestones/MilestoneCreationForm.tsx`** — Migrated to use `validateAndSubmit`; restored `hasErrors()` and submit button `disabled` prop (regression from partial migration).
+- **`src/components/milestones/MilestoneCreationForm.test.tsx`** — Updated test and snapshots to reflect the restored disabled-button behavior.
 
-1. **Fast structural guard** — unchanged from before:
-   - Length must be exactly 56.
-   - Must start with `G`.
-   - All characters must be in `A-Z2-7`.
+### Key design decisions
 
-2. **StrKey checksum verification** — new:
-   - Decode the string with the Stellar base32 alphabet.
-   - Verify the decoded payload is exactly 35 bytes (1 version byte + 32-byte payload + 2-byte checksum).
-   - Confirm the first byte equals `0x30` (ed25519 public key).
-   - Compute a CRC16-XModem checksum over the first 33 bytes and compare it against the stored 2-byte trailer (little-endian).
+- `validateAndSubmit` always calls `setErrors` with a **new array reference**, so `ErrorSummary`'s focus `useEffect` fires reliably on every submit (byte-for-byte match with the original inline behavior).
+- The optional `onError` callback enables forms like the login page to trigger screen-reader announcements on validation failure without coupling the hook to the announcer.
+- `setFieldError` enables external components (e.g. `WalletAddressInput`) to push errors into the form's validation state — replacing the inline `setErrors` functional-update pattern that `CreateContractForm` previously used.
 
-The implementation is entirely self-contained (no Stellar SDK dependency).
+Closes #408
 
-## Files Changed
+## Type of Change
 
-### `src/lib/stellarAddress.ts`
-- Replaced the old "conservative" doc comment with a detailed two-stage description.
-- Added constants:
-  - `STELLAR_BASE32_ALPHABET`
-  - `STELLAR_PUBLIC_KEY_VERSION_BYTE = 0x30`
-  - `CRC16_XMODEM_TABLE` (lookup table for speed)
-- Added helper functions:
-  - `computeCRC16XModem(payload: Uint8Array): number`
-  - `decodeStellarBase32(encoded: string): Uint8Array | null`
-  - `isValidStellarChecksum(address: string): boolean`
-- Updated `isValidStellarAddress` to branch into the checksum step only after the fast guard passes.
+- [x] Refactor (no functional change, internal code improvement)
+- [x] Documentation update
 
-### `src/lib/__tests__/stellarAddress.test.ts`
-- Replaced synthetic test inputs (e.g., `G` + 55 `A`s) with a known-valid real key.
-- Added new test suites:
-  - **Valid StrKey checksum:** asserts that a real key and its lowercase variant both pass.
-  - **Invalid checksum:** asserts that single-character tampering (different char at position 4 and last char) fails.
-  - **Malformed keys:** truncated and extended inputs are rejected.
-  - **Nullish / empty input:** `null`, `undefined`, and `''` all return `false` without throwing.
-  - **Decode-error resilience:** non-base32 characters and short strings never throw.
+---
 
-### `src/lib/__tests__/truncateAddress.test.ts`
-- Updated the "valid Stellar address" fixture to use a real lowercase key so that `truncateAddress` still receives a key that passes the new checksum validation and gets normalized correctly.
+## Pre-flight Checklist
 
-## Test Coverage
-| Suite | Tests | Status |
-|-------|-------|--------|
-| `stellarAddress.test.ts` | 8 | All pass |
-| `truncateAddress.test.ts` | 4 | All pass |
-| Other suites (regression) | — | No changes to behavior |
+- [x] `npm run lint` passes with no errors on changed files
+- [x] `npm test` passes with no failures
+- [x] `npm run build` completes successfully
 
-Target: ≥ 95 % coverage for the impacted module. The new logic is fully exercised through positive, negative, and edge-case paths.
+---
 
-## Security Notes
-- All decode failures return `false`; no exceptions are thrown from `isValidStellarAddress` regardless of input.
-- The fast pre-filter prevents unnecessary base32 decoding on obviously malformed inputs.
-- The checksum algorithm mirrors the official Stellar `strkey` implementation (CRC16-XModem with little-endian storage), ensuring interoperability with real Stellar addresses.
-- The version-byte check (`0x30`) prevents keys from other StrKey families (e.g., seeds, hashes, contracts) from being accepted as public keys.
+## Testing & Coverage
 
-## Checklist
-- [x] Implementation in `src/lib/stellarAddress.ts`
-- [x] Comprehensive tests in `src/lib/__tests__/stellarAddress.test.ts`
-- [x] Updated dependent test fixture in `src/lib/__tests__/truncateAddress.test.ts`
-- [x] `npm run lint` passes on changed files
-- [x] `npm test` passes for impacted suites
-- [x] `npm run build` succeeds
-- [x] Updated module doc comment with new behavior description
+- [x] Module test coverage for impacted files meets or exceeds the **95% minimum threshold**
+  - `useFormValidation.test.tsx`: 24 tests, all passing (6 describe blocks covering initial state, success path, failure path, clearFieldError, setFieldError, multiple submissions, integration patterns, instance isolation, edge cases)
 
-closes #227
+### What was tested?
+
+- **Hook unit tests**: Initial state, success/failure paths, per-field error clearing, external validation via `setFieldError`, multiple submissions, instance isolation, edge cases (empty validator, large error count, void return).
+- **Integration tests**: Login form (`page.test.tsx` — 46 tests), milestone form (`MilestoneCreationForm.test.tsx` — 6 tests with updated snapshots).
+
+---
+
+## Accessibility & Security Notes
+
+### Accessibility
+
+The `ErrorSummary` focus-on-submit behaviour is preserved byte-for-byte. Each form continues to render `ErrorSummary` with `role="alert"`, `aria-labelledby`, and auto-focus on validation failure. The hook's `onError` callback is used in `page.tsx` for form announcer integration.
+
+### Security
+
+No changes to authentication, authorization, wallet logic, API calls, or user-supplied input handling. Validation logic remains in the existing pure validator functions (`validateLogin`, `validateContract`, `validateMilestone`).

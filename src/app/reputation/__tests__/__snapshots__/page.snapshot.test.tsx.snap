@@ -202,7 +202,7 @@ exports[`ReputationPageContent snapshot – empty state (negative score) matches
     Reputation
   </h1>
   <div
-    aria-labelledby="_r_2_"
+    aria-labelledby=":r2:"
     class="flex flex-col items-center justify-center px-4 py-8 text-center sm:px-8 sm:py-10"
     data-testid="empty-state"
     role="region"
@@ -233,7 +233,7 @@ exports[`ReputationPageContent snapshot – empty state (negative score) matches
     </div>
     <h2
       class="mb-2 max-w-xl text-xl font-semibold text-gray-950"
-      id="_r_2_"
+      id=":r2:"
     >
       No reputation yet
     </h2>
@@ -256,7 +256,7 @@ exports[`ReputationPageContent snapshot – empty state (null data) matches snap
     Reputation
   </h1>
   <div
-    aria-labelledby="_r_0_"
+    aria-labelledby=":r0:"
     class="flex flex-col items-center justify-center px-4 py-8 text-center sm:px-8 sm:py-10"
     data-testid="empty-state"
     role="region"
@@ -287,7 +287,7 @@ exports[`ReputationPageContent snapshot – empty state (null data) matches snap
     </div>
     <h2
       class="mb-2 max-w-xl text-xl font-semibold text-gray-950"
-      id="_r_0_"
+      id=":r0:"
     >
       No reputation yet
     </h2>
@@ -310,7 +310,7 @@ exports[`ReputationPageContent snapshot – empty state (null score) matches sna
     Reputation
   </h1>
   <div
-    aria-labelledby="_r_3_"
+    aria-labelledby=":r3:"
     class="flex flex-col items-center justify-center px-4 py-8 text-center sm:px-8 sm:py-10"
     data-testid="empty-state"
     role="region"
@@ -341,7 +341,7 @@ exports[`ReputationPageContent snapshot – empty state (null score) matches sna
     </div>
     <h2
       class="mb-2 max-w-xl text-xl font-semibold text-gray-950"
-      id="_r_3_"
+      id=":r3:"
     >
       No reputation yet
     </h2>
@@ -364,7 +364,7 @@ exports[`ReputationPageContent snapshot – empty state (undefined data) matches
     Reputation
   </h1>
   <div
-    aria-labelledby="_r_1_"
+    aria-labelledby=":r1:"
     class="flex flex-col items-center justify-center px-4 py-8 text-center sm:px-8 sm:py-10"
     data-testid="empty-state"
     role="region"
@@ -395,7 +395,7 @@ exports[`ReputationPageContent snapshot – empty state (undefined data) matches
     </div>
     <h2
       class="mb-2 max-w-xl text-xl font-semibold text-gray-950"
-      id="_r_1_"
+      id=":r1:"
     >
       No reputation yet
     </h2>
@@ -651,6 +651,7 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
         <div>
           <h2
             class="text-xl font-semibold text-[var(--foreground)]"
+            id="reputation-history-heading"
           >
             Reputation history
           </h2>
@@ -796,9 +797,11 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
           </div>
         </div>
         <ol
+          aria-labelledby="reputation-history-heading"
           class="space-y-4"
         >
           <li
+            aria-labelledby="reputation-event-type-ev-1 reputation-event-summary-ev-1 reputation-event-date-ev-1"
             class="rounded-3xl border p-5 border-[var(--border)] bg-[var(--card)]"
           >
             <div
@@ -815,11 +818,13 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
                 <span>
                   <span
                     class="block text-sm font-medium text-[var(--muted-foreground)]"
+                    id="reputation-event-type-ev-1"
                   >
                     Verification
                   </span>
                   <span
                     class="mt-1 block text-base font-semibold text-[var(--foreground)]"
+                    id="reputation-event-summary-ev-1"
                   >
                     Completed identity verification
                   </span>
@@ -831,6 +836,7 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
                 <time
                   class="text-sm text-[var(--muted-foreground)] sm:text-right"
                   datetime="2026-04-24"
+                  id="reputation-event-date-ev-1"
                 >
                   2026-04-24
                 </time>
@@ -881,6 +887,7 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
             </div>
           </li>
           <li
+            aria-labelledby="reputation-event-type-ev-2 reputation-event-summary-ev-2 reputation-event-date-ev-2"
             class="rounded-3xl border p-5 border-[var(--border)] bg-[var(--card)]"
           >
             <div
@@ -897,11 +904,13 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
                 <span>
                   <span
                     class="block text-sm font-medium text-[var(--muted-foreground)]"
+                    id="reputation-event-type-ev-2"
                   >
                     On-chain review
                   </span>
                   <span
                     class="mt-1 block text-base font-semibold text-[var(--foreground)]"
+                    id="reputation-event-summary-ev-2"
                   >
                     Received positive trust signal
                   </span>
@@ -913,6 +922,7 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
                 <time
                   class="text-sm text-[var(--muted-foreground)] sm:text-right"
                   datetime="2026-04-23"
+                  id="reputation-event-date-ev-2"
                 >
                   2026-04-23
                 </time>
@@ -963,6 +973,7 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
             </div>
           </li>
           <li
+            aria-labelledby="reputation-event-type-ev-3 reputation-event-summary-ev-3 reputation-event-date-ev-3"
             class="rounded-3xl border p-5 border-[var(--border)] bg-[var(--card)]"
           >
             <div
@@ -979,11 +990,13 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
                 <span>
                   <span
                     class="block text-sm font-medium text-[var(--muted-foreground)]"
+                    id="reputation-event-type-ev-3"
                   >
                     Referral
                   </span>
                   <span
                     class="mt-1 block text-base font-semibold text-[var(--foreground)]"
+                    id="reputation-event-summary-ev-3"
                   >
                     Referred two new community members
                   </span>
@@ -995,6 +1008,7 @@ exports[`ReputationPageContent snapshot – loaded state (default userName) matc
                 <time
                   class="text-sm text-[var(--muted-foreground)] sm:text-right"
                   datetime="2026-04-20"
+                  id="reputation-event-date-ev-3"
                 >
                   2026-04-20
                 </time>
@@ -1302,6 +1316,7 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
         <div>
           <h2
             class="text-xl font-semibold text-[var(--foreground)]"
+            id="reputation-history-heading"
           >
             Reputation history
           </h2>
@@ -1447,9 +1462,11 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
           </div>
         </div>
         <ol
+          aria-labelledby="reputation-history-heading"
           class="space-y-4"
         >
           <li
+            aria-labelledby="reputation-event-type-ev-1 reputation-event-summary-ev-1 reputation-event-date-ev-1"
             class="rounded-3xl border p-5 border-[var(--border)] bg-[var(--card)]"
           >
             <div
@@ -1466,11 +1483,13 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
                 <span>
                   <span
                     class="block text-sm font-medium text-[var(--muted-foreground)]"
+                    id="reputation-event-type-ev-1"
                   >
                     Verification
                   </span>
                   <span
                     class="mt-1 block text-base font-semibold text-[var(--foreground)]"
+                    id="reputation-event-summary-ev-1"
                   >
                     Completed identity verification
                   </span>
@@ -1482,6 +1501,7 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
                 <time
                   class="text-sm text-[var(--muted-foreground)] sm:text-right"
                   datetime="2026-04-24"
+                  id="reputation-event-date-ev-1"
                 >
                   2026-04-24
                 </time>
@@ -1532,6 +1552,7 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
             </div>
           </li>
           <li
+            aria-labelledby="reputation-event-type-ev-2 reputation-event-summary-ev-2 reputation-event-date-ev-2"
             class="rounded-3xl border p-5 border-[var(--border)] bg-[var(--card)]"
           >
             <div
@@ -1548,11 +1569,13 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
                 <span>
                   <span
                     class="block text-sm font-medium text-[var(--muted-foreground)]"
+                    id="reputation-event-type-ev-2"
                   >
                     On-chain review
                   </span>
                   <span
                     class="mt-1 block text-base font-semibold text-[var(--foreground)]"
+                    id="reputation-event-summary-ev-2"
                   >
                     Received positive trust signal
                   </span>
@@ -1564,6 +1587,7 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
                 <time
                   class="text-sm text-[var(--muted-foreground)] sm:text-right"
                   datetime="2026-04-23"
+                  id="reputation-event-date-ev-2"
                 >
                   2026-04-23
                 </time>
@@ -1614,6 +1638,7 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
             </div>
           </li>
           <li
+            aria-labelledby="reputation-event-type-ev-3 reputation-event-summary-ev-3 reputation-event-date-ev-3"
             class="rounded-3xl border p-5 border-[var(--border)] bg-[var(--card)]"
           >
             <div
@@ -1630,11 +1655,13 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
                 <span>
                   <span
                     class="block text-sm font-medium text-[var(--muted-foreground)]"
+                    id="reputation-event-type-ev-3"
                   >
                     Referral
                   </span>
                   <span
                     class="mt-1 block text-base font-semibold text-[var(--foreground)]"
+                    id="reputation-event-summary-ev-3"
                   >
                     Referred two new community members
                   </span>
@@ -1646,6 +1673,7 @@ exports[`ReputationPageContent snapshot – loaded state (full reputation) match
                 <time
                   class="text-sm text-[var(--muted-foreground)] sm:text-right"
                   datetime="2026-04-20"
+                  id="reputation-event-date-ev-3"
                 >
                   2026-04-20
                 </time>
@@ -1967,6 +1995,7 @@ exports[`ReputationPageContent snapshot – partial state (score === 0) matches 
         <div>
           <h2
             class="text-xl font-semibold text-[var(--foreground)]"
+            id="reputation-history-heading"
           >
             Reputation history
           </h2>
@@ -2267,6 +2296,7 @@ exports[`ReputationPageContent snapshot – partial state (score, no history) ma
         <div>
           <h2
             class="text-xl font-semibold text-[var(--foreground)]"
+            id="reputation-history-heading"
           >
             Reputation history
           </h2>
