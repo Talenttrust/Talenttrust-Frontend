@@ -210,26 +210,46 @@ body {
     border: 1px solid ButtonText !important;
   }
 
-  /* ── Milestone-specific high-contrast rules ──
-     The selected/unselected milestone-row distinction is normally carried
-     by border-indigo-300/bg-indigo-50 vs border-slate-200/bg-slate-50,
-     which forced-colors mode strips (same class of issue as wallet rows
-     above). StatusBadge and the MilestoneFilter radiogroup already fall
-     under the generic [role="status"] / fieldset label rules further up
-     in this block, so only the row-selection state needs a dedicated rule
-     here. */
+  /* ── Reputation-specific high-contrast rules ──
+     Ensures the reputation score meter, history list, selected items, and
+     toolbar remain legible and clearly distinguishable when forced-colors
+     mode is active (e.g. Windows High Contrast). */
 
-  /* Milestone row container: visible border for every row */
-  [data-milestone-row] {
+  /* Score meter fill visibility (mirrors the [role="progressbar"] treatment
+     above; reputation's score indicator uses role="meter" instead). */
+  [role="meter"] {
+    border: 1px solid CanvasText !important;
+    forced-color-adjust: none;
+  }
+
+  /* Reputation history list: visible container boundary */
+  [data-reputation-list] {
+    border: 0; /* the list itself has no visual chrome; each item does */
+  }
+
+  [data-reputation-list] li {
     border: 1px solid CanvasText !important;
   }
 
-  /* Selected milestone row: highlighted background with high-contrast text */
-  [data-milestone-row][data-selected="true"] {
+  /* Selected reputation history items: highlighted background with
+     high-contrast text, matching the selected-wallet-row treatment. */
+  [data-reputation-list] li[data-selected] {
     background-color: Highlight !important;
     color: HighlightText !important;
     border: 1px solid Highlight !important;
     forced-color-adjust: none;
+  }
+
+  /* Reputation toolbar (export/delete/clear selection): visible border */
+  [data-reputation-toolbar] {
+    border: 1px solid CanvasText !important;
+    padding: 0.25rem;
+  }
+
+  /* Reputation toolbar and copy-id buttons: ensure visible boundaries */
+  [data-reputation-toolbar] button,
+  [data-reputation-list] button {
+    border: 1px solid ButtonText !important;
   }
 }
 

@@ -655,7 +655,8 @@ export default function ReputationProfile({
               <div
                 ref={toolbarRef}
                 role="toolbar"
-                aria-label="Reputation history actions. Use arrow keys to move between actions, Escape to clear the selection."
+                aria-label="Reputation history actions"
+                data-reputation-toolbar
                 className="flex flex-wrap gap-2"
               >
                 <button
@@ -693,6 +694,7 @@ export default function ReputationProfile({
             </div>
             <ol
               aria-labelledby="reputation-history-heading"
+              data-reputation-list
               className="space-y-4"
             >
               {visibleHistory.map((event) => {
@@ -705,6 +707,7 @@ export default function ReputationProfile({
                   <li
                     key={event.id}
                     aria-labelledby={`${typeId} ${summaryId} ${dateId}`}
+                    {...(isSelected ? { 'data-selected': true } : {})}
                     className={`rounded-3xl border p-5 ${isSelected ? 'border-[var(--foreground)] bg-[var(--muted)]' : 'border-[var(--border)] bg-[var(--card)]'}`}
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
