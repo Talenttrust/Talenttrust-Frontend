@@ -3,6 +3,7 @@
 import React, { useCallback, useState, useMemo } from 'react';
 import EmptyState from '../../components/EmptyState';
 import ContractsList from '../../components/contracts/ContractsList';
+import { ContractsSkeleton } from '../../components/contracts/ContractsSkeleton';
 import { ContractCreationForm } from '../../components/ContractCreationForm';
 import { listContracts, saveContract } from '@/lib/repository';
 import { downloadContractsCsv, downloadContractsJson } from '@/lib/exportContracts';
@@ -136,13 +137,8 @@ const ContractsPage: React.FC = () => {
       </p>
 
       {fetchState.status === 'loading' && !showForm && (
-        <div
-          role="status"
-          aria-label="Loading contracts"
-          aria-busy="true"
-          className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600"
-        >
-          Loading contracts…
+        <div role="status" aria-label="Loading contracts" aria-busy="true">
+          <ContractsSkeleton />
         </div>
       )}
 
