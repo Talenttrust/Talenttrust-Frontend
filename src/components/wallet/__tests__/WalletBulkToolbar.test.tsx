@@ -8,7 +8,8 @@ describe('WalletBulkToolbar', () => {
   const defaultProps = {
     selectedCount: 2,
     onClearSelection: jest.fn(),
-    onExport: jest.fn(),
+    onExportCsv: jest.fn(),
+    onExportJson: jest.fn(),
     onDelete: jest.fn(),
   };
 
@@ -26,14 +27,16 @@ describe('WalletBulkToolbar', () => {
       render(<WalletBulkToolbar {...defaultProps} selectedCount={1} />);
       expect(screen.getByTestId('wallet-bulk-toolbar')).toBeInTheDocument();
       expect(screen.getByText('1 item selected')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /export 1 selected item/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /export 1 selected item as csv/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /export 1 selected item as json/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /delete 1 selected item/i })).toBeInTheDocument();
     });
 
     it('renders toolbar with correct count for multiple selected items', () => {
       render(<WalletBulkToolbar {...defaultProps} selectedCount={3} />);
       expect(screen.getByText('3 items selected')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /export 3 selected items/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /export 3 selected items as csv/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /export 3 selected items as json/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /delete 3 selected items/i })).toBeInTheDocument();
     });
   });
@@ -46,11 +49,18 @@ describe('WalletBulkToolbar', () => {
       expect(defaultProps.onClearSelection).toHaveBeenCalledTimes(1);
     });
 
-    it('calls onExport when Export button is clicked', () => {
+    it('calls onExportCsv when CSV button is clicked', () => {
       render(<WalletBulkToolbar {...defaultProps} />);
-      const exportBtn = screen.getByRole('button', { name: /export 2 selected items/i });
+      const exportBtn = screen.getByRole('button', { name: /export 2 selected items as csv/i });
       fireEvent.click(exportBtn);
-      expect(defaultProps.onExport).toHaveBeenCalledTimes(1);
+      expect(defaultProps.onExportCsv).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls onExportJson when JSON button is clicked', () => {
+      render(<WalletBulkToolbar {...defaultProps} />);
+      const exportBtn = screen.getByRole('button', { name: /export 2 selected items as json/i });
+      fireEvent.click(exportBtn);
+      expect(defaultProps.onExportJson).toHaveBeenCalledTimes(1);
     });
 
     it('calls onDelete when Delete button is clicked', () => {
@@ -110,28 +120,28 @@ describe('WalletBulkToolbar', () => {
       expect(onClear).toHaveBeenCalledTimes(1);
     });
 
-    it('Enter key activates Export button', async () => {
-      const onExport = jest.fn();
+    it('Enter key activates CSV export button', async () => {
+      const onExportCsv = jest.fn();
       const user = userEvent.setup();
-      render(<WalletBulkToolbar {...defaultProps} onExport={onExport} />);
+      render(<WalletBulkToolbar {...defaultProps} onExportCsv={onExportCsv} />);
 
-      const exportBtn = screen.getByRole('button', { name: /export 2 selected items/i });
+      const exportBtn = screen.getByRole('button', { name: /export 2 selected items as csv/i });
       exportBtn.focus();
       await user.keyboard('{Enter}');
 
-      expect(onExport).toHaveBeenCalledTimes(1);
+      expect(onExportCsv).toHaveBeenCalledTimes(1);
     });
 
-    it('Space key activates Export button', async () => {
-      const onExport = jest.fn();
+    it('Space key activates JSON export button', async () => {
+      const onExportJson = jest.fn();
       const user = userEvent.setup();
-      render(<WalletBulkToolbar {...defaultProps} onExport={onExport} />);
+      render(<WalletBulkToolbar {...defaultProps} onExportJson={onExportJson} />);
 
-      const exportBtn = screen.getByRole('button', { name: /export 2 selected items/i });
+      const exportBtn = screen.getByRole('button', { name: /export 2 selected items as json/i });
       exportBtn.focus();
       await user.keyboard('[Space]');
 
-      expect(onExport).toHaveBeenCalledTimes(1);
+      expect(onExportJson).toHaveBeenCalledTimes(1);
     });
 
     it('Enter key activates Delete button', async () => {
@@ -169,8 +179,12 @@ describe('WalletBulkToolbar', () => {
       expect(clearBtn).toHaveFocus();
 
       await user.keyboard('{ArrowRight}');
-      const exportBtn = screen.getByRole('button', { name: /export 2 selected items/i });
-      expect(exportBtn).toHaveFocus();
+      const csvBtn = screen.getByRole('button', { name: /export 2 selected items as csv/i });
+      expect(csvBtn).toHaveFocus();
+
+      await user.keyboard('{ArrowRight}');
+      const jsonBtn = screen.getByRole('button', { name: /export 2 selected items as json/i });
+      expect(jsonBtn).toHaveFocus();
 
       await user.keyboard('{ArrowRight}');
       const deleteBtn = screen.getByRole('button', { name: /delete 2 selected items/i });
@@ -193,8 +207,8 @@ describe('WalletBulkToolbar', () => {
       const user = userEvent.setup();
       render(<WalletBulkToolbar {...defaultProps} />);
 
-      const exportBtn = screen.getByRole('button', { name: /export 2 selected items/i });
-      exportBtn.focus();
+      const csvBtn = screen.getByRole('button', { name: /export 2 selected items as csv/i });
+      csvBtn.focus();
 
       await user.keyboard('{ArrowLeft}');
       const clearBtn = screen.getByRole('button', { name: /clear item selection/i });
@@ -221,16 +235,16 @@ describe('WalletBulkToolbar', () => {
       clearBtn.focus();
 
       await user.keyboard('{ArrowDown}');
-      const exportBtn = screen.getByRole('button', { name: /export 2 selected items/i });
-      expect(exportBtn).toHaveFocus();
+      const csvBtn = screen.getByRole('button', { name: /export 2 selected items as csv/i });
+      expect(csvBtn).toHaveFocus();
     });
 
     it('ArrowUp works like ArrowLeft', async () => {
       const user = userEvent.setup();
       render(<WalletBulkToolbar {...defaultProps} />);
 
-      const exportBtn = screen.getByRole('button', { name: /export 2 selected items/i });
-      exportBtn.focus();
+      const csvBtn = screen.getByRole('button', { name: /export 2 selected items as csv/i });
+      csvBtn.focus();
 
       await user.keyboard('{ArrowUp}');
       const clearBtn = screen.getByRole('button', { name: /clear item selection/i });
@@ -290,8 +304,12 @@ describe('WalletBulkToolbar', () => {
       expect(clearBtn).toHaveFocus();
 
       await user.tab();
-      const exportBtn = screen.getByRole('button', { name: /export 2 selected items/i });
-      expect(exportBtn).toHaveFocus();
+      const csvBtn = screen.getByRole('button', { name: /export 2 selected items as csv/i });
+      expect(csvBtn).toHaveFocus();
+
+      await user.tab();
+      const jsonBtn = screen.getByRole('button', { name: /export 2 selected items as json/i });
+      expect(jsonBtn).toHaveFocus();
 
       await user.tab();
       const deleteBtn = screen.getByRole('button', { name: /delete 2 selected items/i });
@@ -306,10 +324,16 @@ describe('WalletBulkToolbar', () => {
       expect(clearBtn.className).toMatch(/focus-visible:outline/);
     });
 
-    it('Export button has focus-visible outline classes', () => {
+    it('CSV export button has focus-visible outline classes', () => {
       render(<WalletBulkToolbar {...defaultProps} />);
-      const exportBtn = screen.getByRole('button', { name: /export 2 selected items/i });
-      expect(exportBtn.className).toMatch(/focus-visible:outline/);
+      const csvBtn = screen.getByRole('button', { name: /export 2 selected items as csv/i });
+      expect(csvBtn.className).toMatch(/focus-visible:outline/);
+    });
+
+    it('JSON export button has focus-visible outline classes', () => {
+      render(<WalletBulkToolbar {...defaultProps} />);
+      const jsonBtn = screen.getByRole('button', { name: /export 2 selected items as json/i });
+      expect(jsonBtn.className).toMatch(/focus-visible:outline/);
     });
 
     it('Delete button has focus-visible outline classes', () => {

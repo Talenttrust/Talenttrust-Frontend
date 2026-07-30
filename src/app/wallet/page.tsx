@@ -1,14 +1,19 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import EmptyState from '../../components/EmptyState';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { WalletBulkToolbar } from '../../components/wallet/WalletBulkToolbar';
-import { WalletItemList } from '../../components/wallet/WalletItemList';
-import { listWalletItems, saveWalletItem, deleteWalletItems } from '@/lib/repository';
-import { useToast } from '@/components/toast/toast-provider';
-import type { WalletItem } from '@/types/domain';
-import { SAMPLE_WALLET_ITEMS } from './constants';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import EmptyState from "../../components/EmptyState";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { WalletBulkToolbar } from "../../components/wallet/WalletBulkToolbar";
+import { WalletItemList } from "../../components/wallet/WalletItemList";
+import {
+  listWalletItems,
+  saveWalletItem,
+  deleteWalletItems,
+} from "@/lib/repository";
+import { downloadWalletCsv, downloadWalletJson } from "@/lib/exportWallet";
+import { useToast } from "@/components/toast/toast-provider";
+import type { WalletItem } from "@/types/domain";
+import { SAMPLE_WALLET_ITEMS } from "./constants";
 
 export default function WalletPage() {
   const [items, setItems] = useState<WalletItem[]>([]);
@@ -54,26 +59,33 @@ export default function WalletPage() {
     setSelectedIds(new Set());
   }, []);
 
-  const handleExportSelected = useCallback(() => {
-    if (selectedIds.size === 0) return;
-    const selectedItems = items.filter((item) => selectedIds.has(item.id));
-    const jsonStr = JSON.stringify(selectedItems, null, 2);
-    
-    try {
-      const blob = new Blob([jsonStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `wallet-export-${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Fallback for non-browser or strict CSP environments
-    }
+  const handleExportCsv = useCallback(() => {
+    const selectedItems =
+      selectedIds.size > 0
+        ? items.filter((i) => selectedIds.has(i.id))
+        : items;
+    if (selectedItems.length === 0) return;
+
+    downloadWalletCsv(selectedItems);
 
     showSuccess({
-      title: 'Export successful',
-      description: `Exported ${selectedItems.length} ${selectedItems.length === 1 ? 'item' : 'items'} to JSON.`,
+      title: "Export successful",
+      description: `Exported ${selectedItems.length} ${selectedItems.length === 1 ? "item" : "items"} to CSV.`,
+    });
+  }, [items, selectedIds, showSuccess]);
+
+  const handleExportJson = useCallback(() => {
+    const selectedItems =
+      selectedIds.size > 0
+        ? items.filter((i) => selectedIds.has(i.id))
+        : items;
+    if (selectedItems.length === 0) return;
+
+    downloadWalletJson(selectedItems);
+
+    showSuccess({
+      title: "Export successful",
+      description: `Exported ${selectedItems.length} ${selectedItems.length === 1 ? "item" : "items"} to JSON.`,
     });
   }, [items, selectedIds, showSuccess]);
 
@@ -101,15 +113,15 @@ export default function WalletPage() {
         return next;
       });
       showSuccess({
-        title: 'Items deleted',
+        title: "Items deleted",
         description: `Successfully deleted ${targetDeleteIds.length} ${
-          targetDeleteIds.length === 1 ? 'item' : 'items'
+          targetDeleteIds.length === 1 ? "item" : "items"
         }.`,
       });
     } else {
       showError({
-        title: 'Delete failed',
-        description: 'Failed to remove selected wallet items.',
+        title: "Delete failed",
+        description: "Failed to remove selected wallet items.",
       });
     }
 
@@ -124,13 +136,15 @@ export default function WalletPage() {
 
   const deleteModalTitle = useMemo(() => {
     const count = targetDeleteIds.length;
-    return count === 1 ? 'Delete wallet item?' : `Delete ${count} wallet items?`;
+    return count === 1
+      ? "Delete wallet item?"
+      : `Delete ${count} wallet items?`;
   }, [targetDeleteIds]);
 
   const deleteModalDescription = useMemo(() => {
     const count = targetDeleteIds.length;
     return count === 1
-      ? 'Are you sure you want to delete this wallet item? This action cannot be undone.'
+      ? "Are you sure you want to delete this wallet item? This action cannot be undone."
       : `Are you sure you want to delete the ${count} selected wallet items? This action cannot be undone.`;
   }, [targetDeleteIds]);
 
@@ -151,7 +165,8 @@ export default function WalletPage() {
         <WalletBulkToolbar
           selectedCount={selectedIds.size}
           onClearSelection={handleClearSelection}
-          onExport={handleExportSelected}
+          onExportCsv={handleExportCsv}
+          onExportJson={handleExportJson}
           onDelete={handleRequestBulkDelete}
         />
       )}
