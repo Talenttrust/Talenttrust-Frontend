@@ -2,9 +2,6 @@ import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { execCommandFallback } from '@/lib/clipboardFallback';
 import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';
 import { formatRelativeTime, toISOString } from '@/lib/formatRelativeTime';
-import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
-import { execCommandFallback } from '@/lib/clipboardFallback';
-import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';
 
 export type ReputationEvent = {
   id: string;
@@ -80,6 +77,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useToast } from './toast/toast-provider';
+import { useFormAnnouncer } from '@/hooks/useFormAnnouncer';
 
 import {
   DEFAULT_DIR,
@@ -273,7 +271,6 @@ export default function ReputationProfile({
   const availableTypes = useMemo(() => getAvailableHistoryTypes(history), [history]);
   const typeOptions = useMemo(() => [DEFAULT_TYPE, ...availableTypes], [availableTypes]);
 
-  const syncUrl = true;
   const [selectedType, setSelectedType] = useState<string>(() =>
     syncUrl ? getValidType(searchParams.get('type'), availableTypes) : DEFAULT_TYPE
   );
@@ -580,6 +577,7 @@ export default function ReputationProfile({
               <div
                 role="toolbar"
                 aria-label="Reputation history actions"
+                data-reputation-toolbar
                 className="flex flex-wrap gap-2"
               >
                 <button
@@ -617,6 +615,7 @@ export default function ReputationProfile({
             </div>
             <ol
               aria-labelledby="reputation-history-heading"
+              data-reputation-list
               className="space-y-4"
             >
               {visibleHistory.map((event) => {
@@ -629,6 +628,7 @@ export default function ReputationProfile({
                   <li
                     key={event.id}
                     aria-labelledby={`${typeId} ${summaryId} ${dateId}`}
+                    {...(isSelected ? { 'data-selected': true } : {})}
                     className={`rounded-3xl border p-5 ${isSelected ? 'border-[var(--foreground)] bg-[var(--muted)]' : 'border-[var(--border)] bg-[var(--card)]'}`}
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
