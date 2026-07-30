@@ -112,6 +112,17 @@ Source: `src/components/CommandPalette.tsx:185`.
 |----------|-----------|-----------|
 | `Enter` | Open / navigate to contract row details | `ContractRowItem` (`src/components/contracts/ContractRowItem.tsx:78`) |
 
+### Reputation history
+
+All controls are standard focusable elements (native tab order, no custom
+arrow-key handling): type filter → sort direction → select-all checkbox →
+toolbar (Export selected → Delete selected → Clear selection, each
+`disabled` — and so skipped in tab order — until at least one item is
+selected) → per-item checkbox → that item's copy-id button, repeated per
+row → "Load more" (when more history exists beyond the current page).
+Checkboxes and buttons activate on `Space`/`Enter` per native semantics.
+Source: `src/components/ReputationProfile.tsx`.
+
 ---
 
 ## Screen-reader announcement model

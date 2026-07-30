@@ -2,9 +2,6 @@ import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { execCommandFallback } from '@/lib/clipboardFallback';
 import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';
 import { formatRelativeTime, toISOString } from '@/lib/formatRelativeTime';
-import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
-import { execCommandFallback } from '@/lib/clipboardFallback';
-import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';
 
 export type ReputationEvent = {
   id: string;
@@ -80,6 +77,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useToast } from './toast/toast-provider';
+import { useFormAnnouncer } from '@/hooks/useFormAnnouncer';
 
 import {
   DEFAULT_DIR,
@@ -273,7 +271,6 @@ export default function ReputationProfile({
   const availableTypes = useMemo(() => getAvailableHistoryTypes(history), [history]);
   const typeOptions = useMemo(() => [DEFAULT_TYPE, ...availableTypes], [availableTypes]);
 
-  const syncUrl = true;
   const [selectedType, setSelectedType] = useState<string>(() =>
     syncUrl ? getValidType(searchParams.get('type'), availableTypes) : DEFAULT_TYPE
   );
