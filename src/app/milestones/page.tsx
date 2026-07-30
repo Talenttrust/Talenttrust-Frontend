@@ -48,8 +48,6 @@ function getValidSortOption(param: string | null): MilestoneSortOption {
     : 'newest';
 }
 
-
-
 const MilestonesContent: React.FC = () => {
   const [milestones, setMilestones] = useState<Milestone[]>(SAMPLE_MILESTONES);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
@@ -162,6 +160,7 @@ const MilestonesContent: React.FC = () => {
     setIsDismissed(true);
     setMilestones((prev) => [...prev, milestone]);
   }, []);
+
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
   }, []);

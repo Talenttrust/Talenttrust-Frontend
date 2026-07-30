@@ -576,6 +576,53 @@ describe('MilestonesList', () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
+  describe('due status badges on milestone rows', () => {
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-05-10T12:00:00'));
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('renders Overdue badge on overdue milestone rows', () => {
+      const milestones: Milestone[] = [
+        { id: '1', title: 'Overdue Milestone', status: 'Pending', payout: 500, currency: 'USD', dueDate: '2026-05-01' },
+      ];
+      render(<MilestonesList milestones={milestones} />);
+      expect(screen.getByTestId('due-badge-overdue')).toBeInTheDocument();
+      expect(screen.getByText('Overdue')).toBeInTheDocument();
+    });
+
+    it('renders Due Soon badge on due-soon milestone rows', () => {
+      const milestones: Milestone[] = [
+        { id: '1', title: 'Due Soon Milestone', status: 'Pending', payout: 500, currency: 'USD', dueDate: '2026-05-15' },
+      ];
+      render(<MilestonesList milestones={milestones} />);
+      expect(screen.getByTestId('due-badge-due-soon')).toBeInTheDocument();
+      expect(screen.getByText('Due soon')).toBeInTheDocument();
+    });
+
+    it('does not render due status badge for completed or paid milestones even if date is past', () => {
+      const milestones: Milestone[] = [
+        { id: '1', title: 'Completed Past', status: 'Completed', payout: 500, currency: 'USD', dueDate: '2026-05-01' },
+        { id: '2', title: 'Paid Past', status: 'Paid', payout: 500, currency: 'USD', dueDate: '2026-05-01' },
+      ];
+      render(<MilestonesList milestones={milestones} />);
+      expect(screen.queryByTestId('due-badge-overdue')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('due-badge-due-soon')).not.toBeInTheDocument();
+    });
+
+    it('does not render due status badge for normal/future milestone (beyond 7 days)', () => {
+      const milestones: Milestone[] = [
+        { id: '1', title: 'Far Future', status: 'Pending', payout: 500, currency: 'USD', dueDate: '2026-05-25' },
+      ];
+      render(<MilestonesList milestones={milestones} />);
+      expect(screen.queryByTestId('due-badge-overdue')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('due-badge-due-soon')).not.toBeInTheDocument();
+    });
+  });
+
   describe('dueSoon helper utilities', () => {
     it('parseLocalDate returns null for invalid types and empty values', () => {
       expect(parseLocalDate('')).toBeNull();
