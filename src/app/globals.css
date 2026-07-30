@@ -44,6 +44,12 @@
   --status-error-foreground: #9f1239;
   --status-warning-bg: #fef3c7;
   --status-warning-foreground: #92400e;
+
+  /* Neutral fallback for any status value outside the StatusType union.
+     Light-mode choice: slate-100 + slate-700 — sits between the four
+     coloured tokens so the unknown badge is unmistakably desaturated. */
+  --status-neutral-bg: #f1f5f9;
+  --status-neutral-foreground: #334155;
 }
 
 [data-theme='dark'] {
@@ -91,6 +97,12 @@
   --status-error-foreground: #fda4af;
   --status-warning-bg: #78350f;
   --status-warning-foreground: #fcd34d;
+
+  /* Dark-mode neutral fallback: slate-800 background + slate-200 text.
+     Pairs sit at ~10.5:1 contrast against each other and stay clearly
+     desaturated versus the four coloured tokens. */
+  --status-neutral-bg: #1e293b;
+  --status-neutral-foreground: #e2e8f0;
 }
 
 body {
