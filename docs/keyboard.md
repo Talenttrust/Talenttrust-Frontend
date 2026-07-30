@@ -11,6 +11,8 @@ A comprehensive reference of keyboard shortcuts, focus-trap behaviours, and scre
 | `Ctrl/Cmd + K` | Open / close command palette | `CommandPalette` (`src/components/CommandPalette.tsx:168`) |
 | `Ctrl/Cmd + Enter` | Submit create-stream form | `CreateStreamForm` (`src/components/CreateStreamForm.tsx:212`) |
 | `Ctrl + Space` | Toggle contract row selection | `ContractRowItem` (`src/components/contracts/ContractRowItem.tsx:53`) |
+| `Ctrl/Cmd + Shift + A` | Select all wallet items (toggle) | `WalletPage` (`src/app/wallet/page.tsx`) |
+| `Ctrl/Cmd + Shift + E` | Export selected wallet items | `WalletPage` (`src/app/wallet/page.tsx`) |
 | `Escape` | Clear bulk selection (wallet) | `WalletBulkToolbar` (`src/components/wallet/WalletBulkToolbar.tsx:37`) |
 | `Escape` | Clear bulk selection (milestones) | `BulkActionToolbar` (`src/components/milestones/BulkActionToolbar.tsx:59`) |
 | `Escape` | Cancel stream creation | `CreateStreamForm` (`src/components/CreateStreamForm.tsx:216`) |
