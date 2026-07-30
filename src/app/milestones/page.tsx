@@ -20,6 +20,8 @@ import { getItem, setItem } from '@/lib/safeStorage';
 import { useToast } from '@/components/toast/toast-provider';
 import SafeBoundary from '@/components/SafeBoundary';
 import { downloadMilestonesICS } from '@/lib/icsExport';
+import { KbdHint } from '@/components/KbdHint';
+import { useMilestonesKeyboardShortcuts } from '@/hooks/useMilestonesKeyboardShortcuts';
 import { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from './constants';
 import type { Milestone } from '@/types/domain';
 
@@ -165,6 +167,16 @@ const MilestonesContent: React.FC = () => {
     setShowForm(false);
   }, []);
 
+  const handleAddToCalendar = useCallback(() => {
+    downloadMilestonesICS(sortedMilestones);
+  }, [sortedMilestones]);
+
+  useMilestonesKeyboardShortcuts({
+    onAddMilestone: handleAddMilestone,
+    onAddToCalendar: handleAddToCalendar,
+    enabled: !showForm,
+  });
+
   const handleUpdateMilestone = useCallback(
     (id: string, patch: Partial<Milestone>): boolean => {
       try {
@@ -270,13 +282,17 @@ const MilestonesContent: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => downloadMilestonesICS(sortedMilestones)}
+                onClick={handleAddToCalendar}
                 aria-label="Add to calendar"
                 className="flex-shrink-0 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
               >
                 <span aria-hidden="true" className="mr-1">📅</span>
                 Add to Calendar
               </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <KbdHint keys={['Ctrl', 'Shift', 'N']} label="add milestone" />
+                <KbdHint keys={['Ctrl', 'Shift', 'C']} label="add to calendar" />
+              </div>
             </div>
           </div>
 
