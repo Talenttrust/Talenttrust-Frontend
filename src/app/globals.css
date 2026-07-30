@@ -209,6 +209,28 @@ body {
   [data-wallet-table] button {
     border: 1px solid ButtonText !important;
   }
+
+  /* ── Milestone-specific high-contrast rules ──
+     The selected/unselected milestone-row distinction is normally carried
+     by border-indigo-300/bg-indigo-50 vs border-slate-200/bg-slate-50,
+     which forced-colors mode strips (same class of issue as wallet rows
+     above). StatusBadge and the MilestoneFilter radiogroup already fall
+     under the generic [role="status"] / fieldset label rules further up
+     in this block, so only the row-selection state needs a dedicated rule
+     here. */
+
+  /* Milestone row container: visible border for every row */
+  [data-milestone-row] {
+    border: 1px solid CanvasText !important;
+  }
+
+  /* Selected milestone row: highlighted background with high-contrast text */
+  [data-milestone-row][data-selected="true"] {
+    background-color: Highlight !important;
+    color: HighlightText !important;
+    border: 1px solid Highlight !important;
+    forced-color-adjust: none;
+  }
 }
 
 /* ---------------------------------------------------------------------------

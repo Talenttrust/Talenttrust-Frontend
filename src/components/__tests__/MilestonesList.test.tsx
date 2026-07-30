@@ -781,6 +781,39 @@ describe('MilestonesList – multi-select and bulk actions', () => {
       expect(article).toHaveAttribute('data-selected', 'true');
       expect(cb.checked).toBe(true);
     });
+
+    it('rows carry a data-milestone-row attribute for forced-colors targeting', () => {
+      render(<MilestonesList milestones={THREE_SAMPLE} />);
+
+      const article = screen.getByRole('article', { name: /Milestone Two/i });
+      expect(article).toHaveAttribute('data-milestone-row');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // High-contrast / forced-colors
+  // ---------------------------------------------------------------------------
+
+  describe('a11y: high-contrast — selected row', () => {
+    it('selected row keeps both data-milestone-row and data-selected="true" so the forced-colors rule can target it', async () => {
+      const user = userEvent.setup();
+      render(<MilestonesList milestones={THREE_SAMPLE} />);
+
+      const article = screen.getByRole('article', { name: /Milestone Two/i });
+      await user.click(itemCheckbox('m2'));
+
+      expect(article).toHaveAttribute('data-milestone-row');
+      expect(article).toHaveAttribute('data-selected', 'true');
+    });
+
+    it('has no axe violations with a row selected', async () => {
+      const user = userEvent.setup();
+      const { container } = render(<MilestonesList milestones={THREE_SAMPLE} />);
+
+      await user.click(itemCheckbox('m2'));
+
+      expect(await axe(container)).toHaveNoViolations();
+    });
   });
 
   describe('multi row selection', () => {
