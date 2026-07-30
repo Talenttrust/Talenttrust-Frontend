@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import StatusBadge from '@/components/StatusBadge';
 import type { WalletItem } from '@/types/domain';
 
 export interface WalletItemListProps {
@@ -71,6 +72,7 @@ export const WalletItemList: React.FC<WalletItemListProps> = ({
               <tr
                 key={item.id}
                 data-testid={`wallet-item-row-${item.id}`}
+                aria-selected={isSelected}
                 className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40 ${
                   isSelected ? 'bg-blue-50/40 dark:bg-slate-800/60' : ''
                 }`}
@@ -98,17 +100,7 @@ export const WalletItemList: React.FC<WalletItemListProps> = ({
                   {item.balance.toLocaleString()} {item.currency}
                 </td>
                 <td className="px-4 py-4">
-                  <span
-                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                      item.status === 'Active'
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                        : item.status === 'Pending'
-                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                        : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                    }`}
-                  >
-                    {item.status}
-                  </span>
+                  <StatusBadge status={item.status} />
                 </td>
                 <td className="px-4 py-4 text-xs text-slate-500 dark:text-slate-400">{item.createdAt}</td>
                 <td className="px-4 py-4 text-right">
@@ -116,7 +108,7 @@ export const WalletItemList: React.FC<WalletItemListProps> = ({
                     <button
                       type="button"
                       onClick={() => onDeleteItem(item.id)}
-                      className="rounded-lg p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 dark:hover:bg-rose-950/50"
+                      className="rounded-lg p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:hover:bg-rose-950/50"
                       aria-label={`Delete ${item.name}`}
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
