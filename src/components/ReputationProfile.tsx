@@ -84,6 +84,7 @@ import {
   isReputationUrlInSync,
   type ReputationSortDir,
 } from '@/lib/reputationUrlState';
+import ReputationExportButton from './ReputationExportButton';
 
 /** Number of history events shown per page before "Load more" is needed. */
 export const REPUTATION_PAGE_SIZE = 5;
@@ -564,6 +565,7 @@ export default function ReputationProfile({
                 >
                   Clear selection
                 </button>
+                <ReputationExportButton events={visibleHistory} />
               </div>
             </div>
             <ol
