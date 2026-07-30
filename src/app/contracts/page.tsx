@@ -140,7 +140,7 @@ const ContractsPage: React.FC = () => {
   );
 
   return (
-    <main className="min-h-screen p-8 pb-24">
+    <main data-contracts-page className="min-h-screen p-8 pb-24">
       <h1 className="text-2xl font-bold mb-6">Contracts</h1>
 
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">

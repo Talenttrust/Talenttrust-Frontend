@@ -73,6 +73,7 @@ const ContractsList = memo(
           )}
         </div>
         <ul
+          data-contracts-list
           className={`transition-[gap] ${isCompact ? 'space-y-2' : 'space-y-4'}`}
           aria-label="Contracts list"
         >
