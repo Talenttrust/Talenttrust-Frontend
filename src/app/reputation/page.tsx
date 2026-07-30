@@ -3,11 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import EmptyState from '@/components/EmptyState';
 import ReputationProfile from '@/components/ReputationProfile';
+import ReputationSummaryCard from '@/components/ReputationSummaryCard';
 import { listReputationEvents } from '@/lib/repository';
 import type { Reputation } from '@/types/domain';
-import EmptyState from '@/components/EmptyState';
-import ReputationProfile from '@/components/ReputationProfile';
-import { listReputationEvents } from '@/lib/repository';
 
 export type ReputationPageContentProps = {
   reputationData?: Reputation | null;
@@ -37,6 +35,12 @@ export function ReputationPageContent({
   return (
     <main className="min-h-screen p-8">
       <h1 className="text-2xl font-bold mb-6">Reputation</h1>
+      <ReputationSummaryCard
+        name={userName}
+        score={score}
+        level={reputationData.level}
+        history={reputationData.history}
+      />
       <ReputationProfile
         name={userName}
         score={score}
