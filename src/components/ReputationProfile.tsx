@@ -2,9 +2,6 @@ import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { execCommandFallback } from '@/lib/clipboardFallback';
 import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';
 import { formatRelativeTime, toISOString } from '@/lib/formatRelativeTime';
-import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
-import { execCommandFallback } from '@/lib/clipboardFallback';
-import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';
 
 export type ReputationEvent = {
   id: string;
@@ -76,10 +73,12 @@ export function resolveReputationLevel(score: number, maxScore: number): string 
 const reputationSummary =
   'Reputation represents verified trust signals and activity history, not sensitive personal metadata. Privacy-friendly defaults keep your profile safe.';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useToast } from './toast/toast-provider';
+import { useFormAnnouncer } from '@/hooks/useFormAnnouncer';
+import { KbdHint } from './KbdHint';
 
 import {
   DEFAULT_DIR,
@@ -267,13 +266,83 @@ export default function ReputationProfile({
     setConfirmOpen(false);
   };
 
+  // ---------------------------------------------------------------------------
+  // Keyboard shortcuts for the selection toolbar (Export / Delete / Clear).
+  //
+  // Mirrors the WAI-ARIA toolbar pattern already used by BulkActionToolbar
+  // (src/components/milestones/BulkActionToolbar.tsx) for the same shape of
+  // bulk-action toolbar: arrow keys cycle focus between toolbar buttons,
+  // Escape clears the selection. Arrow-key handling is scoped to only fire
+  // when focus is already inside the toolbar, so it can never hijack the
+  // history type/sort <select> elements' own native arrow-key behaviour.
+  // Both handlers additionally bail out whenever the event target is a
+  // form control (input/textarea/select) anywhere on the page, so the
+  // shortcuts never fire while a user is typing or operating another
+  // control — this repo's existing BulkActionToolbar precedent does not
+  // guard Escape this way; this implementation intentionally does.
+  // ---------------------------------------------------------------------------
+
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  const getFocusableInToolbar = useCallback((): HTMLElement[] => {
+    const toolbar = toolbarRef.current;
+    if (!toolbar) return [];
+    return Array.from(
+      toolbar.querySelectorAll<HTMLElement>('button:not([disabled])'),
+    );
+  }, []);
+
+  useEffect(() => {
+    if (selectedCount === 0) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isFormControl =
+        tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable;
+      if (isFormControl) return;
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        clearSelection();
+        return;
+      }
+
+      const toolbar = toolbarRef.current;
+      const isInsideToolbar = toolbar && target && toolbar.contains(target);
+      if (!isInsideToolbar) return;
+
+      const focusable = getFocusableInToolbar();
+      if (focusable.length === 0) return;
+
+      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      if (currentIndex === -1) return;
+
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        focusable[(currentIndex + 1) % focusable.length].focus();
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        focusable[(currentIndex - 1 + focusable.length) % focusable.length].focus();
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        focusable[0].focus();
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        focusable[focusable.length - 1].focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedCount, getFocusableInToolbar, clearSelection]);
+
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const availableTypes = useMemo(() => getAvailableHistoryTypes(history), [history]);
   const typeOptions = useMemo(() => [DEFAULT_TYPE, ...availableTypes], [availableTypes]);
 
-  const syncUrl = true;
   const [selectedType, setSelectedType] = useState<string>(() =>
     syncUrl ? getValidType(searchParams.get('type'), availableTypes) : DEFAULT_TYPE
   );
@@ -577,9 +646,17 @@ export default function ReputationProfile({
                 />
                 Select all
               </label>
+              {selectedCount > 0 && (
+                <KbdHint
+                  keys={['Esc']}
+                  label="to clear selection"
+                  className="hidden sm:inline-flex"
+                />
+              )}
               <div
+                ref={toolbarRef}
                 role="toolbar"
-                aria-label="Reputation history actions"
+                aria-label="Reputation history actions. Use arrow keys to move between actions, Escape to clear the selection."
                 className="flex flex-wrap gap-2"
               >
                 <button
