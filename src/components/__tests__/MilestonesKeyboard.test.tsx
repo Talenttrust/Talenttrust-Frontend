@@ -287,12 +287,16 @@ describe('milestones keyboard — logical tab order', () => {
     expect(allRadio).toHaveFocus();
 
     // Within a radiogroup only the checked radio is in the tab order;
-    // next Tab leaves the group to the sort select, Add Milestone, then links, then dismiss, then scroll region.
+    // next Tab leaves the group to the sort select, Add Milestone, Add to
+    // Calendar, then links, then dismiss, then scroll region.
     await user.tab();
     expect(screen.getByLabelText(/sort milestones/i)).toHaveFocus();
 
     await user.tab();
     expect(screen.getByRole('button', { name: /^add milestone$/i })).toHaveFocus();
+
+    await user.tab();
+    expect(screen.getByRole('button', { name: /add to calendar/i })).toHaveFocus();
 
     await user.tab();
     expect(screen.getByRole('button', { name: /switch to compact density/i })).toHaveFocus();
@@ -343,6 +347,47 @@ describe('milestones keyboard — logical tab order', () => {
     await user.keyboard('{ArrowRight}');
 
     expect(onChange).toHaveBeenCalledWith('Active');
+  });
+
+  it('ArrowLeft moves selection backward within the MilestoneFilter radiogroup', async () => {
+    const onChange = jest.fn();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(
+      <MilestoneFilter selected="Active" onChange={onChange} resultCount={3} />,
+    );
+
+    screen.getByRole('radio', { name: 'Active' }).focus();
+    await user.keyboard('{ArrowLeft}');
+
+    expect(onChange).toHaveBeenCalledWith('All');
+  });
+});
+
+describe('milestones keyboard — Escape', () => {
+  it('Escape closes MilestoneCreationForm and calls onCancel', async () => {
+    const onCancel = jest.fn();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<MilestoneCreationForm onSubmit={jest.fn()} onCancel={onCancel} />);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('Escape from the full milestones page returns focus to Add Milestone', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await renderMilestonesPage();
+
+    const addBtn = screen.getByRole('button', { name: /^add milestone$/i });
+    addBtn.focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(addBtn).toHaveFocus();
   });
 });
 
