@@ -85,7 +85,6 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
   const [status, setStatus] = useState<Milestone['status']>('Pending');
   const [dueDate, setDueDate] = useState('');
   const [errors, setErrors] = useState<Array<{ fieldId: string; message: string }>>([]);
-  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   // Inline validators for real-time validation
   const validateTitleField = combineValidators([
@@ -127,7 +126,6 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
   const handleSubmit = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      setHasSubmitted(true);
 
       const validationErrors = validateForm();
       setErrors(validationErrors);
@@ -158,13 +156,6 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
   );
 
   // Check if the form has any validation errors to disable submit button
-  const hasErrors = () => {
-    if (!hasSubmitted) return false;
-    
-    const allErrors = validateMilestone({ title, payout, currency, dueDate, status });
-    return allErrors.length > 0;
-  };
-
   const getFieldError = (fieldId: string): string | undefined =>
     errors.find((e) => e.fieldId === fieldId)?.message;
 
