@@ -76,6 +76,16 @@ The `BulkActionToolbar` implements the [WAI-ARIA toolbar pattern](https://www.w3
 
 Source: `src/components/milestones/BulkActionToolbar.tsx:51`.
 
+`ReputationProfile`'s selection toolbar (Export selected / Delete selected /
+Clear selection) implements the same arrow-key/Home/End/Escape pattern
+inline, with one deliberate difference: Escape additionally bails out when
+the event target is a form control (`input` / `textarea` / `select` /
+`contenteditable`) anywhere on the page, so it never fires while the user is
+typing or operating the history type/sort dropdowns — the
+`BulkActionToolbar` precedent above does not guard Escape this way. A
+`KbdHint` (`Esc — to clear selection`) becomes visible next to the toolbar
+once a selection is active. Source: `src/components/ReputationProfile.tsx`.
+
 ---
 
 ## Radio group arrow-key navigation
