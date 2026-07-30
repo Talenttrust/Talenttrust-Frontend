@@ -15,7 +15,7 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { DialogIdBadge } from '../DialogIdBadge';
@@ -371,8 +371,6 @@ describe('DialogIdBadge — event propagation', () => {
     render(
       <PreferencesProvider>
         <ToastProvider>
-          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events,
-              jsx-a11y/no-static-element-interactions */}
           <div onClick={parentClickHandler}>
             <DialogIdBadge id="abc" label="ID" />
           </div>
@@ -427,7 +425,6 @@ describe('DialogIdBadge — custom label prop', () => {
 
 describe('ConfirmDialog — dialogId prop', () => {
   // Inline import to keep this suite self-contained
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { ConfirmDialog } = require('../ConfirmDialog');
 
   it('renders DialogIdBadge when dialogId is provided', () => {

@@ -209,6 +209,67 @@ body {
   [data-wallet-table] button {
     border: 1px solid ButtonText !important;
   }
+
+  /* ── Reputation-specific high-contrast rules ──
+     Ensures the reputation score meter, history list, selected items, and
+     toolbar remain legible and clearly distinguishable when forced-colors
+     mode is active (e.g. Windows High Contrast). */
+
+  /* Score meter fill visibility (mirrors the [role="progressbar"] treatment
+     above; reputation's score indicator uses role="meter" instead). */
+  [role="meter"] {
+    border: 1px solid CanvasText !important;
+    forced-color-adjust: none;
+  }
+
+  /* Reputation history list: visible container boundary */
+  [data-reputation-list] {
+    border: 0; /* the list itself has no visual chrome; each item does */
+  }
+
+  [data-reputation-list] li {
+    border: 1px solid CanvasText !important;
+  }
+
+  /* Selected reputation history items: highlighted background with
+     high-contrast text, matching the selected-wallet-row treatment. */
+  [data-reputation-list] li[data-selected] {
+    background-color: Highlight !important;
+    color: HighlightText !important;
+    border: 1px solid Highlight !important;
+    forced-color-adjust: none;
+  }
+
+  /* Reputation toolbar (export/delete/clear selection): visible border */
+  [data-reputation-toolbar] {
+    border: 1px solid CanvasText !important;
+    padding: 0.25rem;
+  }
+
+  /* Reputation toolbar and copy-id buttons: ensure visible boundaries */
+  [data-reputation-toolbar] button,
+  [data-reputation-list] button {
+    border: 1px solid ButtonText !important;
+  }
+
+  /* ── Contracts-specific high-contrast rules ──
+     Ensures the contracts list and its controls (search, sort, export,
+     density toggle) remain legible with a visible focus indicator when
+     forced-colors mode is active (e.g. Windows High Contrast). */
+
+  /* Contracts list items: visible container boundary per item */
+  [data-contracts-list] li {
+    border: 1px solid CanvasText !important;
+  }
+
+  /* Several contracts controls use `outline-none` paired with a Tailwind
+     focus ring (box-shadow), which forced-colors mode does not render —
+     leaving no visible focus indicator at all. Restore a native outline
+     for every focus-visible element scoped to the contracts page. */
+  [data-contracts-page] :focus-visible {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
 }
 
 /* ---------------------------------------------------------------------------

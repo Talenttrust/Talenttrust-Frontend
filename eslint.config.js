@@ -18,6 +18,7 @@ module.exports = [
       '**/node_modules/**',
       '**/coverage/**',
       '**/src/declarations.d.ts',
+      '**/src/lib/tests/**',
     ],
   },
   // Filter deprecated/removed rules that crash ESLint 10+ (e.g. no-unassigned-vars)
@@ -58,7 +59,9 @@ module.exports = [
       '@typescript-eslint': tsPlugin,
     },
     rules: {
-      // Disable base rule — @typescript-eslint/no-unused-vars handles TS correctly
+      ...js.configs.recommended.rules,
+      'no-unassigned-vars': 'off',
+      'preserve-caught-error': 'off',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['error', {
         vars: 'all',

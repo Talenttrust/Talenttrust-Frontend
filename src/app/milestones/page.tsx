@@ -15,23 +15,18 @@ import MilestoneFilter, {
   type MilestoneStatusFilter,
 } from '../../components/milestones/MilestoneFilter';
 import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
-import MilestonesErrorBoundary from '../../components/milestones/MilestonesErrorBoundary';
-import { listMilestones } from '@/lib/repository';
 import { useOptimisticMilestoneMutation } from '@/hooks/useOptimisticMilestoneMutation';
+import { listMilestones } from '@/lib/repository';
 import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository';
 import { getItem, setItem } from '@/lib/safeStorage';
 import { useToast } from '@/components/toast/toast-provider';
 import SafeBoundary from '@/components/SafeBoundary';
 import { downloadMilestonesICS } from '@/lib/icsExport';
+import { KbdHint } from '@/components/KbdHint';
+import { useMilestonesKeyboardShortcuts } from '@/hooks/useMilestonesKeyboardShortcuts';
+import { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from './constants';
 import type { Milestone } from '@/types/domain';
-import { SAMPLE_DISMISSED_KEY, SAMPLE_MILESTONES } from './constants';
 
-/**
- * MilestonesList paginates internally via its own `pageSize` prop, but that
- * cap is fixed at mount (see MilestonesList's `displayCount` state). This
- * page doesn't want an arbitrary "Load More" click gating milestones the
- * user just added, so it opts the list out of pagination entirely.
- */
 const UNPAGINATED_LIST_SIZE = 9999;
 
 const VALID_STATUSES: MilestoneStatusFilter[] = [
@@ -61,7 +56,8 @@ const MilestonesContent: React.FC = () => {
   const [milestones, setMilestones] = useState<Milestone[]>(SAMPLE_MILESTONES);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
   const searchParams = useSearchParams();
-  const router = useRouter();  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const router = useRouter();
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
   const startFromScratchRef = useRef<HTMLButtonElement | null>(null);
 
   const initialStatus = getValidStatus(searchParams.get('status'));
@@ -72,18 +68,12 @@ const MilestonesContent: React.FC = () => {
   );
   const [showForm, setShowForm] = useState(false);
   const { showError } = useToast();
-  const { optimisticCreate, optimisticUpdate } = useOptimisticMilestoneMutation(
-    milestones,
-    setMilestones,
-  );
 
-  // Sync state if searchParams change externally (e.g. back/forward navigation)
   useEffect(() => {
     setStatusFilter(getValidStatus(searchParams.get('status')));
     setSortOrder(getValidSortOption(searchParams.get('sort')));
   }, [searchParams]);
 
-  // Sync filter/sort state changes to the URL without adding browser history entries.
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
@@ -106,7 +96,6 @@ const MilestonesContent: React.FC = () => {
     return () => window.clearTimeout(timeoutId);
   }, [statusFilter, sortOrder, router, searchParams]);
 
-  // Rehydrate from localStorage after the client mounts to avoid SSR mismatches.
   useEffect(() => {
     const persisted = listMilestones();
     if (persisted.length > 0) {
@@ -127,7 +116,7 @@ const MilestonesContent: React.FC = () => {
     try {
       setItem(SAMPLE_DISMISSED_KEY, 'true');
     } catch {
-      // safeStorage failure resilience
+      // safeStorage resilience
     }
     setIsDismissed(true);
     setMilestones([]);
@@ -171,68 +160,46 @@ const MilestonesContent: React.FC = () => {
 
   const handleSubmitMilestone = useCallback((milestone: Milestone) => {
     setShowForm(false);
-
-    const result = optimisticCreate(milestone);
-    if (!result.ok) {
-      showError({
-        title: 'Unable to create milestone',
-        description: result.stale
-          ? 'This milestone was updated in another session. Please reload and try again.'
-          : 'Your milestone could not be saved. Please try again.',
-      });
-      return;
-    }
-
+    saveMilestone(milestone);
     setIsDismissed(true);
+    setMilestones((prev) => [...prev, milestone]);
   }, [optimisticCreate, showError]);
+  }, []);
 
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
   }, []);
 
-  /**
-   * Inline-edit save handler.
-   *
-   * Persistence layer:
-   *   1. Call `updateMilestone(id, patch)` to push the change into
-   *      localStorage Returns `true` on success, `false` if the milestone
-   *      no longer exists in storage.
-   *   2. Refresh local state from storage so the UI immediately reflects the
-   *      persisted version (defensive against stale React state).
-   *
-   * Returning the boolean up to `MilestonesList` lets it surface a failure
-   * announcement to assistive technologies.
-   */
+  const handleAddToCalendar = useCallback(() => {
+    downloadMilestonesICS(sortedMilestones);
+  }, [sortedMilestones]);
+
+  useMilestonesKeyboardShortcuts({
+    onAddMilestone: handleAddMilestone,
+    onAddToCalendar: handleAddToCalendar,
+    enabled: !showForm,
+  });
+
   const handleUpdateMilestone = useCallback(
     (id: string, patch: Partial<Milestone>): boolean => {
-      const result = optimisticUpdate(id, patch);
-      if (!result.ok) {
+      try {
+        updateMilestone(id, patch);
+        setMilestones((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+        );
+        return true;
+      } catch {
         showError({
           title: 'Unable to update milestone',
-          description: result.stale
-            ? 'This milestone was updated in another session. Please reload and try again.'
-            : 'Your milestone could not be saved. Please try again.',
+          description: 'Your milestone could not be saved. Please try again.',
         });
         return false;
       }
-      return true;
     },
-    [optimisticUpdate, showError],
+    [showError],
   );
 
   return (
-    /*
-     * ACCESSIBILITY LANDMARK STRUCTURE (WCAG 2.1 AA / issue #682)
-     *
-     * No <main> landmark here — the root layout (src/app/layout.tsx) already
-     * provides the single <main id="main-content" tabIndex={-1}> landmark that
-     * RouteAnnouncer targets for focus-on-route-change (WCAG 2.4.3). A nested
-     * <main> would produce duplicate landmarks and break that focus management.
-     * Same fix applied to loading.tsx below.
-     *
-     * Heading hierarchy: <h1> is used here (correct, since layout's <header>
-     * does not render an <h1> — the app name is a <span>, not a heading).
-     */
     <div className="min-h-screen p-8">
       <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold mb-6 focus:outline-none">
         Milestones
@@ -310,20 +277,25 @@ const MilestonesContent: React.FC = () => {
               </label>
               <button
                 type="button"
-                onClick={() => downloadMilestonesICS(sortedMilestones)}
-                aria-label="Add milestones to calendar"
-                className="flex-shrink-0 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-              >
-                <span aria-hidden="true" className="mr-1">📅</span>
-                Add to Calendar
-              </button>
-              <button
-                type="button"
+                aria-label="Add Milestone"
                 onClick={handleAddMilestone}
                 className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
               >
                 Add Milestone
               </button>
+              <button
+                type="button"
+                onClick={handleAddToCalendar}
+                aria-label="Add to calendar"
+                className="flex-shrink-0 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              >
+                <span aria-hidden="true" className="mr-1">📅</span>
+                Add to Calendar
+              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <KbdHint keys={['Ctrl', 'Shift', 'N']} label="add milestone" />
+                <KbdHint keys={['Ctrl', 'Shift', 'C']} label="add to calendar" />
+              </div>
             </div>
           </div>
 

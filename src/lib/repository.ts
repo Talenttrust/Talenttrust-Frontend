@@ -25,7 +25,7 @@
  *   given prefix; iterates a frozen key snapshot to avoid index-shift bugs.
  */
 
-import type { Contract, WalletItem } from '@/types/domain';
+import type { Contract, WalletItem, ReputationEvent } from '@/types/domain';
 import type { Milestone } from '@/components/MilestonesList';
 import { reportError } from './errorReporter';
 
@@ -40,9 +40,10 @@ interface AppData {
   contracts: Contract[];
   milestones: Milestone[];
   walletItems: WalletItem[];
+  reputationEvents: ReputationEvent[];
 }
 
-const EMPTY_DATA: AppData = { contracts: [], milestones: [], walletItems: [] };
+const EMPTY_DATA: AppData = { contracts: [], milestones: [], walletItems: [], reputationEvents: [] };
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -84,6 +85,7 @@ function readStore(): AppData {
       contracts: Array.isArray(parsed.contracts) ? parsed.contracts : [],
       milestones: Array.isArray(parsed.milestones) ? parsed.milestones : [],
       walletItems: Array.isArray(parsed.walletItems) ? parsed.walletItems : [],
+      reputationEvents: Array.isArray(parsed.reputationEvents) ? parsed.reputationEvents : [],
     };
   } catch (err) {
     reportError(err, '[repository] Failed to read from localStorage. Falling back to empty state.');
@@ -614,6 +616,80 @@ export function exportMilestones(milestones: Milestone[]): string {
 }
 
 // ---------------------------------------------------------------------------
+// Public API — Reputation Events
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns all persisted reputation events.
+ */
+export function listReputationEvents(): ReputationEvent[] {
+  return readStore().reputationEvents;
+}
+
+/**
+ * Returns the current persistence-layer version for the reputation event matching
+ * `id`, or `0` if it has never been persisted.
+ */
+export function getReputationEventVersion(id: string): number {
+  const store = readStore();
+  const existing = store.reputationEvents.find((e) => e.id === id);
+  return existing?.version ?? 0;
+}
+
+/**
+ * Replaces an existing reputation event that shares the same `id`, or appends it.
+ * Rejects with `stale: true` if an older version is written over a newer one.
+ */
+export function upsertReputationEvent(event: ReputationEvent): UpsertResult {
+  const store = readStore();
+  const existingIndex = store.reputationEvents.findIndex(
+    (existingEvent) => existingEvent.id === event.id,
+  );
+
+  if (existingIndex !== -1) {
+    const existing = store.reputationEvents[existingIndex];
+    const existingVersion = existing.version ?? 0;
+    const incomingVersion = event.version ?? 0;
+
+    if (incomingVersion < existingVersion) {
+      return { success: false, stale: true };
+    }
+  }
+
+  const nextVersion = (event.version ?? 0) + 1;
+  const updatedEvent: ReputationEvent = { ...event, version: nextVersion };
+
+  const reputationEvents =
+    existingIndex === -1
+      ? [...store.reputationEvents, updatedEvent]
+      : store.reputationEvents.map((existingEvent, index) =>
+          index === existingIndex ? updatedEvent : existingEvent,
+        );
+
+  const ok = writeStore({ ...store, reputationEvents });
+  return { success: ok, stale: false };
+}
+
+/**
+ * Deletes multiple reputation events identified by an array of ids.
+ */
+export function deleteReputationEvents(ids: string[]): number {
+  if (!Array.isArray(ids) || ids.length === 0) return 0;
+
+  const store = readStore();
+  const idSet = new Set(ids);
+  const before = store.reputationEvents.length;
+  const remaining = store.reputationEvents.filter((e) => !idSet.has(e.id));
+  const removed = before - remaining.length;
+
+  if (removed > 0) {
+    writeStore({ ...store, reputationEvents: remaining });
+  }
+
+  return removed;
+}
+
+// ---------------------------------------------------------------------------
 // Public API — Wallet Items
 // ---------------------------------------------------------------------------
 
@@ -634,6 +710,30 @@ export function listWalletItems(): WalletItem[] {
 export function saveWalletItem(item: WalletItem): void {
   const store = readStore();
   writeStore({ ...store, walletItems: [...store.walletItems, item] });
+}
+
+/**
+ * Updates a wallet item identified by `id` with the provided `patch`.
+ *
+ * @param id - The unique identifier of the wallet item to update.
+ * @param patch - A partial `WalletItem` object with the fields to merge.
+ * @returns `true` when the update is persisted successfully; `false` if the
+ *   id was not found or the write failed.
+ */
+export function updateWalletItem(id: string, patch: Partial<WalletItem>): boolean {
+  const store = readStore();
+  const index = store.walletItems.findIndex((item) => item.id === id);
+
+  if (index === -1) {
+    console.warn(`[repository] updateWalletItem: No wallet item found with id '${id}'.`);
+    return false;
+  }
+
+  const updatedWalletItems = store.walletItems.map((item, i) =>
+    i === index ? { ...item, ...patch } : item,
+  );
+
+  return writeStore({ ...store, walletItems: updatedWalletItems });
 }
 
 /**

@@ -117,7 +117,7 @@ export function useCopyToClipboard(options: UseCopyToClipboardOptions = {}) {
         }, delay);
         onSuccess?.();
         return true;
-      } catch (err) {
+      } catch {
         // Clipboard API failed (e.g. permission denied) — fall through to
         // the execCommand fallback below instead of surfacing the error
         // immediately.  If the fallback also fails we call onError once.

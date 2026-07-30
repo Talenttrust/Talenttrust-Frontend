@@ -61,8 +61,6 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   isOpen,
   title,
   description,
-  dialogId,
-  dialogIdLabel = 'ID',
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   tone = 'default',

@@ -23,6 +23,7 @@ jest.mock('@/lib/repository', () => ({
   listMilestones: jest.fn(() => []),
   saveMilestone: jest.fn(() => true),
   updateMilestone: jest.fn(() => true),
+  upsertMilestone: jest.fn(() => ({ success: true, stale: false })),
 }));
 
 jest.mock('@/components/toast/toast-provider', () => ({
@@ -104,14 +105,14 @@ describe('Milestones Focus Management (Issue #682)', () => {
       lastElement.focus();
       expect(document.activeElement).toBe(lastElement);
 
-      fireEvent.keyDown(document.activeElement!, { key: 'Tab' });
+      fireEvent.keyDown(document, { key: 'Tab' });
       expect(document.activeElement).toBe(firstElement);
 
       // Focus first element and press Shift+Tab -> should cycle to last element
       firstElement.focus();
       expect(document.activeElement).toBe(firstElement);
 
-      fireEvent.keyDown(document.activeElement!, { key: 'Tab', shiftKey: true });
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
       expect(document.activeElement).toBe(lastElement);
     });
 

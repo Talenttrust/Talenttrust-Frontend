@@ -2,6 +2,7 @@
 
 import React, { useCallback } from 'react';
 import StatusBadge, { StatusType } from '@/components/StatusBadge';
+import { LastUpdated } from '@/components/LastUpdated';
 import type { ContractParty } from '@/types/domain';
 
 interface ContractRowItemProps {
@@ -11,6 +12,7 @@ interface ContractRowItemProps {
   currency: string;
   status: StatusType;
   createdAt: string;
+  updatedAt?: string;
   milestoneCount: number;
   isSelected: boolean;
   onSelect: (selected: boolean) => void;
@@ -31,6 +33,7 @@ export const ContractRowItem: React.FC<ContractRowItemProps> = ({
   currency,
   status,
   createdAt,
+  updatedAt,
   milestoneCount,
   isSelected,
   onSelect,
@@ -117,6 +120,7 @@ export const ContractRowItem: React.FC<ContractRowItemProps> = ({
           <div className="ml-4 flex flex-col items-end gap-2">
             <StatusBadge status={status} />
             <span className="text-xs text-slate-400">{createdAt}</span>
+            {updatedAt && <LastUpdated updatedAt={updatedAt} />}
           </div>
         </div>
       </div>

@@ -256,6 +256,7 @@ export const MilestoneRow: React.FC<MilestoneRowProps> = ({
         id={`milestone-${milestone.id}`}
         aria-label={milestone.title}
         data-selected={isSelected}
+        data-milestone-row
         className={`rounded-3xl border p-4 shadow-sm transition-colors ${
           isSelected
             ? 'border-indigo-300 bg-indigo-50'

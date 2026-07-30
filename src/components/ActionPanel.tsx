@@ -2,7 +2,6 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
-import { useToast } from '@/components/toast/toast-provider';
 import { ConfirmDialog } from './ConfirmDialog';
 import { DISPUTE_REASON_MAX_LENGTH, validateDisputeReason } from '@/lib/disputeReason';
 
@@ -115,7 +114,6 @@ const ActionPanel = ({
 }: ActionPanelProps) => {
   const actions = getActionButtons(status);
   const { address } = useWallet();
-  const { showSuccess } = useToast();
   const isWalletConnected = !!address;
   const noWalletMsg = 'Connect wallet to perform this action';
   const panelRef = useRef<HTMLElement | null>(null);
@@ -149,7 +147,6 @@ const ActionPanel = ({
   const handleConfirm = () => {
     if (confirmAction === 'submit') {
       onSubmitMilestone?.();
-      showSuccess({ title: 'Milestone submitted' });
     } else if (confirmAction === 'release') {
       onReleaseFunds?.();
     } else if (confirmAction === 'dispute') {

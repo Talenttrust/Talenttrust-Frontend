@@ -543,4 +543,44 @@ describe('ContractRowItem', () => {
       expect(screen.getByText(longName)).toBeInTheDocument();
     });
   });
+
+  describe('Last Updated Timestamp', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2025-01-15T12:00:00.000Z'));
+    });
+
+    afterEach(() => {
+      jest.runOnlyPendingTimers();
+      jest.useRealTimers();
+    });
+
+    it('shows relative timestamp when updatedAt is provided', () => {
+      render(
+        <ContractRowItem
+          {...defaultProps}
+          updatedAt="2025-01-15T11:50:00.000Z"
+        />
+      );
+
+      expect(screen.getByText(/Updated/)).toBeInTheDocument();
+    });
+
+    it('does not show timestamp when updatedAt is not provided', () => {
+      render(<ContractRowItem {...defaultProps} />);
+
+      expect(screen.queryByText(/Updated/)).not.toBeInTheDocument();
+    });
+
+    it('provides accessible absolute time via sr-only text', () => {
+      render(
+        <ContractRowItem
+          {...defaultProps}
+          updatedAt="2025-01-15T12:00:00.000Z"
+        />
+      );
+
+      expect(screen.getByText(/Data last updated/)).toHaveClass('sr-only');
+    });
+  });
 });
