@@ -78,7 +78,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useToast } from './toast/toast-provider';
 import { useFormAnnouncer } from '@/hooks/useFormAnnouncer';
-import { KbdHint } from './KbdHint';
 
 import {
   DEFAULT_DIR,
