@@ -4,6 +4,7 @@ import React, { useState, useCallback, FormEvent, useRef } from 'react';
 import { FormField } from '@/components/FormField';
 import { ErrorSummary } from '@/components/ErrorSummary';
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
+import { useFormValidation } from '@/hooks/useFormValidation';
 import { sanitizeUserText } from '@/lib/sanitizeUserText';
 import {
   validateMilestone,
@@ -84,7 +85,7 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
   const [currency, setCurrency] = useState<string>('USD');
   const [status, setStatus] = useState<Milestone['status']>('Pending');
   const [dueDate, setDueDate] = useState('');
-  const [errors, setErrors] = useState<Array<{ fieldId: string; message: string }>>([]);
+  const { errors, validateAndSubmit } = useFormValidation();
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   // Inline validators for real-time validation
@@ -129,35 +130,35 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
       e.preventDefault();
       setHasSubmitted(true);
 
-      const validationErrors = validateForm();
-      setErrors(validationErrors);
+      validateAndSubmit(
+        validateForm,
+        () => {
+          // Generate a stable id from title slug + current timestamp
+          const sanitizedTitle = sanitizeUserText(title, MAX_MILESTONE_TITLE_LENGTH);
+          const slug = sanitizedTitle
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+          const id = `${slug}-${Date.now()}`;
 
-      if (validationErrors.length > 0) return;
+          const milestone: Milestone = {
+            id,
+            title: sanitizedTitle,
+            status,
+            payout: parseFloat(payout),
+            currency: currency.trim(),
+            dueDate: dueDate.trim() || undefined,
+            contractId,
+          };
 
-      // Generate a stable id from title slug + current timestamp
-      const sanitizedTitle = sanitizeUserText(title, MAX_MILESTONE_TITLE_LENGTH);
-      const slug = sanitizedTitle
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-      const id = `${slug}-${Date.now()}`;
-
-      const milestone: Milestone = {
-        id,
-        title: sanitizedTitle,
-        status,
-        payout: parseFloat(payout),
-        currency: currency.trim(),
-        dueDate: dueDate.trim() || undefined,
-        contractId,
-      };
-
-      onSubmit(milestone);
+          onSubmit(milestone);
+        },
+      );
     },
-    [title, payout, currency, status, dueDate, contractId, validateForm, onSubmit],
+    [title, payout, currency, status, dueDate, contractId, validateForm, validateAndSubmit, onSubmit],
   );
 
-  // Check if the form has any validation errors to disable submit button
+  // Check if the form has validation errors to disable submit button
   const hasErrors = () => {
     if (!hasSubmitted) return false;
     
@@ -296,7 +297,8 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              disabled={hasSubmitted && hasErrors()}
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add Milestone
             </button>
