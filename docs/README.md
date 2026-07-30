@@ -84,6 +84,7 @@ Reference documentation for components, hooks, contexts, and library utilities.
 | [error-reporting.md](./error-reporting.md) | Pluggable error reporting abstraction |
 | [persistence.md](./persistence.md) | `safeStorage`, `localStorage` fallback, SSR safety |
 | [preferences.md](./preferences.md) | `PreferencesProvider` hydration, theme application, amount formatting |
+| [reputation/theming.md](./reputation/theming.md) | How `ReputationProfile` consumes CSS custom-property tokens, dark mode, and how to customize them |
 | [security-headers.md](./security-headers.md) | CSP, `X-Frame-Options`, and other HTTP response headers |
 | [stellar-address.md](./stellar-address.md) | `isValidStellarAddress`, `normalizeStellarAddress` |
 | [walkthrough.md](./walkthrough.md) | Cumulative change log — reputation legend, ActionPanel hotfix, milestone docs, dialog docs |
