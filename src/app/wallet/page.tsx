@@ -6,7 +6,13 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { WalletBulkToolbar } from '../../components/wallet/WalletBulkToolbar';
 import { WalletItemList } from '../../components/wallet/WalletItemList';
 import { KbdHint } from '@/components/KbdHint';
-import { listWalletItems, saveWalletItem, updateWalletItem, deleteWalletItems } from '@/lib/repository';
+import {
+  listWalletItems,
+  saveWalletItem,
+  updateWalletItem,
+  deleteWalletItems,
+} from '@/lib/repository';
+import { downloadWalletCsv, downloadWalletJson } from '@/lib/exportWallet';
 import { useToast } from '@/components/toast/toast-provider';
 import type { WalletItem } from '@/types/domain';
 import { SAMPLE_WALLET_ITEMS } from './constants';
@@ -63,26 +69,37 @@ export default function WalletPage() {
     setSelectedIds(new Set());
   }, []);
 
-  const handleExportSelected = useCallback(() => {
-    if (selectedIds.size === 0) return;
-    const selectedItems = items.filter((item) => selectedIds.has(item.id));
-    const jsonStr = JSON.stringify(selectedItems, null, 2);
-    
-    try {
-      const blob = new Blob([jsonStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `wallet-export-${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Fallback for non-browser or strict CSP environments
-    }
+  const handleExportCsv = useCallback(() => {
+    const selectedItems =
+      selectedIds.size > 0
+        ? items.filter((i) => selectedIds.has(i.id))
+        : items;
+    if (selectedItems.length === 0) return;
+
+    downloadWalletCsv(selectedItems);
 
     showSuccess({
       title: 'Export successful',
-      description: `Exported ${selectedItems.length} ${selectedItems.length === 1 ? 'item' : 'items'} to JSON.`,
+      description: `Exported ${selectedItems.length} ${
+        selectedItems.length === 1 ? 'item' : 'items'
+      } to CSV.`,
+    });
+  }, [items, selectedIds, showSuccess]);
+
+  const handleExportJson = useCallback(() => {
+    const selectedItems =
+      selectedIds.size > 0
+        ? items.filter((i) => selectedIds.has(i.id))
+        : items;
+    if (selectedItems.length === 0) return;
+
+    downloadWalletJson(selectedItems);
+
+    showSuccess({
+      title: 'Export successful',
+      description: `Exported ${selectedItems.length} ${
+        selectedItems.length === 1 ? 'item' : 'items'
+      } to JSON.`,
     });
   }, [items, selectedIds, showSuccess]);
 
@@ -144,34 +161,32 @@ export default function WalletPage() {
     setEditingId(id);
   }, []);
 
-  const handleSaveEdit = useCallback((id: string, updated: WalletItem) => {
-    const ok = updateWalletItem(id, updated);
-    if (ok) {
-      const reloaded = listWalletItems();
-      setItems(reloaded);
-      setEditingId(null);
-      showSuccess({
-        title: 'Item updated',
-        description: `"${updated.name}" has been updated successfully.`,
-      });
-    } else {
-      showError({
-        title: 'Update failed',
-        description: 'Failed to save changes to the wallet item.',
-      });
-    }
-  }, [showSuccess, showError]);
+  const handleSaveEdit = useCallback(
+    (id: string, updated: WalletItem) => {
+      const ok = updateWalletItem(id, updated);
+      if (ok) {
+        const reloaded = listWalletItems();
+        setItems(reloaded);
+        setEditingId(null);
+        showSuccess({
+          title: 'Item updated',
+          description: `"${updated.name}" has been updated successfully.`,
+        });
+      } else {
+        showError({
+          title: 'Update failed',
+          description: 'Failed to save changes to the wallet item.',
+        });
+      }
+    },
+    [showSuccess, showError]
+  );
 
   const handleCancelEdit = useCallback((_id: string) => {
     setEditingId(null);
   }, []);
 
-  // Global wallet shortcuts: Ctrl/Cmd+Shift+A (select all) and
-  // Ctrl/Cmd+Shift+E (export selected). Shift is included specifically to
-  // avoid clashing with the browser's own Ctrl/Cmd+A (select-all-text) and
-  // Ctrl/Cmd+E (address-bar search in some browsers). Ignored while a text
-  // input, textarea, or contenteditable element (e.g. inline item editing)
-  // has focus so normal typing/selecting text is never intercepted.
+  // Global wallet keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || !event.shiftKey) return;
@@ -183,13 +198,13 @@ export default function WalletPage() {
         handleToggleSelectAll();
       } else if (key === 'e') {
         event.preventDefault();
-        handleExportSelected();
+        handleExportCsv();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleToggleSelectAll, handleExportSelected]);
+  }, [handleToggleSelectAll, handleExportCsv]);
 
   const deleteModalTitle = useMemo(() => {
     const count = targetDeleteIds.length;
@@ -226,7 +241,8 @@ export default function WalletPage() {
         <WalletBulkToolbar
           selectedCount={selectedIds.size}
           onClearSelection={handleClearSelection}
-          onExport={handleExportSelected}
+          onExportCsv={handleExportCsv}
+          onExportJson={handleExportJson}
           onDelete={handleRequestBulkDelete}
         />
       )}
