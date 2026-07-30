@@ -48,8 +48,6 @@ function getValidSortOption(param: string | null): MilestoneSortOption {
     : 'newest';
 }
 
-
-
 const MilestonesContent: React.FC = () => {
   const [milestones, setMilestones] = useState<Milestone[]>(SAMPLE_MILESTONES);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
@@ -162,6 +160,7 @@ const MilestonesContent: React.FC = () => {
     setIsDismissed(true);
     setMilestones((prev) => [...prev, milestone]);
   }, []);
+
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
   }, []);
@@ -263,20 +262,20 @@ const MilestonesContent: React.FC = () => {
               </label>
               <button
                 type="button"
+                aria-label="Add Milestone"
+                onClick={handleAddMilestone}
+                className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              >
+                Add Milestone
+              </button>
+              <button
+                type="button"
                 onClick={() => downloadMilestonesICS(sortedMilestones)}
                 aria-label="Add to calendar"
                 className="flex-shrink-0 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
               >
                 <span aria-hidden="true" className="mr-1">📅</span>
                 Add to Calendar
-              </button>
-              <button
-                type="button"
-                aria-label="Add Milestone"
-                onClick={handleAddMilestone}
-                className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-              >
-                Add Milestone
               </button>
             </div>
           </div>

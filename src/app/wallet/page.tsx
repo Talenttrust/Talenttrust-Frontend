@@ -5,10 +5,18 @@ import EmptyState from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { WalletBulkToolbar } from '../../components/wallet/WalletBulkToolbar';
 import { WalletItemList } from '../../components/wallet/WalletItemList';
+import { KbdHint } from '@/components/KbdHint';
 import { listWalletItems, saveWalletItem, updateWalletItem, deleteWalletItems } from '@/lib/repository';
 import { useToast } from '@/components/toast/toast-provider';
 import type { WalletItem } from '@/types/domain';
 import { SAMPLE_WALLET_ITEMS } from './constants';
+
+/** True when `target` is a text-entry element that keyboard shortcuts must not fire over. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+}
 
 export default function WalletPage() {
   const [items, setItems] = useState<WalletItem[]>([]);
@@ -158,6 +166,31 @@ export default function WalletPage() {
     setEditingId(null);
   }, []);
 
+  // Global wallet shortcuts: Ctrl/Cmd+Shift+A (select all) and
+  // Ctrl/Cmd+Shift+E (export selected). Shift is included specifically to
+  // avoid clashing with the browser's own Ctrl/Cmd+A (select-all-text) and
+  // Ctrl/Cmd+E (address-bar search in some browsers). Ignored while a text
+  // input, textarea, or contenteditable element (e.g. inline item editing)
+  // has focus so normal typing/selecting text is never intercepted.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || !event.shiftKey) return;
+      if (isTypingTarget(event.target)) return;
+
+      const key = event.key.toLowerCase();
+      if (key === 'a') {
+        event.preventDefault();
+        handleToggleSelectAll();
+      } else if (key === 'e') {
+        event.preventDefault();
+        handleExportSelected();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleToggleSelectAll, handleExportSelected]);
+
   const deleteModalTitle = useMemo(() => {
     const count = targetDeleteIds.length;
     return count === 1 ? 'Delete wallet item?' : `Delete ${count} wallet items?`;
@@ -181,6 +214,12 @@ export default function WalletPage() {
             Manage your connected assets, security credentials, and escrow keys.
           </p>
         </div>
+        {items.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3">
+            <KbdHint keys={['Ctrl', 'Shift', 'A']} label="select all" />
+            <KbdHint keys={['Ctrl', 'Shift', 'E']} label="export selected" />
+          </div>
+        )}
       </div>
 
       {items.length > 0 && (

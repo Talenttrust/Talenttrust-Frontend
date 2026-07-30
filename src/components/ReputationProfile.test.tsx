@@ -1172,3 +1172,142 @@ describe('ReputationProfile – last-updated timestamp (issue #62)', () => {
     await assertNoA11yViolations(container);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Keyboard shortcuts for the selection toolbar (issue: keyboard shortcuts
+// for reputation's primary actions)
+// ---------------------------------------------------------------------------
+
+describe('ReputationProfile – keyboard shortcuts for the selection toolbar', () => {
+  const FULL_PROPS: ReputationProfileProps = {
+    name: 'Verified User',
+    score: 88,
+    history: HISTORY_EVENTS,
+  };
+
+  function selectFirstTwo() {
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+      })
+    );
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: `Select reputation item ${HISTORY_EVENTS[1].type}: ${HISTORY_EVENTS[1].summary}`,
+      })
+    );
+  }
+
+  function exportButton() {
+    return screen.getByRole('button', { name: /export selected reputation items/i });
+  }
+  function deleteButton() {
+    return screen.getByRole('button', { name: /delete selected reputation items/i });
+  }
+  function clearButton() {
+    return screen.getByRole('button', { name: /clear selected reputation items/i });
+  }
+
+  it('Escape clears the selection and disables the toolbar buttons', () => {
+    renderProfile(FULL_PROPS);
+    selectFirstTwo();
+    expect(exportButton()).toBeEnabled();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(exportButton()).toBeDisabled();
+    expect(deleteButton()).toBeDisabled();
+    expect(clearButton()).toBeDisabled();
+  });
+
+  it('does nothing when Escape is pressed with no active selection', () => {
+    renderProfile(FULL_PROPS);
+    // No selection made; toolbar buttons already disabled — Escape should
+    // be a harmless no-op rather than throwing or doing anything odd.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(exportButton()).toBeDisabled();
+  });
+
+  // Keydown is fired on the currently-focused element (not `document`) so
+  // `event.target` matches what a real, bubbled browser event would carry —
+  // firing directly on `document` would set target=document, which the
+  // isInsideToolbar check would (correctly) treat as outside the toolbar.
+
+  it('ArrowRight moves focus to the next toolbar button and wraps around', () => {
+    renderProfile(FULL_PROPS);
+    selectFirstTwo();
+
+    exportButton().focus();
+    fireEvent.keyDown(exportButton(), { key: 'ArrowRight' });
+    expect(deleteButton()).toHaveFocus();
+
+    fireEvent.keyDown(deleteButton(), { key: 'ArrowRight' });
+    expect(clearButton()).toHaveFocus();
+
+    fireEvent.keyDown(clearButton(), { key: 'ArrowRight' });
+    expect(exportButton()).toHaveFocus();
+  });
+
+  it('ArrowLeft moves focus to the previous toolbar button and wraps around', () => {
+    renderProfile(FULL_PROPS);
+    selectFirstTwo();
+
+    exportButton().focus();
+    fireEvent.keyDown(exportButton(), { key: 'ArrowLeft' });
+    expect(clearButton()).toHaveFocus();
+  });
+
+  it('Home and End jump to the first and last toolbar button', () => {
+    renderProfile(FULL_PROPS);
+    selectFirstTwo();
+
+    deleteButton().focus();
+    fireEvent.keyDown(deleteButton(), { key: 'End' });
+    expect(clearButton()).toHaveFocus();
+
+    fireEvent.keyDown(clearButton(), { key: 'Home' });
+    expect(exportButton()).toHaveFocus();
+  });
+
+  it('arrow keys do nothing when focus is outside the toolbar', () => {
+    renderProfile(FULL_PROPS);
+    selectFirstTwo();
+
+    const selectAll = screen.getByRole('checkbox', { name: 'Select all reputation items' });
+    selectAll.focus();
+    fireEvent.keyDown(selectAll, { key: 'ArrowRight' });
+
+    expect(selectAll).toHaveFocus();
+  });
+
+  it('does not fire Escape while a select control has focus (respects input focus)', () => {
+    renderProfile(FULL_PROPS);
+    selectFirstTwo();
+
+    const sortSelect = screen.getByTestId('reputation-sort-dir');
+    sortSelect.focus();
+    fireEvent.keyDown(sortSelect, { key: 'Escape' });
+
+    // Selection must be untouched — the toolbar is still enabled.
+    expect(exportButton()).toBeEnabled();
+  });
+
+  it('shows a discoverable Escape hint only once a selection is active', () => {
+    renderProfile(FULL_PROPS);
+    expect(screen.queryByText(/to clear selection/i)).not.toBeInTheDocument();
+
+    selectFirstTwo();
+    expect(screen.getByText(/to clear selection/i)).toBeInTheDocument();
+  });
+
+  it('removes the global keydown listener on unmount', () => {
+    const { unmount } = renderProfile(FULL_PROPS);
+    selectFirstTwo();
+    const removeSpy = jest.spyOn(document, 'removeEventListener');
+
+    unmount();
+
+    expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
+    removeSpy.mockRestore();
+  });
+});
