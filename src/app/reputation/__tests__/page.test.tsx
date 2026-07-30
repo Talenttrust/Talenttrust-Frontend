@@ -34,6 +34,18 @@ jest.mock('../../../components/ReputationProfile', () => {
   };
 });
 
+// Mock ReputationSummaryCard component
+jest.mock('../../../components/ReputationSummaryCard', () => {
+  return function MockReputationSummaryCard(props: any) {
+    return (
+      <div data-testid="reputation-summary-card">
+        <div data-testid="summary-card-name">{props.name}</div>
+        <div data-testid="summary-card-score">{props.score ?? 'N/A'}</div>
+      </div>
+    );
+  };
+});
+
 // Mock EmptyState component
 jest.mock('../../../components/EmptyState', () => {
   return function MockEmptyState(props: any) {

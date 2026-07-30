@@ -188,7 +188,7 @@ export default function ReputationProfile({
   maxScore = 5,
   lastUpdated,
   announcerDebounceMs = 150,
-  pageSize = 10,
+  pageSize: _pageSize = 10,
   syncUrl = true,
 }: ReputationProfileProps) {
   let showSuccess: ReturnType<typeof useToast>['showSuccess'] | null = null;
@@ -229,41 +229,6 @@ export default function ReputationProfile({
   const selectedCount = selectedIds.length;
   const allSelected = events.length > 0 && selectedCount === events.length;
   const hasPartialSelection = selectedCount > 0 && selectedCount < events.length;
-  const toggleAll = () => {
-    if (allSelected) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(events.map((e) => e.id));
-    }
-  };
-  const handleExportSelected = () => {
-    const json = JSON.stringify(selectedEvents, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'reputation-export.json';
-    a.click();
-    if (typeof window !== 'undefined' && typeof window.URL?.revokeObjectURL === 'function') {
-      URL.revokeObjectURL(url);
-    }
-  };
-  const handleDeleteSelected = () => {
-    setConfirmOpen(true);
-  };
-  const clearSelection = () => {
-    setSelectedIds([]);
-  };
-  const toggleSelection = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-  const confirmDeleteSelected = () => {
-    optimisticDelete(selectedIds);
-    setSelectedIds([]);
-    setConfirmOpen(false);
-  };
 
   // ---------------------------------------------------------------------------
   // Keyboard shortcuts for the selection toolbar (Export / Delete / Clear).
@@ -604,8 +569,8 @@ export default function ReputationProfile({
           </div>
         </div>
 
-        <div aria-live="polite" aria-atomic="true" className="sr-only" data-testid="reputation-announcer-polite"></div>
-        <div aria-live="assertive" aria-atomic="true" className="sr-only" data-testid="reputation-announcer-assertive"></div>
+        <div aria-live="polite" aria-atomic="true" className="sr-only" data-testid="reputation-announcer-polite">{politeMessage}</div>
+        <div aria-live="assertive" aria-atomic="true" className="sr-only" data-testid="reputation-announcer-assertive">{assertiveMessage}</div>
 
         {events.length === 0 ? (
           <div className="rounded-3xl border-[var(--border)] bg-[var(--surface)] p-6 text-[var(--muted-foreground)]">
