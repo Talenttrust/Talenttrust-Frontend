@@ -567,102 +567,6 @@ describe('ContractsPage', () => {
     });
   });
 });
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import ContractsPage from '../page';
-import * as repository from '@/lib/repository';
-import * as stellarAddress from '@/lib/stellarAddress';
-import type { Contract } from '@/types/domain';
-
-const mockShowError = jest.fn();
-
-// Prevent actual download calls during tests
-jest.mock('@/lib/exportContracts', () => ({
-  ...jest.requireActual('@/lib/exportContracts'),
-  downloadContractsCsv: jest.fn(),
-  downloadContractsJson: jest.fn(),
-}));
-
-jest.mock('@/components/contracts/ContractsList', () => ({
-  __esModule: true,
-  default: ({ contracts }: any) => (
-    <ul data-testid="contracts-list">
-      {contracts.map((contract: any, idx: number) => (
-        <li key={`${contract.contractName}-${idx}`}>
-          {contract.contractName}
-        </li>
-      ))}
-    </ul>
-  ),
-}));
-
-jest.mock('@/components/ContractCreationForm', () => ({
-  ContractCreationForm: ({ onSubmit, onCancel }: any) => (
-    <div data-testid="contract-form">
-      <button onClick={() => onCancel()}>Cancel</button>
-      <button
-        onClick={() =>
-          onSubmit({
-            id: 'new-contract-id',
-            contractName: 'New Contract',
-            parties: [],
-            totalValue: 1000,
-            currency: 'USD',
-            status: 'Active',
-            createdAt: '2025-01-01',
-            milestoneCount: 0,
-          })
-        }
-      >
-        Submit
-      </button>
-    </div>
-  ),
-}));
-
-jest.mock('@/lib/repository', () => {
-  const actual = jest.requireActual('@/lib/repository');
-  return {
-    ...actual,
-    listContracts: jest.fn(actual.listContracts),
-    saveContract: jest.fn(actual.saveContract),
-    deleteContract: jest.fn(actual.deleteContract),
-  };
-});
-jest.mock('@/lib/stellarAddress');
-jest.mock('@/components/toast/toast-provider', () => ({
-  useToast: jest.fn(() => ({
-    showSuccess: jest.fn(),
-    showError: mockShowError,
-    toasts: [],
-    dismissToast: jest.fn(),
-  })),
-}));
-
-function makeContract(overrides: Partial<Contract> = {}): Contract {
-  return {
-    id: overrides.contractName ?? 'contract-id',
-    contractName: 'Website Redesign',
-    parties: [],
-    totalValue: 1000,
-    currency: 'USD',
-    status: 'Active',
-    createdAt: 'Jan 1, 2025',
-    milestoneCount: 0,
-    ...overrides,
-  };
-}
-
-const mockListContracts = repository.listContracts as jest.MockedFunction<
-  typeof repository.listContracts
->;
-const mockSaveContract = repository.saveContract as jest.MockedFunction<
-  typeof repository.saveContract
->;
-const mockIsValidStellarAddress = stellarAddress.isValidStellarAddress as jest.MockedFunction<
-  typeof stellarAddress.isValidStellarAddress
->;
-const VALID_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
 
 describe('ContractsPage', () => {
   beforeEach(() => {
@@ -1154,4 +1058,119 @@ describe('ContractsPage', () => {
   });
 
 
+});
+
+describe('ContractsPage State Transitions & Exclusivity (Issue #837)', () => {
+  it('renders ONLY success state (contracts list) when contracts are present', () => {
+    mockListContracts.mockReturnValue([
+      {
+        id: 'contract-1',
+        title: 'Frontend Refactor Project',
+        clientName: 'Alice Corp',
+        freelancerName: 'NoobFaris',
+        status: 'Active',
+        createdAt: '2026-07-01T00:00:00.000Z',
+        updatedAt: '2026-07-01T00:00:00.000Z',
+      },
+    ]);
+    render(<ContractsPage />);
+
+    // Success UI visible
+    expect(screen.getByText('Frontend Refactor Project')).toBeInTheDocument();
+
+    // Loading, Error, and Empty states must NOT be rendered
+    expect(screen.queryByRole('status', { name: /loading contracts/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText('No contracts found')).not.toBeInTheDocument();
+  });
+
+  it('renders ONLY empty state when repository returns an empty list', () => {
+    mockListContracts.mockReturnValue([]);
+    render(<ContractsPage />);
+
+    // Empty UI visible
+    expect(screen.getByText('No contracts found')).toBeInTheDocument();
+
+    // Loading and Error UI must NOT be rendered
+    expect(screen.queryByRole('status', { name: /loading contracts/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('renders ONLY error state when repository throws an initial error', () => {
+    mockListContracts.mockImplementation(() => {
+      throw new Error('Database error');
+    });
+    render(<ContractsPage />);
+
+    // Error UI visible
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByText('Unable to load contracts')).toBeInTheDocument();
+
+    // Loading and Empty UI must NOT be rendered
+    expect(screen.queryByRole('status', { name: /loading contracts/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('No contracts found')).not.toBeInTheDocument();
+  });
+
+  it('transitions from error -> loading -> success state when Retry button is clicked', async () => {
+    mockListContracts.mockImplementationOnce(() => {
+      throw new Error('Initial network error');
+    });
+
+    render(<ContractsPage />);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+
+    mockListContracts.mockReturnValueOnce([
+      {
+        id: 'contract-1',
+        title: 'Frontend Refactor Project',
+        clientName: 'Alice Corp',
+        freelancerName: 'NoobFaris',
+        status: 'Active',
+        createdAt: '2026-07-01T00:00:00.000Z',
+        updatedAt: '2026-07-01T00:00:00.000Z',
+      },
+    ]);
+
+    const retryBtn = screen.getByRole('button', { name: /retry loading contracts/i });
+    
+    act(() => {
+      fireEvent.click(retryBtn);
+    });
+
+    // Verify loading state appears
+    expect(screen.getByRole('status', { name: /loading contracts/i })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    // Wait for loading to resolve to success state
+    await waitFor(() => {
+      expect(screen.getByText('Frontend Refactor Project')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('status', { name: /loading contracts/i })).not.toBeInTheDocument();
+  });
+
+  it('transitions from error -> loading -> empty state on Retry when repository returns empty', async () => {
+    mockListContracts.mockImplementationOnce(() => {
+      throw new Error('Initial fail');
+    });
+
+    render(<ContractsPage />);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+
+    mockListContracts.mockReturnValueOnce([]);
+
+    const retryBtn = screen.getByRole('button', { name: /retry loading contracts/i });
+    
+    act(() => {
+      fireEvent.click(retryBtn);
+    });
+
+    expect(screen.getByRole('status', { name: /loading contracts/i })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('No contracts found')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('status', { name: /loading contracts/i })).not.toBeInTheDocument();
+  });
 });
