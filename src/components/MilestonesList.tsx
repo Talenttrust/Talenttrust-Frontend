@@ -15,16 +15,7 @@ export type Milestone = {
   payout: number;
   currency: string;
   dueDate?: string;
-  /** Id of the parent `Contract` this milestone belongs to, when known. */
   contractId?: string;
-  /**
-   * Monotonically-increasing version counter used by the stale-overwrite
-   * guard in the persistence layer. Starts at `1` for new milestones and
-   * increments on each successful upsert. Callers reading from the
-   * repository can pass the stored version back so `upsertMilestone` can
-   * reject writes that would silently overwrite a newer version persisted
-   * by another session tab.
-   */
   version?: number;
   createdAt?: string;    
   updatedAt?: string;    
@@ -37,13 +28,9 @@ export type MilestonesListProps = {
   contractCurrency?: string;
   onUpdateMilestone?: (id: string, patch: Partial<Milestone>) => boolean;
   pageSize?: number;
-  /** Callback when the selection changes. Passes an array of selected milestone ids. */
   onSelectionChange?: (selectedIds: string[]) => void;
-  /** Callback to export the selected milestones. */
   onBulkExport?: (selectedMilestones: Milestone[]) => void;
-  /** Callback to delete selected milestones. Should return the number successfully deleted. */
   onBulkDelete?: (selectedIds: string[]) => number;
-  /** Callback to update the status of selected milestones. Should return the number successfully updated. */
   onBulkStatusUpdate?: (selectedIds: string[], status: StatusType) => number;
 };
 
@@ -63,43 +50,16 @@ const MilestonesList = ({
   const [displayCount, setDisplayCount] = useState(pageSize);
   const [isDensityAnnounced, setIsDensityAnnounced] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
-  /**
-   * Tracks which row is currently in inline edit mode. Mutually exclusive —
-   * opening one row closes any other row that was being edited so we never
-   * have two dirty unsaved edit states competing for focus or screen reader
-   * output.
-   */
   const [editingId, setEditingId] = useState<string | null>(null);
-  /**
-   * Set of selected milestone IDs for multi-select / bulk actions.
-   */
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  /**
-   * Screen-reader announcement text for selection changes.
-   */
   const [selectionAnnouncement, setSelectionAnnouncement] = useState('');
-  /**
-   * Whether the delete confirmation dialog is open.
-   */
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  /**
-   * Polite live-region message conveyed to assistive technologies after a
-   * save / save-failure. Cleared on the *next* save so repeated messages
-   * are always announced (screen readers intentionally skip repeat strings).
-   */
   const [announcement, setAnnouncement] = useState('');
-  /**
-   * We force-bump a key on the live region right before writing the message
-   * so ATs re-announce identical strings ("Milestone saved.") on repeat.
-   */
   const [announcementNonce, setAnnouncementNonce] = useState(0);
 
   const listContainerRef = useRef<HTMLDivElement>(null);
-
   const isCompact = preferences.milestonesDensity === 'compact';
 
-  // Reset to the first page whenever the underlying list or page size
-  // changes (e.g. a status filter narrows the results).
   useEffect(() => {
     setDisplayCount(pageSize);
   }, [milestones, pageSize]);
@@ -126,9 +86,6 @@ const MilestonesList = ({
 
   const tallies = milestoneStatusTally(milestones);
 
-  // Filter due-soon milestones:
-  // - Exclude terminal statuses: Paid, Completed
-  // - Check if due date is within REMINDER_WINDOW_DAYS
   const dueSoonMilestones = milestones.filter(
     (m) =>
       m.status !== 'Paid' &&
@@ -146,16 +103,12 @@ const MilestonesList = ({
 
   const handleDismiss = () => {
     setIsDismissed(true);
-    // Programmatically shift focus to the list container to avoid focus loss (WCAG 2.1.1)
     listContainerRef.current?.focus();
   };
 
   const pushAnnouncement = useCallback((message: string) => {
     setAnnouncement('');
-    // Bump the nonce on the wrapper span so a same-message repeat still
-    // announces (some SRs dedupe on identical text + key).
     setAnnouncementNonce((n) => n + 1);
-    // Defer the actual write so React mounts a fresh text node first.
     requestAnimationFrame(() => setAnnouncement(message));
   }, []);
 
@@ -164,10 +117,6 @@ const MilestonesList = ({
       const ok = onUpdateMilestone ? onUpdateMilestone(id, patch) : true;
       if (ok) {
         setEditingId(null);
-        // The row component also announces via `onAnnounce`. We deliberately
-        // re-announce here so an `onUpdateMilestone` that returns `true`
-        // still resolves to a "saved" status even if the row's local
-        // announcer was bypassed (e.g. parent owns the milestone copy).
       } else {
         pushAnnouncement('Failed to save milestone.');
       }
@@ -187,10 +136,6 @@ const MilestonesList = ({
     }
     prevMilestonesRef.current = milestones;
   }, [milestones, editingId]);
-
-  // --------------------------------------------------------------------------
-  // Multi-select handlers
-  // --------------------------------------------------------------------------
 
   const allSelected = milestones.length > 0 && selectedIds.size === milestones.length;
   const hasSelection = selectedIds.size > 0;
@@ -307,7 +252,6 @@ const MilestonesList = ({
         </div>
       </div>
 
-      {/* aria-live region: announces density change to screen readers */}
       <span
         className="sr-only"
         aria-live="polite"
@@ -392,10 +336,6 @@ const MilestonesList = ({
         </div>
       )}
 
-      {/* Polite live region for save / save-failure announcements. The wrapping
-          span's `key` (via `key={announcementNonce}`) is bumped on every
-          write so screen readers re-announce identical strings. Controlled
-          entirely from `MilestoneRow.onAnnounce` and the parent save handler. */}
       <span
         key={announcementNonce}
         data-testid="milestones-announcement"
@@ -407,7 +347,6 @@ const MilestonesList = ({
         {announcement}
       </span>
 
-      {/* Screen-reader announcement for selection changes */}
       <span
         role="status"
         aria-live="polite"
@@ -418,21 +357,6 @@ const MilestonesList = ({
         {selectionAnnouncement}
       </span>
 
-      {/*
-        Keyboard Accessibility (WCAG 2.1.1):
-        The scrollable container is focusable (tabIndex={0}) with role="region" so keyboard-only users
-        can navigate to it and scroll with arrow keys.
-
-        Labelling (WCAG 1.3.1 / 4.1.2):
-        aria-labelledby references both the visible "Milestones" heading (milestones-title) and the live
-        count span (milestones-count) so AT users hear e.g. "Milestones, 3 total – region" rather than
-        a disconnected static string. This keeps the accessible name in sync with both the heading and
-        the rendered item count without duplicating text.
-
-        Why tabIndex is always applied when the list is populated:
-        1. Consistency between SSR and client hydration avoids layout/hydration shifts.
-        2. Testability in JSDOM where clientHeight/scrollHeight are always zero.
-      */}
       {milestones.length > 0 && (
         <div
           role="group"

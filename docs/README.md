@@ -22,6 +22,7 @@ Reference documentation for components, hooks, contexts, and library utilities.
 | [MilestoneFilter.md](./components/MilestoneFilter.md) | Status filter radiogroup, `aria-live` result count |
 | [MilestonesApi.md](./components/MilestonesApi.md) | Milestones component API reference — props, shared types, minimal usage examples |
 | [MilestonesUsageGuide.md](./components/MilestonesUsageGuide.md) | Milestones components usage guide — composition patterns, props, accessibility, troubleshooting |
+| [MilestonesTheming.md](./components/MilestonesTheming.md) | Milestones theme token usage (`--ring`, `--status-*`), current values, how to customize, and what isn't tokenized yet |
 | [MilestonesList.md](./components/MilestonesList.md) | Milestone list rendering, accessibility contract (roles, keyboard, focus), density toggle, pagination |
 | [MilestoneRow.md](./components/MilestoneRow.md) | Milestone row view/edit modes — accessibility contract (roles, keyboard, focus) |
 | [Navbar.md](./components/Navbar.md) | Global navigation, keyboard support |
@@ -83,6 +84,7 @@ Reference documentation for components, hooks, contexts, and library utilities.
 | [error-reporting.md](./error-reporting.md) | Pluggable error reporting abstraction |
 | [persistence.md](./persistence.md) | `safeStorage`, `localStorage` fallback, SSR safety |
 | [preferences.md](./preferences.md) | `PreferencesProvider` hydration, theme application, amount formatting |
+| [reputation/theming.md](./reputation/theming.md) | How `ReputationProfile` consumes CSS custom-property tokens, dark mode, and how to customize them |
 | [security-headers.md](./security-headers.md) | CSP, `X-Frame-Options`, and other HTTP response headers |
 | [stellar-address.md](./stellar-address.md) | `isValidStellarAddress`, `normalizeStellarAddress` |
 | [walkthrough.md](./walkthrough.md) | Cumulative change log — reputation legend, ActionPanel hotfix, milestone docs, dialog docs |
