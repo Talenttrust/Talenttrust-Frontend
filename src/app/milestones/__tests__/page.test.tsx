@@ -7,7 +7,6 @@ import { listMilestones } from '@/lib/repository';
 import { resetCache } from '@/lib/safeStorage';
 import * as repository from '@/lib/repository';
 import type { Milestone } from '@/types/domain';
-
 // ---------------------------------------------------------------------------
 // useCopyToClipboard mock — MilestoneCard uses useCopyToClipboard for IDs
 // These mutable variables let tests control the hook's return value and
@@ -960,6 +959,7 @@ describe('MilestonesPage — focus management (issue #682)', () => {
 
       await waitFor(() => expect(screen.getByText('Repository Kickoff')).toBeInTheDocument());
 
+      await user.click(screen.getByRole('button', { name: /add\.\.\./i }));
       await user.click(screen.getByRole('button', { name: /^add milestone$/i }));
       await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
 

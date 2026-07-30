@@ -14,6 +14,7 @@ Reference documentation for components, hooks, contexts, and library utilities.
 | [ContractDetail.md](./components/ContractDetail.md) | Contract detail page component composition |
 | [ContractProgress.md](./components/ContractProgress.md) | Escrow summary and milestone progress panel |
 | [ContractsApi.md](./components/ContractsApi.md) | Contracts component API reference — props and minimal usage examples |
+| [ContractsTheming.md](./components/ContractsTheming.md) | Contracts theme token usage (`--ring`, `--status-*`), current values, how to customize, and what isn't tokenized yet |
 | [**Dialogs.md**](./components/Dialogs.md) | **Unified dialog usage guide** — `ConfirmDialog`, `ContractCreationForm`, `MilestoneCreationForm`, `useDialogFocusTrap` hook, focus restoration patterns |
 | [**DialogsApi.md**](./components/DialogsApi.md) | **Dialogs component API reference** — `DialogsList`, `DialogLastUpdated`, `DialogsViewSkeleton`, `DialogIdBadge`, props, shared types, minimal usage examples |
 | [EmptyState.md](./components/EmptyState.md) | Empty-state placeholder component |

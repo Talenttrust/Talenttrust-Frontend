@@ -251,6 +251,25 @@ body {
   [data-reputation-list] button {
     border: 1px solid ButtonText !important;
   }
+
+  /* ── Contracts-specific high-contrast rules ──
+     Ensures the contracts list and its controls (search, sort, export,
+     density toggle) remain legible with a visible focus indicator when
+     forced-colors mode is active (e.g. Windows High Contrast). */
+
+  /* Contracts list items: visible container boundary per item */
+  [data-contracts-list] li {
+    border: 1px solid CanvasText !important;
+  }
+
+  /* Several contracts controls use `outline-none` paired with a Tailwind
+     focus ring (box-shadow), which forced-colors mode does not render —
+     leaving no visible focus indicator at all. Restore a native outline
+     for every focus-visible element scoped to the contracts page. */
+  [data-contracts-page] :focus-visible {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
 }
 
 /* ---------------------------------------------------------------------------
