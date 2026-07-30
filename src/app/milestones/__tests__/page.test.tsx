@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, act, within } from '@testing-library/react';
+import { render, screen, waitFor, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MilestonesPage from '../page';
 import { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from '../constants';
@@ -105,6 +105,22 @@ async function renderPage() {
   const result = render(<MilestonesPage />);
   await act(async () => {});
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// List-scoped query helpers
+//
+// MilestonesList renders a focused/workable region (aria-labelledby
+// "milestones-title milestones-count") that contains every milestone <article>.
+// The due-soon reminder banner lives outside this region in the same
+// <section>, so unscoped `screen.getByText(<title>)` would multiply-match any
+// milestone whose title is also surfaced in the reminder (notably "Active
+// Work" in the shared fixtures). Scope every per-milestone title assertion to
+// this region via `within(...)` so the tests mean what they actually say.
+// ---------------------------------------------------------------------------
+const MILESTONES_LIST_REGION_NAME = /milestones\s+\d+\s+total/i;
+function getMilestonesListRegion(): HTMLElement {
+  return screen.getByRole('region', { name: MILESTONES_LIST_REGION_NAME });
 }
 
 // ---------------------------------------------------------------------------
@@ -299,11 +315,12 @@ describe('MilestoneFilter — filtering behaviour', () => {
     await renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Active Work')).toBeInTheDocument();
-      expect(screen.getByText('Pending Task')).toBeInTheDocument();
-      expect(screen.getByText('Done Milestone')).toBeInTheDocument();
-      expect(screen.getByText('Settled Payment')).toBeInTheDocument();
-      expect(screen.getByText('Under Dispute')).toBeInTheDocument();
+      const list = getMilestonesListRegion();
+      expect(within(list).getByText('Active Work')).toBeInTheDocument();
+      expect(within(list).getByText('Pending Task')).toBeInTheDocument();
+      expect(within(list).getByText('Done Milestone')).toBeInTheDocument();
+      expect(within(list).getByText('Settled Payment')).toBeInTheDocument();
+      expect(within(list).getByText('Under Dispute')).toBeInTheDocument();
     });
   });
 
@@ -314,11 +331,12 @@ describe('MilestoneFilter — filtering behaviour', () => {
     await user.click(screen.getByRole('radio', { name: 'Active' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Active Work')).toBeInTheDocument();
-      expect(screen.queryByText('Pending Task')).not.toBeInTheDocument();
-      expect(screen.queryByText('Done Milestone')).not.toBeInTheDocument();
-      expect(screen.queryByText('Settled Payment')).not.toBeInTheDocument();
-      expect(screen.queryByText('Under Dispute')).not.toBeInTheDocument();
+      const list = getMilestonesListRegion();
+      expect(within(list).getByText('Active Work')).toBeInTheDocument();
+      expect(within(list).queryByText('Pending Task')).not.toBeInTheDocument();
+      expect(within(list).queryByText('Done Milestone')).not.toBeInTheDocument();
+      expect(within(list).queryByText('Settled Payment')).not.toBeInTheDocument();
+      expect(within(list).queryByText('Under Dispute')).not.toBeInTheDocument();
     });
   });
 
@@ -329,9 +347,10 @@ describe('MilestoneFilter — filtering behaviour', () => {
     await user.click(screen.getByRole('radio', { name: 'Pending' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Pending Task')).toBeInTheDocument();
-      expect(screen.queryByText('Active Work')).not.toBeInTheDocument();
-      expect(screen.queryByText('Done Milestone')).not.toBeInTheDocument();
+      const list = getMilestonesListRegion();
+      expect(within(list).getByText('Pending Task')).toBeInTheDocument();
+      expect(within(list).queryByText('Active Work')).not.toBeInTheDocument();
+      expect(within(list).queryByText('Done Milestone')).not.toBeInTheDocument();
     });
   });
 
@@ -342,9 +361,10 @@ describe('MilestoneFilter — filtering behaviour', () => {
     await user.click(screen.getByRole('radio', { name: 'Completed' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Done Milestone')).toBeInTheDocument();
-      expect(screen.queryByText('Active Work')).not.toBeInTheDocument();
-      expect(screen.queryByText('Pending Task')).not.toBeInTheDocument();
+      const list = getMilestonesListRegion();
+      expect(within(list).getByText('Done Milestone')).toBeInTheDocument();
+      expect(within(list).queryByText('Active Work')).not.toBeInTheDocument();
+      expect(within(list).queryByText('Pending Task')).not.toBeInTheDocument();
     });
   });
 
@@ -355,9 +375,10 @@ describe('MilestoneFilter — filtering behaviour', () => {
     await user.click(screen.getByRole('radio', { name: 'Paid' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Settled Payment')).toBeInTheDocument();
-      expect(screen.queryByText('Active Work')).not.toBeInTheDocument();
-      expect(screen.queryByText('Under Dispute')).not.toBeInTheDocument();
+      const list = getMilestonesListRegion();
+      expect(within(list).getByText('Settled Payment')).toBeInTheDocument();
+      expect(within(list).queryByText('Active Work')).not.toBeInTheDocument();
+      expect(within(list).queryByText('Under Dispute')).not.toBeInTheDocument();
     });
   });
 
@@ -368,9 +389,10 @@ describe('MilestoneFilter — filtering behaviour', () => {
     await user.click(screen.getByRole('radio', { name: 'Disputed' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Under Dispute')).toBeInTheDocument();
-      expect(screen.queryByText('Active Work')).not.toBeInTheDocument();
-      expect(screen.queryByText('Pending Task')).not.toBeInTheDocument();
+      const list = getMilestonesListRegion();
+      expect(within(list).getByText('Under Dispute')).toBeInTheDocument();
+      expect(within(list).queryByText('Active Work')).not.toBeInTheDocument();
+      expect(within(list).queryByText('Pending Task')).not.toBeInTheDocument();
     });
   });
 
@@ -380,21 +402,25 @@ describe('MilestoneFilter — filtering behaviour', () => {
 
     // Pending
     await user.click(screen.getByRole('radio', { name: 'Pending' }));
-    await waitFor(() => expect(screen.getByText('Pending Task')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(within(getMilestonesListRegion()).getByText('Pending Task')).toBeInTheDocument(),
+    );
 
     // Disputed
     await user.click(screen.getByRole('radio', { name: 'Disputed' }));
     await waitFor(() => {
-      expect(screen.getByText('Under Dispute')).toBeInTheDocument();
-      expect(screen.queryByText('Pending Task')).not.toBeInTheDocument();
+      const list = getMilestonesListRegion();
+      expect(within(list).getByText('Under Dispute')).toBeInTheDocument();
+      expect(within(list).queryByText('Pending Task')).not.toBeInTheDocument();
     });
 
     // Back to All
     await user.click(screen.getByRole('radio', { name: 'All' }));
     await waitFor(() => {
-      expect(screen.getByText('Active Work')).toBeInTheDocument();
-      expect(screen.getByText('Pending Task')).toBeInTheDocument();
-      expect(screen.getByText('Under Dispute')).toBeInTheDocument();
+      const list = getMilestonesListRegion();
+      expect(within(list).getByText('Active Work')).toBeInTheDocument();
+      expect(within(list).getByText('Pending Task')).toBeInTheDocument();
+      expect(within(list).getByText('Under Dispute')).toBeInTheDocument();
     });
   });
 });
@@ -643,8 +669,9 @@ describe('"Active" filter — edge cases', () => {
     await user.click(screen.getByRole('radio', { name: 'Active' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Active Work')).toBeInTheDocument();
-      expect(screen.queryByText('Pending Task')).not.toBeInTheDocument();
+      const list = getMilestonesListRegion();
+      expect(within(list).getByText('Active Work')).toBeInTheDocument();
+      expect(within(list).queryByText('Pending Task')).not.toBeInTheDocument();
     });
   });
 
