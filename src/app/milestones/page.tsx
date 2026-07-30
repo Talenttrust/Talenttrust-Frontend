@@ -1,61 +1,37 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  Suspense,
+} from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import EmptyState from '../../components/EmptyState';
 import MilestonesList from '../../components/MilestonesList';
-import MilestoneFilter, { type MilestoneStatusFilter } from '../../components/milestones/MilestoneFilter';
+import MilestoneFilter, {
+  type MilestoneStatusFilter,
+} from '../../components/milestones/MilestoneFilter';
 import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
-import { listMilestones, saveMilestone } from '@/lib/repository';
+import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository';
 import { getItem, setItem } from '@/lib/safeStorage';
+import { useToast } from '@/components/toast/toast-provider';
+import SafeBoundary from '@/components/SafeBoundary';
+import { downloadMilestonesICS } from '@/lib/icsExport';
+import { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from './constants';
 import type { Milestone } from '@/types/domain';
 
-export const SAMPLE_DISMISSED_KEY = 'talenttrust-milestones-sample-dismissed';
+const UNPAGINATED_LIST_SIZE = 9999;
 
-export const SAMPLE_MILESTONES: Milestone[] = [
-  {
-    id: '1',
-    title: 'Project Kickoff & Discovery',
-    status: 'Completed',
-    payout: 2500,
-    currency: 'USD',
-    dueDate: '2026-03-15',
-  },
-  {
-    id: '2',
-    title: 'UI/UX Design Handoff',
-    status: 'Paid',
-    payout: 3500,
-    currency: 'USD',
-    dueDate: '2026-04-01',
-  },
-  {
-    id: '3',
-    title: 'Frontend Development – Sprint 1',
-    status: 'Pending',
-    payout: 5000,
-    currency: 'USD',
-    dueDate: '2026-05-01',
-  },
-  {
-    id: '4',
-    title: 'API Integration & Testing',
-    status: 'Pending',
-    payout: 4000,
-    currency: 'USD',
-    dueDate: '2026-05-15',
-  },
-  {
-    id: '5',
-    title: 'Payment Gateway Integration',
-    status: 'Disputed',
-    payout: 3000,
-    currency: 'USD',
-    dueDate: '2026-04-20',
-  },
+const VALID_STATUSES: MilestoneStatusFilter[] = [
+  'All',
+  'Pending',
+  'Completed',
+  'Paid',
+  'Disputed',
 ];
-
-const VALID_STATUSES: MilestoneStatusFilter[] = ['All', 'Pending', 'Completed', 'Paid', 'Disputed'];
 
 function getValidStatus(param: string | null): MilestoneStatusFilter {
   return param && (VALID_STATUSES as string[]).includes(param)
@@ -63,34 +39,59 @@ function getValidStatus(param: string | null): MilestoneStatusFilter {
     : 'All';
 }
 
+type MilestoneSortOption = 'newest' | 'oldest';
+const VALID_SORT_OPTIONS: MilestoneSortOption[] = ['newest', 'oldest'];
+
+function getValidSortOption(param: string | null): MilestoneSortOption {
+  return param && (VALID_SORT_OPTIONS as string[]).includes(param)
+    ? (param as MilestoneSortOption)
+    : 'newest';
+}
+
 const MilestonesContent: React.FC = () => {
   const [milestones, setMilestones] = useState<Milestone[]>(SAMPLE_MILESTONES);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
   const startFromScratchRef = useRef<HTMLButtonElement | null>(null);
 
   const initialStatus = getValidStatus(searchParams.get('status'));
-  const [statusFilter, setStatusFilter] = useState<MilestoneStatusFilter>(initialStatus);
+  const [statusFilter, setStatusFilter] =
+    useState<MilestoneStatusFilter>(initialStatus);
+  const [sortOrder, setSortOrder] = useState<MilestoneSortOption>(
+    getValidSortOption(searchParams.get('sort')),
+  );
   const [showForm, setShowForm] = useState(false);
+  const { showError } = useToast();
 
-  // Sync state if searchParams change externally (e.g. back/forward navigation)
   useEffect(() => {
-    const currentParam = searchParams.get('status');
-    setStatusFilter(getValidStatus(currentParam));
+    setStatusFilter(getValidStatus(searchParams.get('status')));
+    setSortOrder(getValidSortOption(searchParams.get('sort')));
   }, [searchParams]);
 
-  // Sync statusFilter state changes to URL without adding browser history entries
   useEffect(() => {
-    const currentUrlStatus = searchParams.get('status');
-    if (currentUrlStatus !== statusFilter && !(currentUrlStatus === null && statusFilter === 'All')) {
+    const timeoutId = window.setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
-      params.set('status', statusFilter);
-      router.replace(`?${params.toString()}`);
-    }
-  }, [statusFilter, router, searchParams]);
+      if (statusFilter !== 'All') {
+        params.set('status', statusFilter);
+      } else {
+        params.delete('status');
+      }
 
-  // Rehydrate from localStorage after the client mounts to avoid SSR mismatches.
+      if (sortOrder !== 'newest') {
+        params.set('sort', sortOrder);
+      } else {
+        params.delete('sort');
+      }
+
+      const query = params.toString();
+      router.replace(query ? `?${query}` : '?');
+    }, 150);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [statusFilter, sortOrder, router, searchParams]);
+
   useEffect(() => {
     const persisted = listMilestones();
     if (persisted.length > 0) {
@@ -111,12 +112,12 @@ const MilestonesContent: React.FC = () => {
     try {
       setItem(SAMPLE_DISMISSED_KEY, 'true');
     } catch {
-      // safeStorage failure resilience
+      // safeStorage resilience
     }
     setIsDismissed(true);
     setMilestones([]);
     setTimeout(() => {
-      startFromScratchRef.current?.focus();
+      headingRef.current?.focus();
     }, 0);
   }, []);
 
@@ -129,25 +130,65 @@ const MilestonesContent: React.FC = () => {
     return displayMilestones.filter((m) => m.status === statusFilter);
   }, [displayMilestones, statusFilter]);
 
+  const sortedMilestones = useMemo(() => {
+    const nextMilestones = [...filtered];
+
+    if (sortOrder === 'oldest') {
+      nextMilestones.sort((left, right) => {
+        const leftTime = left.dueDate ? Date.parse(left.dueDate) : Number.POSITIVE_INFINITY;
+        const rightTime = right.dueDate ? Date.parse(right.dueDate) : Number.POSITIVE_INFINITY;
+        return leftTime - rightTime;
+      });
+    } else {
+      nextMilestones.sort((left, right) => {
+        const leftTime = left.dueDate ? Date.parse(left.dueDate) : Number.NEGATIVE_INFINITY;
+        const rightTime = right.dueDate ? Date.parse(right.dueDate) : Number.NEGATIVE_INFINITY;
+        return rightTime - leftTime;
+      });
+    }
+
+    return nextMilestones;
+  }, [filtered, sortOrder]);
+
   const handleAddMilestone = useCallback(() => {
     setShowForm(true);
   }, []);
 
   const handleSubmitMilestone = useCallback((milestone: Milestone) => {
-    saveMilestone(milestone);
-    const persisted = listMilestones();
-    setMilestones(persisted);
-    setIsDismissed(true);
     setShowForm(false);
+    saveMilestone(milestone);
+    setIsDismissed(true);
+    setMilestones((prev) => [...prev, milestone]);
   }, []);
 
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
   }, []);
 
+  const handleUpdateMilestone = useCallback(
+    (id: string, patch: Partial<Milestone>): boolean => {
+      try {
+        updateMilestone(id, patch);
+        setMilestones((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+        );
+        return true;
+      } catch {
+        showError({
+          title: 'Unable to update milestone',
+          description: 'Your milestone could not be saved. Please try again.',
+        });
+        return false;
+      }
+    },
+    [showError],
+  );
+
   return (
-    <main className="min-h-screen p-8">
-      <h1 className="text-2xl font-bold mb-6">Milestones</h1>
+    <div className="min-h-screen p-8">
+      <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold mb-6 focus:outline-none">
+        Milestones
+      </h1>
 
       {showSampleBanner && (
         <div
@@ -178,7 +219,7 @@ const MilestonesContent: React.FC = () => {
               type="button"
               onClick={handleDismissSampleBanner}
               aria-label="Dismiss sample data notice"
-              className="text-blue-500 hover:text-blue-700"
+              className="rounded-sm text-blue-500 hover:text-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             >
               ×
             </button>
@@ -196,22 +237,50 @@ const MilestonesContent: React.FC = () => {
         />
       ) : (
         <>
-          <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <MilestoneFilter
               selected={statusFilter}
               onChange={setStatusFilter}
-              resultCount={filtered.length}
+              resultCount={sortedMilestones.length}
             />
-            <button
-              type="button"
-              onClick={handleAddMilestone}
-              className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-            >
-              Add Milestone
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <label
+                htmlFor="milestone-sort"
+                className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm"
+              >
+                <span className="font-medium text-slate-700">Sort</span>
+                <select
+                  id="milestone-sort"
+                  aria-label="Sort milestones"
+                  value={sortOrder}
+                  onChange={(event) => setSortOrder(event.target.value as MilestoneSortOption)}
+                  className="rounded-xl border border-slate-200 bg-transparent px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => downloadMilestonesICS(sortedMilestones)}
+                aria-label="Add to calendar"
+                className="flex-shrink-0 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              >
+                <span aria-hidden="true" className="mr-1">📅</span>
+                Add to Calendar
+              </button>
+              <button
+                type="button"
+                aria-label="Add Milestone"
+                onClick={handleAddMilestone}
+                className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              >
+                Add Milestone
+              </button>
+            </div>
           </div>
 
-          {filtered.length === 0 ? (
+          {sortedMilestones.length === 0 ? (
             <EmptyState
               illustration="milestones"
               title="No milestones match this filter"
@@ -220,7 +289,11 @@ const MilestonesContent: React.FC = () => {
               onAction={handleAddMilestone}
             />
           ) : (
-            <MilestonesList milestones={filtered} />
+            <MilestonesList
+              milestones={sortedMilestones}
+              onUpdateMilestone={handleUpdateMilestone}
+              pageSize={UNPAGINATED_LIST_SIZE}
+            />
           )}
         </>
       )}
@@ -231,14 +304,16 @@ const MilestonesContent: React.FC = () => {
           onCancel={handleCancelForm}
         />
       )}
-    </main>
+    </div>
   );
 };
 
 const MilestonesPage: React.FC = () => (
-  <Suspense fallback={null}>
-    <MilestonesContent />
-  </Suspense>
+  <SafeBoundary fallbackTitle="Milestones failed to load.">
+    <Suspense fallback={null}>
+      <MilestonesContent />
+    </Suspense>
+  </SafeBoundary>
 );
 
 export default MilestonesPage;

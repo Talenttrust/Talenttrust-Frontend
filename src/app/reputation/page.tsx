@@ -1,7 +1,13 @@
-import React from 'react';
-import EmptyState from '../../components/EmptyState';
-import ReputationProfile from '../../components/ReputationProfile';
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import EmptyState from '@/components/EmptyState';
+import ReputationProfile from '@/components/ReputationProfile';
+import { listReputationEvents } from '@/lib/repository';
 import type { Reputation } from '@/types/domain';
+import EmptyState from '@/components/EmptyState';
+import ReputationProfile from '@/components/ReputationProfile';
+import { listReputationEvents } from '@/lib/repository';
 
 export type ReputationPageContentProps = {
   reputationData?: Reputation | null;
@@ -36,17 +42,28 @@ export function ReputationPageContent({
         score={score}
         level={reputationData.level}
         history={reputationData.history}
+        lastUpdated={reputationData.lastUpdated}
       />
     </main>
   );
 }
 
 const ReputationPage: React.FC = () => {
-  const reputation: Reputation[] = [];
+  const [reputationData, setReputationData] = useState<Reputation | null>(null);
+
+  useEffect(() => {
+    const history = listReputationEvents();
+    // Provide a default profile if we have history or just to show the UI
+    setReputationData({
+      score: 4.5,
+      level: 'Expert',
+      history,
+    });
+  }, []);
 
   return (
     <ReputationPageContent
-      reputationData={reputation.length > 0 ? reputation[0] : null}
+      reputationData={reputationData}
     />
   );
 };

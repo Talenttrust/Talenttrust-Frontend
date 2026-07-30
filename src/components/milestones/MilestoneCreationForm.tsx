@@ -1,21 +1,39 @@
 'use client';
 
-import React, { useState, useCallback, FormEvent } from 'react';
+import React, { useState, useCallback, FormEvent, useRef } from 'react';
 import { FormField } from '@/components/FormField';
 import { ErrorSummary } from '@/components/ErrorSummary';
+import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
+import { sanitizeUserText } from '@/lib/sanitizeUserText';
+import {
+  validateMilestone,
+  MAX_MILESTONE_TITLE_LENGTH,
+  ALLOWED_CURRENCIES,
+  ALLOWED_STATUSES,
+  MAX_PAYOUT_VALUE,
+  MAX_PAYOUT_DECIMAL_PLACES,
+} from '@/lib/validateMilestone';
+import {
+  combineValidators,
+  validateRequired,
+  validateMaxLength,
+  validatePositiveNumber,
+  validateNumberRange,
+  validateDecimalPlaces,
+  validateDueDate,
+  validateAllowedValues,
+} from '@/lib/fieldValidators';
 import type { Milestone } from '@/types/domain';
 
+// Re-export so existing imports of MAX_MILESTONE_TITLE_LENGTH from this module
+// continue to work without breaking changes.
+export { MAX_MILESTONE_TITLE_LENGTH };
+
 /** Status options available when creating a milestone. */
-const STATUS_OPTIONS: Milestone['status'][] = [
-  'Pending',
-  'Active',
-  'Completed',
-  'Paid',
-  'Disputed',
-];
+const STATUS_OPTIONS = ALLOWED_STATUSES as unknown as Milestone['status'][];
 
 /** Currency options available when creating a milestone. */
-const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'XLM'] as const;
+const CURRENCY_OPTIONS = ALLOWED_CURRENCIES;
 
 export interface MilestoneCreationFormProps {
   /**
@@ -39,6 +57,7 @@ export interface MilestoneCreationFormProps {
  *
  * Mirrors the style and accessibility patterns of `ContractCreationForm`:
  * - `role="dialog"` / `aria-modal` for correct AT announcement.
+ * - Shared dialog focus trapping, Escape handling, and trigger-focus restoration.
  * - `ErrorSummary` with `role="alert"` focus management for invalid submissions.
  * - `FormField` handles per-field `aria-invalid`, `aria-describedby`, and
  *   error-border injection.
@@ -58,37 +77,48 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
   onCancel,
   contractId,
 }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState('');
   const [payout, setPayout] = useState('');
   const [currency, setCurrency] = useState<string>('USD');
   const [status, setStatus] = useState<Milestone['status']>('Pending');
   const [dueDate, setDueDate] = useState('');
   const [errors, setErrors] = useState<Array<{ fieldId: string; message: string }>>([]);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  // Inline validators for real-time validation
+  const validateTitleField = combineValidators([
+    validateRequired('Title'),
+    validateMaxLength('Title', MAX_MILESTONE_TITLE_LENGTH),
+  ]);
+
+  const validatePayoutField = combineValidators([
+    validateRequired('Payout amount'),
+    validatePositiveNumber('Payout amount'),
+    validateNumberRange('Payout amount', 0.01, MAX_PAYOUT_VALUE),
+    validateDecimalPlaces('Payout amount', MAX_PAYOUT_DECIMAL_PLACES),
+  ]);
+
+  const validateCurrencyField = combineValidators([
+    validateRequired('Currency'),
+    validateAllowedValues('Currency', ALLOWED_CURRENCIES),
+  ]);
+
+  const validateStatusField = combineValidators([
+    validateAllowedValues('Status', ALLOWED_STATUSES),
+  ]);
+
+  const validateDueDateField = validateDueDate();
 
   /**
-   * Validates form fields and returns an array of error objects.
-   * An empty array means the form is valid.
+   * Delegates to the pure `validateMilestone` helper and returns the resulting
+   * errors array. Keeping the call-site here (rather than inlining the logic)
+   * means the form stays thin while the rules live in a testable module.
    */
   const validateForm = useCallback((): Array<{ fieldId: string; message: string }> => {
-    const errs: Array<{ fieldId: string; message: string }> = [];
-
-    if (!title.trim()) {
-      errs.push({ fieldId: 'milestone-title', message: 'Title is required' });
-    }
-
-    const numericPayout = parseFloat(payout);
-    if (!payout.trim()) {
-      errs.push({ fieldId: 'milestone-payout', message: 'Payout amount is required' });
-    } else if (isNaN(numericPayout) || numericPayout <= 0) {
-      errs.push({ fieldId: 'milestone-payout', message: 'Payout must be a positive number' });
-    }
-
-    if (!currency.trim()) {
-      errs.push({ fieldId: 'milestone-currency', message: 'Currency is required' });
-    }
-
-    return errs;
-  }, [title, payout, currency]);
+    return validateMilestone({ title, payout, currency, dueDate, status });
+  }, [title, payout, currency, dueDate, status]);
 
   /**
    * Handles form submission: validates, then calls `onSubmit` with the
@@ -97,6 +127,7 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
   const handleSubmit = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
+      setHasSubmitted(true);
 
       const validationErrors = validateForm();
       setErrors(validationErrors);
@@ -104,8 +135,8 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
       if (validationErrors.length > 0) return;
 
       // Generate a stable id from title slug + current timestamp
-      const slug = title
-        .trim()
+      const sanitizedTitle = sanitizeUserText(title, MAX_MILESTONE_TITLE_LENGTH);
+      const slug = sanitizedTitle
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
@@ -113,7 +144,7 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
 
       const milestone: Milestone = {
         id,
-        title: title.trim(),
+        title: sanitizedTitle,
         status,
         payout: parseFloat(payout),
         currency: currency.trim(),
@@ -126,11 +157,28 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
     [title, payout, currency, status, dueDate, contractId, validateForm, onSubmit],
   );
 
+  // Check if the form has any validation errors to disable submit button
+  const hasErrors = () => {
+    if (!hasSubmitted) return false;
+    
+    const allErrors = validateMilestone({ title, payout, currency, dueDate, status });
+    return allErrors.length > 0;
+  };
+
   const getFieldError = (fieldId: string): string | undefined =>
     errors.find((e) => e.fieldId === fieldId)?.message;
 
+  useDialogFocusTrap({
+    isOpen: true,
+    dialogRef,
+    initialFocusRef: titleInputRef,
+    onEscape: onCancel,
+    restoreFocus: true,
+  });
+
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
       role="dialog"
       aria-labelledby="create-milestone-title"
@@ -151,9 +199,11 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
             label="Title"
             id="milestone-title"
             error={getFieldError('milestone-title')}
+            validate={validateTitleField}
             required
           >
             <input
+              ref={titleInputRef}
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -167,6 +217,7 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
               label="Payout Amount"
               id="milestone-payout"
               error={getFieldError('milestone-payout')}
+              validate={validatePayoutField}
               required
             >
               <input
@@ -183,6 +234,7 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
               label="Currency"
               id="milestone-currency"
               error={getFieldError('milestone-currency')}
+              validate={validateCurrencyField}
               required
             >
               <select
@@ -199,7 +251,12 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
             </FormField>
           </div>
 
-          <FormField label="Status" id="milestone-status">
+          <FormField 
+            label="Status" 
+            id="milestone-status" 
+            error={getFieldError('milestone-status')}
+            validate={validateStatusField}
+          >
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as Milestone['status'])}
@@ -217,6 +274,8 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
             label="Due Date"
             id="milestone-dueDate"
             helperText="Optional — e.g., Jun 1, 2025"
+            error={getFieldError('milestone-dueDate')}
+            validate={validateDueDateField}
           >
             <input
               type="text"
@@ -231,13 +290,13 @@ export const MilestoneCreationForm: React.FC<MilestoneCreationFormProps> = ({
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium"
+              className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium"
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             >
               Add Milestone
             </button>

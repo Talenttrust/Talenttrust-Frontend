@@ -26,12 +26,21 @@
  */
 
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import ReputationProfile, {
   ReputationEvent,
   ReputationProfileProps,
 } from './ReputationProfile';
 import { assertNoA11yViolations } from '@/test-utils/a11y';
+
+jest.mock('./toast/toast-provider', () => ({
+  useToast: () => ({
+    showSuccess: jest.fn(),
+    showError: jest.fn(),
+    dismissToast: jest.fn(),
+    toasts: [],
+  }),
+}));
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
@@ -59,8 +68,9 @@ const HISTORY_EVENTS: ReputationEvent[] = [
 ];
 
 // Convenience wrapper so every render call uses the exported prop type.
+// syncUrl is off here so unit tests stay isolated from next/navigation URL writes.
 function renderProfile(props: ReputationProfileProps) {
-  return render(<ReputationProfile {...props} />);
+  return render(<ReputationProfile syncUrl={false} {...props} />);
 }
 
 function getLevelText() {
@@ -256,8 +266,10 @@ describe('ReputationProfile – full reputation (score + history)', () => {
   });
 
   it('renders each event type label', () => {
-    HISTORY_EVENTS.forEach((ev) => {
-      expect(screen.getByText(ev.type)).toBeInTheDocument();
+    const ol = document.querySelector('ol');
+    const items = ol ? within(ol).getAllByRole('listitem') : [];
+    HISTORY_EVENTS.forEach((ev, idx) => {
+      expect(within(items[idx]).getByText(ev.type)).toBeInTheDocument();
     });
   });
 
@@ -268,17 +280,83 @@ describe('ReputationProfile – full reputation (score + history)', () => {
   });
 
   it('renders each event date', () => {
+    const ol = document.querySelector('ol');
     HISTORY_EVENTS.forEach((ev) => {
-      expect(screen.getByText(ev.date)).toBeInTheDocument();
+      expect(within(ol!).getByText(ev.date)).toBeInTheDocument();
     });
   });
 
-  it('renders events in DOM order matching the history array', () => {
+  it('renders events newest-first by default (matching history array order)', () => {
     const ol = document.querySelector('ol');
     const items = ol ? within(ol).getAllByRole('listitem') : [];
     HISTORY_EVENTS.forEach((ev, idx) => {
       expect(within(items[idx]).getByText(ev.summary)).toBeInTheDocument();
     });
+  });
+
+  it('selects all reputation items from the bulk toolbar', () => {
+    fireEvent.click(screen.getByRole('checkbox', { name: /select all reputation items/i }));
+
+    HISTORY_EVENTS.forEach((event) => {
+      expect(
+        screen.getByRole('checkbox', {
+          name: `Select reputation item ${event.type}: ${event.summary}`,
+        }),
+      ).toBeChecked();
+    });
+  });
+
+  it('supports partial selection and bulk clear', () => {
+    fireEvent.click(screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+    }));
+
+    expect(
+      screen.getByRole('checkbox', {
+        name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+      }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole('checkbox', { name: /select all reputation items/i }),
+    ).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: /clear selection/i }));
+
+    expect(
+      screen.getByRole('checkbox', {
+        name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+      }),
+    ).not.toBeChecked();
+  });
+
+  it('confirms destructive bulk delete and clears the selected rows', async () => {
+    fireEvent.click(screen.getByRole('checkbox', {
+      name: /select all reputation items/i,
+    }));
+
+    fireEvent.click(screen.getByRole('button', { name: /delete selected/i }));
+
+    expect(
+      screen.getByRole('alertdialog', { name: /delete selected reputation items\?/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByRole('alertdialog', { name: /delete selected reputation items\?/i })).getByRole('button', { name: /delete selected/i }));
+
+    expect(await screen.findByText(/Deleted 3 reputation items\./i)).toBeInTheDocument();
+    expect(screen.getByText(/No reputation history available yet\./i)).toBeInTheDocument();
+    expect(screen.queryAllByRole('checkbox', { name: /select reputation item/i })).toHaveLength(0);
+  });
+
+  it('announces export results for a partial bulk selection', async () => {
+    fireEvent.click(screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[0].type}: ${HISTORY_EVENTS[0].summary}`,
+    }));
+    fireEvent.click(screen.getByRole('checkbox', {
+      name: `Select reputation item ${HISTORY_EVENTS[1].type}: ${HISTORY_EVENTS[1].summary}`,
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /export selected/i }));
+
+    expect(await screen.findByText(/Exported 2 reputation items\./i)).toBeInTheDocument();
   });
 });
 
@@ -373,6 +451,17 @@ it('sr-only span announces "out of {maxScore}" after the numeric score', () => {
     const levelSpans = screen.getAllByText(/^Level$/i);
     const srOnlySpan = levelSpans.find((el) => el.classList.contains('sr-only'));
     expect(srOnlySpan).toBeDefined();
+  });
+
+  it('groups bulk reputation actions in a toolbar with descriptive labels', () => {
+    renderProfile({ name: 'Toolbar User', score: 80, history: HISTORY_EVENTS });
+
+    const toolbar = screen.getByRole('toolbar', { name: /reputation history actions/i });
+    expect(toolbar).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: /export selected reputation items/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /delete selected reputation items/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /clear selected reputation items/i })).toBeInTheDocument();
   });
 });
 
@@ -673,7 +762,146 @@ describe('ReputationProfile – reputation score meter (issue #245)', () => {
     });
   });
 
-  describe('reputation level legend and derived level', () => {
+  describe('ReputationProfile – high-contrast theme tokens (a11y/reputation-31)', () => {
+  const THEME_HISTORY: ReputationEvent[] = [
+    { id: 'ev-1', type: 'Verification', summary: 'Completed identity verification', date: '2026-04-24' },
+  ];
+
+  it('uses CSS variable tokens for card backgrounds instead of fixed bg-white', () => {
+    const { container } = renderProfile({
+      name: 'Token User',
+      score: 50,
+      history: THEME_HISTORY,
+    });
+    const cards = container.querySelectorAll('.rounded-3xl.border');
+    cards.forEach((card) => {
+      const cls = card.className;
+      expect(cls).not.toMatch(/\bbg-white\b/);
+      expect(cls).toMatch(/var\(--card\)/);
+    });
+  });
+
+  it('uses CSS variable tokens for surface backgrounds instead of fixed bg-slate-50', () => {
+    const { container } = renderProfile({
+      name: 'Surface User',
+      score: 50,
+      history: THEME_HISTORY,
+    });
+    const surfaceElements = container.querySelectorAll('.rounded-3xl.border\\[var\\(--border\\)\\]');
+    surfaceElements.forEach((el) => {
+      const cls = el.className;
+      expect(cls).not.toMatch(/bg-slate-\d+/);
+    });
+  });
+
+  it('uses CSS variable tokens for text instead of fixed text-slate-*', () => {
+    const { container } = renderProfile({
+      name: 'Text Token User',
+      score: 50,
+      history: THEME_HISTORY,
+    });
+    // Headings should use var(--foreground)
+    const headings = container.querySelectorAll('h1, h2');
+    headings.forEach((h) => {
+      const cls = h.className;
+      if (cls.includes('sr-only')) return;
+      expect(cls).not.toMatch(/text-slate-\d+/);
+    });
+    // Labels should use var(--muted-foreground)
+    const labels = container.querySelectorAll('#reputation-score-label, #reputation-level-label');
+    labels.forEach((label) => {
+      expect(label.className).not.toMatch(/text-slate-\d+/);
+    });
+  });
+
+  it('uses CSS variable tokens for borders instead of fixed border-slate-200', () => {
+    const { container } = renderProfile({
+      name: 'Border User',
+      score: 50,
+      history: THEME_HISTORY,
+    });
+    const bordered = container.querySelectorAll('.border');
+    bordered.forEach((el) => {
+      const cls = el.className;
+      if (cls.includes('border-t')) return;
+      if (cls.includes('rounded-full')) return;
+      expect(cls).not.toMatch(/\bborder-slate-200\b/);
+    });
+  });
+
+  it('uses theme-aware tokens for the amber partial-data banner', () => {
+    renderProfile({
+      name: 'Amber Banner User',
+      score: 50,
+      history: [],
+    });
+    const warningBanner = screen.getByText(/Partial reputation data/i).closest('div');
+    expect(warningBanner).not.toBeNull();
+    expect(warningBanner!.className).toMatch(/var\(--status-warning/);
+  });
+
+  it('uses theme-aware tokens for active legend band', () => {
+    renderProfile({
+      name: 'Legend Active User',
+      score: 3.5,
+      history: [],
+    });
+    const legendList = document.getElementById('reputation-legend');
+    expect(legendList).not.toBeNull();
+    const items = legendList!.querySelectorAll('li');
+    expect(items.length).toBeGreaterThan(0);
+    // At least one item should be active with var(--legend-active*) tokens
+    const activeItems = Array.from(items).filter(
+      (item) => item.className.includes('var(--legend-active')
+    );
+    expect(activeItems.length).toBe(1);
+  });
+
+  it('uses theme-aware tokens for inactive legend bands', () => {
+    renderProfile({
+      name: 'Legend Inactive User',
+      score: 0,
+      history: [],
+    });
+    const legendList = document.getElementById('reputation-legend');
+    expect(legendList).not.toBeNull();
+    const items = legendList!.querySelectorAll('li');
+    expect(items.length).toBeGreaterThan(0);
+    // Items that are not active should use var(--border) and var(--muted-foreground)
+    const inactiveItems = Array.from(items).filter(
+      (item) => !item.className.includes('var(--legend-active')
+    );
+    expect(inactiveItems.length).toBe(items.length - 1);
+    inactiveItems.forEach((item) => {
+      expect(item.className).toMatch(/var\(--border\)/);
+    });
+  });
+
+  it('avatar uses var(--foreground) background with var(--background) text', () => {
+    renderProfile({
+      name: 'Avatar User',
+      score: 50,
+      history: THEME_HISTORY,
+    });
+    const avatar = screen.getByText('A', { selector: 'div' });
+    expect(avatar).toBeInTheDocument();
+    expect(avatar.className).toMatch(/var\(--foreground\)/);
+    expect(avatar.className).toMatch(/var\(--background\)/);
+  });
+
+  it('legend band range text uses var(--muted-foreground)', () => {
+    renderProfile({
+      name: 'Legend Range User',
+      score: 3.5,
+      history: [],
+    });
+    const rangeText = document.querySelector('#reputation-legend li p.font-bold');
+    expect(rangeText).not.toBeNull();
+    expect(rangeText!.className).toMatch(/var\(--muted-foreground\)/);
+  });
+});
+
+describe('reputation level legend and derived level', () => {
     it('does not render the legend when there is no score', () => {
       renderProfile({ name: 'No Score User', score: undefined });
       expect(screen.queryByText(/Reputation Level Legend/i)).not.toBeInTheDocument();
@@ -772,3 +1000,175 @@ describe('ReputationProfile – reputation score meter (issue #245)', () => {
       await assertNoA11yViolations(container);
     });
   });
+
+// ---------------------------------------------------------------------------
+// 12. Last-updated timestamp indicator (issue #62)
+// ---------------------------------------------------------------------------
+
+/**
+ * These tests use a fixed reference timestamp injected via the formatRelativeTime
+ * module. Because the component calls formatRelativeTime(lastUpdated) at render
+ * time using the real clock, we mock the module so that our assertions are
+ * deterministic regardless of when the test suite runs.
+ *
+ * The mock lets individual tests return whatever relative string they need,
+ * keeping every test self-contained and immune to wall-clock drift.
+ */
+
+jest.mock('@/lib/formatRelativeTime', () => ({
+  formatRelativeTime: jest.fn(),
+  toISOString: jest.fn(),
+}));
+
+// Pull in the mocked versions so individual tests can configure return values.
+import { formatRelativeTime as mockFormatRelativeTime, toISOString as mockToISOString } from '@/lib/formatRelativeTime';
+const mockFRT = mockFormatRelativeTime as jest.Mock;
+const mockISO = mockToISOString as jest.Mock;
+
+describe('ReputationProfile – last-updated timestamp (issue #62)', () => {
+  const ISO_TS = '2026-07-27T11:55:00.000Z';
+
+  beforeEach(() => {
+    // Default: 5 minutes ago
+    mockFRT.mockReturnValue('5 minutes ago');
+    mockISO.mockReturnValue(ISO_TS);
+  });
+
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
+  // ── Visibility ────────────────────────────────────────────────────────────
+
+  it('renders the last-updated indicator when lastUpdated is provided', () => {
+    renderProfile({ name: 'TS User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toBeInTheDocument();
+  });
+
+  it('does NOT render the indicator when lastUpdated is omitted', () => {
+    renderProfile({ name: 'No TS User', history: [] });
+    expect(screen.queryByTestId('last-updated')).not.toBeInTheDocument();
+  });
+
+  it('does NOT render the indicator when lastUpdated is null', () => {
+    renderProfile({ name: 'Null TS User', history: [], lastUpdated: null });
+    expect(screen.queryByTestId('last-updated')).not.toBeInTheDocument();
+  });
+
+  it('does NOT render the indicator when formatRelativeTime returns null', () => {
+    mockFRT.mockReturnValue(null);
+    renderProfile({ name: 'Invalid TS User', history: [], lastUpdated: 'bad-date' });
+    expect(screen.queryByTestId('last-updated')).not.toBeInTheDocument();
+  });
+
+  // ── Relative text content ─────────────────────────────────────────────────
+
+  it('displays the relative time string returned by formatRelativeTime', () => {
+    renderProfile({ name: 'FRT User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toHaveTextContent('Updated 5 minutes ago');
+  });
+
+  it('displays "just now" when formatRelativeTime returns "just now"', () => {
+    mockFRT.mockReturnValue('just now');
+    renderProfile({ name: 'Just Now User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toHaveTextContent('Updated just now');
+  });
+
+  it('displays "2 hours ago" correctly', () => {
+    mockFRT.mockReturnValue('2 hours ago');
+    renderProfile({ name: 'Hours User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toHaveTextContent('Updated 2 hours ago');
+  });
+
+  it('displays "3 days ago" correctly', () => {
+    mockFRT.mockReturnValue('3 days ago');
+    renderProfile({ name: 'Days User', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toHaveTextContent('Updated 3 days ago');
+  });
+
+  // ── <time> element & dateTime attribute ───────────────────────────────────
+
+  it('wraps the relative time in a <time> element', () => {
+    const { container } = renderProfile({ name: 'Time El User', history: [], lastUpdated: ISO_TS });
+    // The last-updated paragraph contains exactly one <time> element.
+    const p = container.querySelector('[data-testid="last-updated"]');
+    expect(p?.querySelector('time')).not.toBeNull();
+  });
+
+  it('sets dateTime attribute on <time> to the ISO string from toISOString', () => {
+    const { container } = renderProfile({ name: 'DateTime User', history: [], lastUpdated: ISO_TS });
+    const timeEl = container.querySelector('[data-testid="last-updated"] time');
+    expect(timeEl?.getAttribute('dateTime')).toBe(ISO_TS);
+  });
+
+  it('omits dateTime attribute when toISOString returns an empty string', () => {
+    mockISO.mockReturnValue('');
+    const { container } = renderProfile({ name: 'No DateTime User', history: [], lastUpdated: 'bad' });
+    const timeEl = container.querySelector('[data-testid="last-updated"] time');
+    // When isoTime is falsy, dateTime prop is undefined → attribute absent.
+    expect(timeEl?.hasAttribute('dateTime')).toBe(false);
+  });
+
+  // ── Accessible label ──────────────────────────────────────────────────────
+
+  it('the indicator paragraph has an aria-label containing the ISO timestamp', () => {
+    renderProfile({ name: 'A11y TS User', history: [], lastUpdated: ISO_TS });
+    const p = screen.getByTestId('last-updated');
+    expect(p).toHaveAttribute('aria-label', `Last updated at ${ISO_TS}`);
+  });
+
+  it('aria-label falls back to "Last updated" when toISOString returns empty', () => {
+    mockISO.mockReturnValue('');
+    mockFRT.mockReturnValue('5 minutes ago');
+    renderProfile({ name: 'Fallback A11y User', history: [], lastUpdated: 'bad' });
+    const p = screen.getByTestId('last-updated');
+    expect(p).toHaveAttribute('aria-label', 'Last updated');
+  });
+
+  // ── Works across all reputation states ───────────────────────────────────
+
+  it('shows the indicator in the no-reputation state', () => {
+    renderProfile({ name: 'No Score TS', history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toBeInTheDocument();
+  });
+
+  it('shows the indicator in the partial-reputation state', () => {
+    renderProfile({ name: 'Partial TS', score: 3, history: [], lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toBeInTheDocument();
+  });
+
+  it('shows the indicator in the full-reputation state', () => {
+    renderProfile({ name: 'Full TS', score: 4, history: HISTORY_EVENTS, lastUpdated: ISO_TS });
+    expect(screen.getByTestId('last-updated')).toBeInTheDocument();
+  });
+
+  // ── Accessibility audit ───────────────────────────────────────────────────
+
+  it('passes axe audit with lastUpdated present (full-reputation state)', async () => {
+    mockFRT.mockReturnValue('5 minutes ago');
+    mockISO.mockReturnValue(ISO_TS);
+    const { container } = render(
+      <ReputationProfile
+        name="A11y TS Full"
+        score={4}
+        level="Expert"
+        history={HISTORY_EVENTS}
+        lastUpdated={ISO_TS}
+      />
+    );
+    await assertNoA11yViolations(container);
+  });
+
+  it('passes axe audit with lastUpdated present (no-reputation state)', async () => {
+    mockFRT.mockReturnValue('just now');
+    mockISO.mockReturnValue(ISO_TS);
+    const { container } = render(
+      <ReputationProfile
+        name="A11y TS None"
+        history={[]}
+        lastUpdated={ISO_TS}
+      />
+    );
+    await assertNoA11yViolations(container);
+  });
+});

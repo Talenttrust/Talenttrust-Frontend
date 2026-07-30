@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import ContractSummary from '@/components/ContractSummary';
 import MilestonesList from '@/components/MilestonesList';
@@ -10,12 +11,18 @@ import ContractProgress from '@/components/ContractProgress';
 import { ContractProgressSkeleton } from '@/components/ContractProgressSkeleton';
 import { ContractSummarySkeleton } from '@/components/ContractSummarySkeleton';
 import { MilestonesListSkeleton } from '@/components/MilestonesListSkeleton';
+import ContractStatusAnnouncer from '@/components/ContractStatusAnnouncer';
 import SafeBoundary from '@/components/SafeBoundary';
 import { resolveContractData, ContractData } from '@/lib/contractResolver';
 import { useToast } from '@/components/toast/toast-provider';
-import { upsertContract, listMilestonesByContract } from '@/lib/repository';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
+import {
+  listMilestonesByContract,
+  updateMilestone,
+} from '@/lib/repository';
 import { isValidContractId } from '@/lib/validateContractId';
-import type { Contract, Milestone } from '@/types/domain';
+import { useOptimisticContractStatus, type BuildPersistedContract } from '@/hooks/useOptimisticContractStatus';
+import type { Milestone } from '@/types/domain';
 
 /**
  * Merges the contract's resolved milestones with any milestones persisted in
@@ -28,10 +35,15 @@ import type { Contract, Milestone } from '@/types/domain';
  * @param contractId - The contract id to filter persisted milestones by.
  * @returns The merged, de-duplicated milestone list for this contract.
  */
-function mergeContractMilestones(baseMilestones: Milestone[], contractId: string): Milestone[] {
+function mergeContractMilestones(
+  baseMilestones: Milestone[],
+  contractId: string,
+): Milestone[] {
   const merged = new Map<string, Milestone>();
   baseMilestones.forEach((milestone) => merged.set(milestone.id, milestone));
-  listMilestonesByContract(contractId).forEach((milestone) => merged.set(milestone.id, milestone));
+  listMilestonesByContract(contractId).forEach((milestone) =>
+    merged.set(milestone.id, milestone),
+  );
   return Array.from(merged.values());
 }
 
@@ -46,37 +58,71 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPersistingStatus, setIsPersistingStatus] = useState(false);
   const isMountedRef = useRef(true);
+  const milestonesRef = useRef(milestones);
+  milestonesRef.current = milestones;
   const { showError, showSuccess } = useToast();
+
+  const { copied, copy } = useCopyToClipboard({
+    delay: 2000,
+    onSuccess: () => {
+      showSuccess({
+        title: 'Contract ID copied',
+        description: 'The contract identifier has been copied to your clipboard.',
+      });
+    },
+    onError: (err) => {
+      if (err instanceof Error && err.message.includes('supported')) {
+        showError({
+          title: 'Copy not supported',
+          description: 'Your browser does not support clipboard access. Please copy the ID manually.',
+        });
+      } else {
+        showError({
+          title: 'Copy failed',
+          description: 'Unable to copy the contract ID to your clipboard. Please try again.',
+        });
+      }
+    },
+  });
 
   /**
    * Maps the resolved contract detail shape into the repository contract shape.
    *
    * The repository stores summary-friendly contract records, so the detail page
    * narrows `ContractData` into the fields that persistence already expects.
-   *
-   * @param data - The loaded detail-page contract data.
-   * @param status - The next status to persist for that contract.
-   * @returns A repository-ready `Contract` record.
+   * `version` is threaded through from {@link useOptimisticContractStatus} so
+   * the repository's stale-overwrite guard compares against the correct baseline.
    */
-  const buildPersistedContract = useCallback(
-    (data: ContractData, status: Contract['status']): Contract => ({
+  const buildPersistedContract: BuildPersistedContract = useCallback(
+    (data, status, version) => ({
+      id: data.id,
       contractName: data.name,
       parties: data.parties,
       totalValue: data.totalValue,
       currency: data.currency,
       status,
       createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
       milestoneCount: data.milestones.length,
+      version,
     }),
     [],
   );
 
+  const persistStatus = useOptimisticContractStatus(
+    contractData,
+    setContractData,
+    buildPersistedContract,
+  );
+
   /**
-   * Persists a contract status transition and mirrors the result into page state.
+   * Applies a contract status transition optimistically, then persists it.
    *
-   * The write is intentionally client-side because repository persistence is
-   * backed by `localStorage`. Success and failure are surfaced through toasts so
-   * the confirmed ActionPanel flows provide immediate feedback.
+   * The UI already reflects `nextStatus` by the time this returns (applied
+   * synchronously inside {@link useOptimisticContractStatus}). On failure —
+   * including a stale-overwrite rejection — the optimistic change is rolled
+   * back and a clear, specific error message is surfaced via both the inline
+   * `ActionPanel` banner and a dismissible toast.
    *
    * @param nextStatus - The status to persist to the repository.
    * @param successTitle - The toast title shown after a successful write.
@@ -88,41 +134,29 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
       successTitle: string,
       successDescription: string,
     ) => {
-      if (!contractData) {
-        const message = 'Contract details are unavailable, so the status could not be updated.';
-        setErrorMessage(message);
-        showError({
-          title: 'Unable to update contract',
-          description: message,
-        });
-        return;
-      }
-
       setIsPersistingStatus(true);
       setErrorMessage(null);
 
-      const persisted = upsertContract(buildPersistedContract(contractData, nextStatus));
+      const result = persistStatus(nextStatus);
 
-      if (!persisted) {
-        const message = 'The contract status could not be persisted. Please try again.';
-        setErrorMessage(message);
+      if (!result.ok) {
+        setErrorMessage(result.error);
         showError({
           title: 'Unable to update contract',
-          description: message,
+          description: result.error,
         });
         setIsPersistingStatus(false);
         return;
       }
 
-      const updatedContract = { ...contractData, status: nextStatus };
-      setContractData(updatedContract);
+      setErrorMessage(null);
       showSuccess({
         title: successTitle,
         description: successDescription,
       });
       setIsPersistingStatus(false);
     },
-    [buildPersistedContract, contractData, showError, showSuccess],
+    [persistStatus, showError, showSuccess],
   );
 
   useEffect(() => {
@@ -141,7 +175,9 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
       } catch (error) {
         if (isMountedRef.current) {
           setErrorMessage(
-            error instanceof Error ? error.message : 'Failed to load contract. Please try again.'
+            error instanceof Error
+              ? error.message
+              : 'Failed to load contract. Please try again.',
           );
         }
       } finally {
@@ -191,10 +227,28 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
     // Replace with summary navigation.
   };
 
+  const handleUpdateMilestone = useCallback((id: string, patch: Partial<Milestone>) => {
+    const snapshot = milestonesRef.current;
+
+    setMilestones((current) =>
+      current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    );
+
+    const persisted = updateMilestone(id, patch);
+
+    if (!persisted) {
+      setMilestones(snapshot);
+      return false;
+    }
+
+    return true;
+  }, []);
+
   const status = contractData?.status || 'Active';
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
+      {contractData ? <ContractStatusAnnouncer status={contractData.status} /> : null}
       <div className="mx-auto max-w-screen-2xl space-y-6">
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div>
@@ -205,7 +259,25 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
                 { label: `#${id}` },
               ]}
             />
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900">Contract #{id}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="mt-2 text-3xl font-semibold text-slate-900">Contract #{id}</h1>
+              <button
+                onClick={() => copy(id)}
+                className="mt-2 flex-shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                aria-label={copied ? 'Contract ID copied' : 'Copy contract ID to clipboard'}
+                title={copied ? 'Contract ID copied' : 'Copy contract ID'}
+              >
+                {copied ? (
+                  <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
           <Link
             href="/contracts"
@@ -228,6 +300,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
                   currency={contractData.currency}
                   status={contractData.status}
                   createdAt={contractData.createdAt}
+                  updatedAt={contractData.updatedAt}
                   milestoneCount={milestones.length}
                 />
               ) : null}
@@ -245,7 +318,11 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
               {isLoading ? (
                 <MilestonesListSkeleton />
               ) : contractData ? (
-                <MilestonesList milestones={milestones} contractCurrency={contractData.currency} />
+                <MilestonesList
+                  milestones={milestones}
+                  contractCurrency={contractData.currency}
+                  onUpdateMilestone={handleUpdateMilestone}
+                />
               ) : null}
             </SafeBoundary>
           </div>
@@ -268,11 +345,10 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
   );
 };
 
-const ContractDetailPage = async ({ params }: ContractDetailPageProps) => {
-  const { id } = await params;
+const ContractDetailPage = ({ params }: ContractDetailPageProps) => {
+  const { id } = use(params);
 
   if (!isValidContractId(id)) {
-    const { notFound } = await import('next/navigation');
     notFound();
   }
 

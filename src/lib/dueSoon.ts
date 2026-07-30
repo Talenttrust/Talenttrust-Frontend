@@ -25,6 +25,9 @@ export function parseLocalDate(dateStr: string): Date | null {
     ) {
       return date;
     }
+    // Matched the strict YYYY-MM-DD format but is not a real calendar date
+    // (e.g. Feb 30th rolls over to March). Reject rather than loosely reparse.
+    return null;
   }
 
   // Fallback to standard parsing
