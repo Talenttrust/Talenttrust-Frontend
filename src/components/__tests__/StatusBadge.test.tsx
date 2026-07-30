@@ -8,6 +8,7 @@ const STATUS_ICONS: Record<StatusType, string> = {
   Disputed:  '⚠',
   Pending:   '⏳',
   Paid:      '✔',
+  Archived:  '⊘',
 };
 
 describe('StatusBadge', () => {
@@ -18,7 +19,7 @@ describe('StatusBadge', () => {
     });
 
     it('renders all status types correctly', () => {
-      const statuses: StatusType[] = ['Active', 'Completed', 'Disputed', 'Pending', 'Paid'];
+      const statuses: StatusType[] = ['Active', 'Completed', 'Disputed', 'Pending', 'Paid', 'Archived'];
 
       statuses.forEach((status) => {
         const { unmount } = render(<StatusBadge status={status} />);
@@ -28,7 +29,7 @@ describe('StatusBadge', () => {
     });
 
     it('renders an icon for each status', () => {
-      const statuses: StatusType[] = ['Active', 'Completed', 'Disputed', 'Pending', 'Paid'];
+      const statuses: StatusType[] = ['Active', 'Completed', 'Disputed', 'Pending', 'Paid', 'Archived'];
 
       statuses.forEach((status) => {
         const { container, unmount } = render(<StatusBadge status={status} />);
@@ -88,6 +89,16 @@ describe('StatusBadge', () => {
       expect(span?.className).toContain('text-[var(--status-success-foreground)]');
     });
 
+    // a11y/wallet-71-contrast: neutral token added so the wallet items
+    // list can reuse this shared badge instead of its own color-only
+    // inline pill. 9.45:1 (light) / 9.85:1 (dark) -- both AA+.
+    it('applies correct themed classes for Archived status', () => {
+      const { container } = render(<StatusBadge status="Archived" />);
+      const span = container.querySelector('span');
+      expect(span?.className).toContain('bg-[var(--status-neutral-bg)]');
+      expect(span?.className).toContain('text-[var(--status-neutral-foreground)]');
+    });
+
     it('applies base badge styles consistently', () => {
       const { container } = render(<StatusBadge status="Active" />);
       const span = container.querySelector('span');
@@ -101,7 +112,7 @@ describe('StatusBadge', () => {
     });
 
     it('no longer uses fixed Tailwind pastel color classes (regression guard)', () => {
-      const statuses: StatusType[] = ['Active', 'Completed', 'Disputed', 'Pending', 'Paid'];
+      const statuses: StatusType[] = ['Active', 'Completed', 'Disputed', 'Pending', 'Paid', 'Archived'];
 
       statuses.forEach((status) => {
         const { container, unmount } = render(<StatusBadge status={status} />);
@@ -142,7 +153,7 @@ describe('StatusBadge', () => {
     });
 
     it('has appropriate aria-label for each status', () => {
-      const statuses: StatusType[] = ['Active', 'Completed', 'Disputed', 'Pending', 'Paid'];
+      const statuses: StatusType[] = ['Active', 'Completed', 'Disputed', 'Pending', 'Paid', 'Archived'];
 
       statuses.forEach((status) => {
         const { unmount } = render(<StatusBadge status={status} />);
@@ -325,6 +336,11 @@ describe('StatusBadge', () => {
 
     it('matches snapshot for Paid status', () => {
       const { container } = render(<StatusBadge status="Paid" />);
+      expect(container.firstChild).toMatchSnapshot();
+    });
+
+    it('matches snapshot for Archived status', () => {
+      const { container } = render(<StatusBadge status="Archived" />);
       expect(container.firstChild).toMatchSnapshot();
     });
 

@@ -6,7 +6,7 @@
  * Meets WCAG 2.1 AA requirements.
  */
 
-export type StatusType = 'Active' | 'Completed' | 'Disputed' | 'Pending' | 'Paid';
+export type StatusType = 'Active' | 'Completed' | 'Disputed' | 'Pending' | 'Paid' | 'Archived';
 
 /**
  * Canonical set of acceptable statuses. Hoisted as a constant so the
@@ -35,6 +35,12 @@ export interface StatusBadgeProps {
  * `data-theme`. Replaced with CSS variables defined in globals.css so
  * both themes get an audited, intentional pair.
  * Ratios recorded in docs/components/Accessibility.md.
+ *
+ * a11y/wallet-71-contrast: added `Archived` (neutral slate token pair) so
+ * the wallet items list can reuse this shared, already-audited badge
+ * instead of its own color-only inline pill. Ratios: 9.45:1 (light),
+ * 9.85:1 (dark) — both well above WCAG AA's 4.5:1. See
+ * docs/components/Accessibility.md.
  */
 export const statusColorMap: Record<StatusType, string> = {
   Active: 'bg-[var(--status-success-bg)] text-[var(--status-success-foreground)]',
@@ -42,6 +48,7 @@ export const statusColorMap: Record<StatusType, string> = {
   Disputed: 'bg-[var(--status-error-bg)] text-[var(--status-error-foreground)]',
   Pending: 'bg-[var(--status-warning-bg)] text-[var(--status-warning-foreground)]',
   Paid: 'bg-[var(--status-success-bg)] text-[var(--status-success-foreground)]',
+  Archived: 'bg-[var(--status-neutral-bg)] text-[var(--status-neutral-foreground)]',
 };
 
 /** Non-color icon token paired with each status (aria-hidden; label provides text). */
@@ -51,6 +58,7 @@ export const statusIconMap: Record<StatusType, string> = {
   Disputed:  '⚠',
   Pending:   '⏳',
   Paid:      '✔',
+  Archived:  '⊘',
 };
 
 /**

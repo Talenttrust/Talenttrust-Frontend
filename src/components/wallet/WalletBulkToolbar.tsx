@@ -110,7 +110,7 @@ export const WalletBulkToolbar: React.FC<WalletBulkToolbarProps> = ({
       className="sticky top-20 z-30 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/95 px-4 py-3 shadow-md backdrop-blur transition-all dark:border-blue-900/50 dark:bg-slate-800/95"
     >
       <div className="flex items-center gap-3">
-        <span className="inline-flex items-center justify-center rounded-full bg-blue-600 px-2.5 py-0.5 text-xs font-bold text-white">
+        <span className="wallet-count-badge inline-flex items-center justify-center rounded-full bg-blue-600 px-2.5 py-0.5 text-xs font-bold text-white">
           {selectedCount}
         </span>
         <span className="text-sm font-medium text-slate-800 dark:text-slate-100">

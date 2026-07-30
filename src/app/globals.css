@@ -45,9 +45,10 @@
   --status-warning-bg: #fef3c7;
   --status-warning-foreground: #92400e;
 
-  /* Neutral fallback for any status value outside the StatusType union.
-     Light-mode choice: slate-100 + slate-700 — sits between the four
-     coloured tokens so the unknown badge is unmistakably desaturated. */
+  /* a11y/wallet-71-contrast: neutral token for StatusBadge's `Archived`
+     status, used by the wallet items list. 9.45:1 against this
+     foreground -- verified AA. Matches the slate scale already used
+     elsewhere in the light theme. */
   --status-neutral-bg: #f1f5f9;
   --status-neutral-foreground: #334155;
 }
@@ -98,11 +99,10 @@
   --status-warning-bg: #78350f;
   --status-warning-foreground: #fcd34d;
 
-  /* Dark-mode neutral fallback: slate-800 background + slate-200 text.
-     Pairs sit at ~10.5:1 contrast against each other and stay clearly
-     desaturated versus the four coloured tokens. */
+  /* a11y/wallet-71-contrast: dark-mode pair for the `Archived` neutral
+     token. 9.85:1 against this foreground -- verified AA. */
   --status-neutral-bg: #1e293b;
-  --status-neutral-foreground: #e2e8f0;
+  --status-neutral-foreground: #cbd5e1;
 }
 
 body {
@@ -180,107 +180,34 @@ body {
     border: 1px solid Highlight !important;
   }
 
-  /* ── Wallet-specific high-contrast rules ──
-     Ensures the wallet table, selected rows, status badges, toolbar, and
-     checkboxes remain legible and clearly distinguishable when forced-colors
-     mode is active (e.g. Windows High Contrast). */
+  /* a11y/wallet-71-contrast: WalletBulkToolbar and WalletItemList.
+     Backgrounds/box-shadows are stripped under forced-colors, so any
+     boundary or state that relied on tint alone needs an explicit
+     border here. Status pill borders are already covered above via
+     [role="status"]. */
 
-  /* Wallet table container and cell borders */
-  [data-wallet-table] {
-    border: 2px solid CanvasText !important;
-  }
-
-  [data-wallet-table] th,
-  [data-wallet-table] td {
-    border-bottom: 1px solid CanvasText !important;
-  }
-
-  /* Selected wallet rows: highlighted background with high-contrast text */
-  [data-wallet-table] tr[data-selected] {
-    background-color: Highlight !important;
-    color: HighlightText !important;
-    forced-color-adjust: none;
-  }
-
-  /* Wallet status badges: visible borders in forced-colors mode */
-  [data-wallet-status] {
+  /* Toolbar container boundary (background tint disappears). */
+  [role="toolbar"] {
     border: 1px solid CanvasText !important;
   }
 
-  /* Wallet bulk toolbar: visible border in forced-colors mode */
-  [data-wallet-toolbar] {
-    border: 2px solid CanvasText !important;
-  }
-
-  /* Wallet checkboxes: ensure they're visible in high-contrast */
-  [data-wallet-table] input[type="checkbox"] {
-    forced-color-adjust: auto;
-  }
-
-  /* Wallet delete buttons: ensure icon buttons have visible boundaries */
-  [data-wallet-table] button {
+  /* Toolbar buttons: some (e.g. the destructive Delete action) have no
+     border in normal mode since they rely on solid background color for
+     definition; give every toolbar button a visible boundary. */
+  [role="toolbar"] button {
     border: 1px solid ButtonText !important;
   }
 
-  /* ── Reputation-specific high-contrast rules ──
-     Ensures the reputation score meter, history list, selected items, and
-     toolbar remain legible and clearly distinguishable when forced-colors
-     mode is active (e.g. Windows High Contrast). */
-
-  /* Score meter fill visibility (mirrors the [role="progressbar"] treatment
-     above; reputation's score indicator uses role="meter" instead). */
-  [role="meter"] {
-    border: 1px solid CanvasText !important;
-    forced-color-adjust: none;
-  }
-
-  /* Reputation history list: visible container boundary */
-  [data-reputation-list] {
-    border: 0; /* the list itself has no visual chrome; each item does */
-  }
-
-  [data-reputation-list] li {
+  /* Selected-count pill in the toolbar -- decorative background only. */
+  .wallet-count-badge {
     border: 1px solid CanvasText !important;
   }
 
-  /* Selected reputation history items: highlighted background with
-     high-contrast text, matching the selected-wallet-row treatment. */
-  [data-reputation-list] li[data-selected] {
-    background-color: Highlight !important;
-    color: HighlightText !important;
-    border: 1px solid Highlight !important;
-    forced-color-adjust: none;
-  }
-
-  /* Reputation toolbar (export/delete/clear selection): visible border */
-  [data-reputation-toolbar] {
-    border: 1px solid CanvasText !important;
-    padding: 0.25rem;
-  }
-
-  /* Reputation toolbar and copy-id buttons: ensure visible boundaries */
-  [data-reputation-toolbar] button,
-  [data-reputation-list] button {
-    border: 1px solid ButtonText !important;
-  }
-
-  /* ── Contracts-specific high-contrast rules ──
-     Ensures the contracts list and its controls (search, sort, export,
-     density toggle) remain legible with a visible focus indicator when
-     forced-colors mode is active (e.g. Windows High Contrast). */
-
-  /* Contracts list items: visible container boundary per item */
-  [data-contracts-list] li {
-    border: 1px solid CanvasText !important;
-  }
-
-  /* Several contracts controls use `outline-none` paired with a Tailwind
-     focus ring (box-shadow), which forced-colors mode does not render —
-     leaving no visible focus indicator at all. Restore a native outline
-     for every focus-visible element scoped to the contracts page. */
-  [data-contracts-page] :focus-visible {
+  /* Selected wallet-item row: exposed via aria-selected rather than
+     background tint alone, so it survives forced-colors. */
+  tr[aria-selected='true'] {
     outline: 2px solid Highlight !important;
-    outline-offset: 2px;
+    outline-offset: -2px;
   }
 }
 

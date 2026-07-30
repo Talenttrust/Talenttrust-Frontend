@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { WalletBulkToolbar } from '../WalletBulkToolbar';
+import { testA11y } from '@/test-utils/a11y';
 
 describe('WalletBulkToolbar', () => {
   const defaultProps = {
@@ -331,6 +332,43 @@ describe('WalletBulkToolbar', () => {
 
       const clearBtn = screen.getByRole('button', { name: /clear item selection/i });
       expect(clearBtn).toHaveFocus();
+    });
+  });
+
+  it('does not clear selection when a non-Escape key is pressed', () => {
+    render(<WalletBulkToolbar {...defaultProps} />);
+    fireEvent.keyDown(window, { key: 'Enter' });
+    expect(defaultProps.onClearSelection).not.toHaveBeenCalled();
+  });
+
+  // a11y/wallet-71-contrast: the count pill's own background is stripped
+  // under forced-colors, so it needs a stable selector for the CSS rule
+  // in globals.css (`.wallet-count-badge`) to attach a visible border to.
+  describe('forced-colors support (a11y/wallet-71-contrast)', () => {
+    it('has role="toolbar" so the forced-colors container border applies', () => {
+      render(<WalletBulkToolbar {...defaultProps} />);
+      expect(screen.getByRole('toolbar')).toBeInTheDocument();
+    });
+
+    it('exposes the wallet-count-badge class hook on the selected-count pill', () => {
+      render(<WalletBulkToolbar {...defaultProps} selectedCount={2} />);
+      expect(screen.getByText('2').className).toContain('wallet-count-badge');
+    });
+
+    it('already uses a real focus-visible outline (not outline-none) on every action button', () => {
+      render(<WalletBulkToolbar {...defaultProps} />);
+      const exportBtn = screen.getByRole('button', { name: /export 2 selected items/i });
+      const deleteBtn = screen.getByRole('button', { name: /delete 2 selected items/i });
+      [exportBtn, deleteBtn].forEach((btn) => {
+        expect(btn.className).not.toMatch(/focus:outline-none|focus-visible:outline-none/);
+        expect(btn.className).toContain('focus-visible:outline');
+      });
+    });
+  });
+
+  describe('accessibility', () => {
+    it('has zero axe violations', async () => {
+      await testA11y(<WalletBulkToolbar {...defaultProps} />);
     });
   });
 });
