@@ -218,7 +218,7 @@ export const WalletItemList: React.FC<WalletItemListProps> = ({
                   <div className="flex items-center justify-end gap-1">
                     <button
                       type="button"
-                      onClick={() => onDeleteItem(item.id)}
+                      onClick={() => onDeleteItem?.(item.id)}
                       className="rounded-lg p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:hover:bg-rose-950/50"
                       aria-label={`Delete ${item.name}`}
                     >
