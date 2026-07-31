@@ -1,154 +1,154 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { upsertReputationEvent, getReputationEventVersion, deleteReputationEvents } from '@/lib/repository';
 import type { ReputationEvent } from '@/types/domain';
 
-/**
- * Result returned by optimistic mutation operations.
- */
 export type OptimisticResult =
   | { ok: true }
   | { ok: false; stale: boolean; error: string };
 
-/**
- * A hook that applies reputation event mutations (create, update, delete) optimistically
- * to the UI and rolls back on persistence failure.
- *
- * @param events - The current events array from React state.
- * @param setEvents - State setter to apply optimistic changes and rollbacks.
- */
+export type OptimisticReputationOptions = {
+  onError?: (message: string) => void;
+};
+
 export function useOptimisticReputationMutation(
   events: ReputationEvent[],
   setEvents: React.Dispatch<React.SetStateAction<ReputationEvent[]>>,
+  options?: OptimisticReputationOptions,
 ) {
-  /**
-   * Snapshot of the events array taken right before an optimistic mutation.
-   * Restored on persistence failure to roll back the UI.
-   */
-  const rollbackRef = useRef<ReputationEvent[]>([]);
+  const onError = options?.onError;
+  const pendingCountRef = useRef(0);
+  const [pending, setPending] = useState(false);
 
-  // ---------------------------------------------------------------------------
-  // Optimistic create
-  // ---------------------------------------------------------------------------
+  const trackStart = useCallback(() => {
+    pendingCountRef.current += 1;
+    setPending(true);
+  }, []);
+
+  const trackEnd = useCallback(() => {
+    pendingCountRef.current -= 1;
+    if (pendingCountRef.current <= 0) {
+      pendingCountRef.current = 0;
+      setPending(false);
+    }
+  }, []);
 
   const optimisticCreate = useCallback(
-    (event: ReputationEvent): OptimisticResult => {
-      rollbackRef.current = events;
+    (event: ReputationEvent): Promise<OptimisticResult> => {
       setEvents((prev) => [...prev, event]);
+      trackStart();
 
-      const result = upsertReputationEvent(event);
+      return Promise.resolve().then(() => {
+        try {
+          const result = upsertReputationEvent(event);
 
-      if (!result.success) {
-        if (rollbackRef.current) {
-          setEvents(rollbackRef.current);
+          if (!result.success) {
+            setEvents((prev) => prev.filter((e) => e.id !== event.id));
+            const msg = result.stale
+              ? 'This reputation event was updated in another session. Please reload and try again.'
+              : 'The reputation event could not be saved. Please try again.';
+            onError?.(msg);
+            trackEnd();
+            return { ok: false as const, stale: result.stale, error: msg };
+          }
+
+          trackEnd();
+          return { ok: true as const };
+        } catch {
+          setEvents((prev) => prev.filter((e) => e.id !== event.id));
+          const msg = 'The reputation event could not be saved. Please try again.';
+          onError?.(msg);
+          trackEnd();
+          return { ok: false as const, stale: false, error: msg };
         }
-        rollbackRef.current = [];
-        return result.stale
-          ? {
-              ok: false,
-              stale: true,
-              error:
-                'This reputation event was updated in another session. Please reload and try again.',
-            }
-          : {
-              ok: false,
-              stale: false,
-              error:
-                'The reputation event could not be saved. Please try again.',
-            };
-      }
-
-      rollbackRef.current = [];
-      return { ok: true };
+      });
     },
-    [events, setEvents],
+    [setEvents, onError, trackStart, trackEnd],
   );
 
-  // ---------------------------------------------------------------------------
-  // Optimistic update
-  // ---------------------------------------------------------------------------
-
   const optimisticUpdate = useCallback(
-    (id: string, patch: Partial<ReputationEvent>): OptimisticResult => {
-      rollbackRef.current = events;
+    (id: string, patch: Partial<ReputationEvent>): Promise<OptimisticResult> => {
+      const existing = events.find((e) => e.id === id);
+
+      if (!existing) {
+        const msg = 'Reputation event not found in the current list. Please reload and try again.';
+        onError?.(msg);
+        return Promise.resolve({ ok: false as const, stale: false, error: msg });
+      }
+
+      const snapshot = { ...existing };
       setEvents((prev) =>
         prev.map((e) => (e.id === id ? { ...e, ...patch } : e)),
       );
+      trackStart();
 
-      const version = getReputationEventVersion(id);
-      const existing = events.find((e) => e.id === id);
-      if (!existing) {
-        // Event not found in current state – roll back and warn.
-        if (rollbackRef.current) {
-          setEvents(rollbackRef.current);
+      return Promise.resolve().then(() => {
+        try {
+          const version = getReputationEventVersion(id);
+          const updatedEvent: ReputationEvent = { ...snapshot, ...patch, version };
+          const result = upsertReputationEvent(updatedEvent);
+
+          if (!result.success) {
+            setEvents((prev) =>
+              prev.map((e) => (e.id === id ? snapshot : e)),
+            );
+            const msg = result.stale
+              ? 'This reputation event was updated in another session. Please reload and try again.'
+              : 'The reputation event could not be saved. Please try again.';
+            onError?.(msg);
+            trackEnd();
+            return { ok: false as const, stale: result.stale, error: msg };
+          }
+
+          trackEnd();
+          return { ok: true as const };
+        } catch {
+          setEvents((prev) =>
+            prev.map((e) => (e.id === id ? snapshot : e)),
+          );
+          const msg = 'The reputation event could not be saved. Please try again.';
+          onError?.(msg);
+          trackEnd();
+          return { ok: false as const, stale: false, error: msg };
         }
-        rollbackRef.current = [];
-        return {
-          ok: false,
-          stale: false,
-          error: 'Reputation event not found in the current list. Please reload and try again.',
-        };
-      }
-
-      const updatedEvent: ReputationEvent = { ...existing, ...patch, version };
-      const result = upsertReputationEvent(updatedEvent);
-
-      if (!result.success) {
-        if (rollbackRef.current) {
-          setEvents(rollbackRef.current);
-        }
-        rollbackRef.current = [];
-        return result.stale
-          ? {
-              ok: false,
-              stale: true,
-              error:
-                'This reputation event was updated in another session. Please reload and try again.',
-            }
-          : {
-              ok: false,
-              stale: false,
-              error:
-                'The reputation event could not be saved. Please try again.',
-            };
-      }
-
-      rollbackRef.current = [];
-      return { ok: true };
+      });
     },
-    [events, setEvents],
+    [events, setEvents, onError, trackStart, trackEnd],
   );
-
-  // ---------------------------------------------------------------------------
-  // Optimistic delete
-  // ---------------------------------------------------------------------------
 
   const optimisticDelete = useCallback(
-    (ids: string[]): OptimisticResult => {
-      rollbackRef.current = events;
-      setEvents((prev) => prev.filter((e) => !ids.includes(e.id)));
+    (ids: string[]): Promise<OptimisticResult> => {
+      const idSet = new Set(ids);
+      const removedEvents = events.filter((e) => idSet.has(e.id));
+      setEvents((prev) => prev.filter((e) => !idSet.has(e.id)));
+      trackStart();
 
-      const removed = deleteReputationEvents(ids);
+      return Promise.resolve().then(() => {
+        try {
+          const removed = deleteReputationEvents(ids);
 
-      if (removed === 0 && ids.length > 0) {
-        // Nothing was actually deleted — roll back.
-        if (rollbackRef.current) {
-          setEvents(rollbackRef.current);
+          if (removed === 0 && ids.length > 0) {
+            setEvents((prev) => [...prev, ...removedEvents]);
+            const msg = 'No reputation events were found to delete. Please reload and try again.';
+            onError?.(msg);
+            trackEnd();
+            return { ok: false as const, stale: false, error: msg };
+          }
+
+          trackEnd();
+          return { ok: true as const };
+        } catch {
+          setEvents((prev) => [...prev, ...removedEvents]);
+          const msg = 'No reputation events were found to delete. Please reload and try again.';
+          onError?.(msg);
+          trackEnd();
+          return { ok: false as const, stale: false, error: msg };
         }
-        rollbackRef.current = [];
-        return {
-          ok: false,
-          stale: false,
-          error: 'No reputation events were found to delete. Please reload and try again.',
-        };
-      }
-
-      rollbackRef.current = [];
-      return { ok: true };
+      });
     },
-    [events, setEvents],
+    [events, setEvents, onError, trackStart, trackEnd],
   );
 
-  return { optimisticCreate, optimisticUpdate, optimisticDelete };
+  return { optimisticCreate, optimisticUpdate, optimisticDelete, pending };
 }

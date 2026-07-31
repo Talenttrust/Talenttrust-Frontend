@@ -2,6 +2,7 @@ import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { execCommandFallback } from '@/lib/clipboardFallback';
 import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';
 import { formatRelativeTime, toISOString } from '@/lib/formatRelativeTime';
+import { KbdHint } from '@/components/KbdHint';
 
 export type ReputationEvent = {
   id: string;
@@ -212,7 +213,9 @@ export default function ReputationProfile({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [displayCount, setDisplayCount] = useState(REPUTATION_PAGE_SIZE);
 
-  const { optimisticDelete } = useOptimisticReputationMutation(events, setEvents);
+  const { optimisticDelete } = useOptimisticReputationMutation(events, setEvents, {
+    onError: (msg) => showError?.({ title: msg }),
+  });
 
   // Keep the local, deletable copy of history in sync whenever the parent
   // supplies a new history array (data reload, filter change upstream, etc.).
@@ -230,6 +233,8 @@ export default function ReputationProfile({
   const selectedCount = selectedIds.length;
   const allSelected = events.length > 0 && selectedCount === events.length;
   const hasPartialSelection = selectedCount > 0 && selectedCount < events.length;
+
+  const clearSelection = useCallback(() => setSelectedIds([]), []);
 
   // ---------------------------------------------------------------------------
   // Keyboard shortcuts for the selection toolbar (Export / Delete / Clear).
@@ -763,16 +768,14 @@ export default function ReputationProfile({
         description={`This will permanently delete ${selectedCount} selected reputation ${selectedCount === 1 ? 'item' : 'items'}. This action cannot be undone.`}
         confirmLabel="Delete selected"
         cancelLabel="Cancel"
-        onConfirm={() => {
+        onConfirm={async () => {
           const count = selectedIds.length;
-          const removed = optimisticDelete(selectedIds);
+          setConfirmOpen(false);
+          const removed = await optimisticDelete(selectedIds);
           if (removed.ok) {
             setSelectedIds([]);
             showSuccess?.({ title: `Deleted ${count} reputation items.` });
-          } else {
-            showError?.({ title: 'Failed to delete reputation items. Please try again.' });
           }
-          setConfirmOpen(false);
         }}
         onCancel={() => setConfirmOpen(false)}
       />
