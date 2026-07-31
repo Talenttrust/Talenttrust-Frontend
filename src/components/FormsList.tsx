@@ -109,8 +109,23 @@ export function execCommandFallback(text: string): boolean {
 // ---------------------------------------------------------------------------
 
 /**
+ * Props for the FormsListSkeleton component.
+ */
+export interface FormsListSkeletonProps {
+  /**
+   * When provided, an error banner is shown inside the skeleton container
+   * instead of the shimmer rows, matching the loading-with-error UX.
+   */
+  error?: string | null;
+}
+
+/**
  * FormsListSkeleton — themed shimmer that mirrors the FormsList visual
  * structure so there is no layout shift when real content loads.
+ *
+ * When `error` is supplied the skeleton rows are replaced by an error
+ * banner inside the loading container, so AT continues to hear "Loading
+ * forms" while sighted users see the error.
  *
  * Accessibility:
  * - Wrapped in a `<SkeletonContainer>` with `role="status"` and
@@ -122,47 +137,68 @@ export function execCommandFallback(text: string): boolean {
  *
  * Exported separately for use in tests or Next.js `loading.tsx` files.
  */
-export const FormsListSkeleton: React.FC = () => (
+export const FormsListSkeleton: React.FC<FormsListSkeletonProps> = ({
+  error = null,
+}) => (
   <SkeletonContainer label="Loading forms" data-testid="forms-loading">
-    {/* Filter + Export action bar — mirrors the `justify-between` row */}
-    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-      {/* Filter buttons group */}
-      <div className="flex gap-2" aria-hidden="true">
-        <Skeleton width="w-24" height="h-8" rounded="rounded-lg" />
-        <Skeleton width="w-24" height="h-8" rounded="rounded-lg" />
-        <Skeleton width="w-28" height="h-8" rounded="rounded-lg" />
+    {error ? (
+      <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        {error}
       </div>
-
-      {/* Export buttons */}
-      <div className="flex gap-2" aria-hidden="true">
-        <Skeleton width="w-[5.25rem]" height="h-7" rounded="rounded" />
-        <Skeleton width="w-[5.75rem]" height="h-7" rounded="rounded" />
-      </div>
-    </div>
-
-    {/* Form list rows — each mirrors a title + id/copy row */}
-    <ul data-testid="forms-list-skeleton" aria-hidden="true" className="space-y-2">
-      {Array.from({ length: 10 }, (_, index) => (
-        <li
-          key={`skeleton-${index}`}
-          data-testid="forms-skeleton-row"
-          className="flex items-center justify-between gap-3 py-2"
-        >
-          {/* Form title */}
-          <Skeleton
-            width="w-full"
-            height="h-5"
-            rounded="rounded-md"
-            className="max-w-[12rem]"
-          />
-          {/* Form ID + Copy button */}
-          <div className="flex items-center gap-2 shrink-0">
-            <Skeleton width="w-28" height="h-4" rounded="rounded-md" />
-            <Skeleton width="w-14" height="h-6" rounded="rounded" />
+    ) : (
+      <>
+        {/* Filter + Export action bar — mirrors the `justify-between` row */}
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          {/* Filter buttons group */}
+          <div
+            className="flex gap-2"
+            aria-hidden="true"
+            data-testid="forms-skeleton-filters"
+          >
+            <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
+            <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
+            <Skeleton width="w-28" height="h-9" rounded="rounded-lg" />
           </div>
-        </li>
-      ))}
-    </ul>
+
+          {/* Export buttons */}
+          <div
+            className="flex gap-2"
+            aria-hidden="true"
+            data-testid="forms-skeleton-export"
+          >
+            <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
+            <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
+          </div>
+        </div>
+
+        {/* Form list rows — each mirrors a title + id/copy row */}
+        <ul
+          data-testid="forms-list-skeleton"
+          aria-hidden="true"
+          className="space-y-2"
+        >
+          {Array.from({ length: 10 }, (_, index) => (
+            <li
+              key={`skeleton-${index}`}
+              data-testid="forms-skeleton-row"
+              className="flex items-center justify-between gap-3 py-2"
+            >
+              {/* Form title */}
+              <Skeleton
+                width="w-48"
+                height="h-5"
+                rounded="rounded-md"
+              />
+              {/* Form ID + Copy button — uses <span> to mirror loaded <li> */}
+              <span className="flex items-center gap-2">
+                <Skeleton width="w-24" height="h-4" rounded="rounded-md" />
+                <Skeleton width="w-16" height="h-7" rounded="rounded" />
+              </span>
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
   </SkeletonContainer>
 );
 
@@ -189,7 +225,7 @@ export const FormsList = ({ forms, isLoading = false, error = null }: FormsListP
 
   // ── Loading state ──
   if (isLoading) {
-    return <FormsListSkeleton />;
+    return <FormsListSkeleton error={error} />;
   }
 
   if (error) {

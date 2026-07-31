@@ -184,12 +184,17 @@ describe('FormsList — loading → loaded transition', () => {
     expect(screen.getByText('Failed to load forms.')).toBeInTheDocument();
   });
 
-  it('shows loading skeleton when both isLoading and error are set (loading preempts error)', () => {
+  it('shows error banner inside loading container when both isLoading and error are set', () => {
     render(
       <FormsList forms={[]} isLoading error="Something went wrong." />,
     );
+    // Loading container is shown
     expect(screen.getByTestId('forms-loading')).toBeInTheDocument();
-    expect(screen.getByTestId('forms-list-skeleton')).toBeInTheDocument();
+    // Error message is shown inside the loading container
+    expect(screen.getByText('Something went wrong.')).toBeInTheDocument();
+    // Skeleton rows are NOT shown when error is present
+    expect(screen.queryByTestId('forms-list-skeleton')).not.toBeInTheDocument();
+    // Standalone error state is NOT shown
     expect(screen.queryByTestId('forms-error')).not.toBeInTheDocument();
   });
 
