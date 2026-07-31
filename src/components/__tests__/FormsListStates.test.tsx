@@ -102,6 +102,45 @@ describe('FormsList — loading state', () => {
     expect(screen.queryByTestId('forms-empty')).not.toBeInTheDocument();
     expect(screen.queryByTestId('forms-error')).not.toBeInTheDocument();
   });
+
+  it('skeleton filter toolbar has filter and export placeholders', () => {
+    render(<FormsList forms={[]} isLoading />);
+    expect(screen.getByTestId('forms-skeleton-filters')).toBeInTheDocument();
+    expect(screen.getByTestId('forms-skeleton-export')).toBeInTheDocument();
+  });
+
+  it('skeleton renders exactly 10 placeholder rows', () => {
+    render(<FormsList forms={[]} isLoading />);
+    expect(screen.getAllByTestId('forms-skeleton-row')).toHaveLength(10);
+    // Verify each row has the correct structure (flex-between)
+    screen.getAllByTestId('forms-skeleton-row').forEach((row) => {
+      expect(row.className).toContain('flex');
+      expect(row.className).toContain('items-center');
+      expect(row.className).toContain('justify-between');
+    });
+  });
+
+  it('skeleton loading state passes axe accessibility audit', async () => {
+    const { container } = render(<FormsList forms={[]} isLoading />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('skeleton loading with data still shows skeleton not content', () => {
+    render(<FormsList forms={sampleForms} isLoading />);
+    // Data is provided but isLoading takes priority
+    expect(screen.getByTestId('forms-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('forms-list')).not.toBeInTheDocument();
+  });
+
+  it('skeleton loading with error shows error banner inside skeleton container', () => {
+    render(<FormsList forms={[]} isLoading error="Loading failed" />);
+    // Container should still be present
+    expect(screen.getByTestId('forms-loading')).toBeInTheDocument();
+    // Error message shown inside
+    expect(screen.getByText('Loading failed')).toBeInTheDocument();
+    // Skeleton rows NOT shown when error is present
+    expect(screen.queryByTestId('forms-skeleton-row')).not.toBeInTheDocument();
+  });
 });
 
 // ---------------------------------------------------------------------------

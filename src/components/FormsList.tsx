@@ -121,6 +121,10 @@ export const FormsList = ({ forms, isLoading = false, error = null }: FormsListP
   const displayedForms = filteredForms.slice(0, page * pageSize);
   const hasMore = displayedForms.length < filteredForms.length;
 
+  // ── Loading skeleton ──────────────────────────────────────────────────────
+  // Mirrors the loaded layout exactly to prevent layout shift.
+  // - Filter row: 3 filter button skeletons + 2 export button skeletons
+  // - List rows: title skeleton (left) + id & copy button skeletons (right)
   if (isLoading) {
     return (
       <div>
@@ -138,15 +142,37 @@ export const FormsList = ({ forms, isLoading = false, error = null }: FormsListP
           ) : null}
           {!error ? (
             <>
-              <div className="mb-4 flex flex-wrap gap-2" aria-hidden="true">
-                <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
-                <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
-                <Skeleton width="w-28" height="h-9" rounded="rounded-lg" />
+              {/* Filter + export row — mirrors the loaded toolbar */}
+              <div
+                className="flex flex-wrap items-center justify-between gap-2 mb-4"
+                aria-hidden="true"
+              >
+                <div className="flex gap-2" data-testid="forms-skeleton-filters">
+                  <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
+                  <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
+                  <Skeleton width="w-28" height="h-9" rounded="rounded-lg" />
+                </div>
+                <div className="flex gap-2" data-testid="forms-skeleton-export">
+                  <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
+                  <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
+                </div>
               </div>
-              <ul data-testid="forms-list-skeleton" aria-hidden="true" className="space-y-2">
+
+              {/* Skeleton rows — mirror the loaded list-item structure */}
+              <ul data-testid="forms-list-skeleton" aria-hidden="true">
                 {Array.from({ length: 10 }, (_, index) => (
-                  <li key={`skeleton-${index}`} data-testid="forms-skeleton-row" className="py-2">
-                    <Skeleton width="w-full" height="h-5" rounded="rounded-md" className="max-w-[18rem]" />
+                  <li
+                    key={`skeleton-${index}`}
+                    data-testid="forms-skeleton-row"
+                    className="flex items-center justify-between gap-3 py-2"
+                  >
+                    {/* Title placeholder */}
+                    <Skeleton width="w-48" height="h-5" rounded="rounded-md" />
+                    {/* ID + copy button area */}
+                    <span className="flex items-center gap-2">
+                      <Skeleton width="w-24" height="h-4" rounded="rounded-md" />
+                      <Skeleton width="w-16" height="h-7" rounded="rounded" />
+                    </span>
                   </li>
                 ))}
               </ul>
