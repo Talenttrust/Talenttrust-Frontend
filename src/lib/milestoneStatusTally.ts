@@ -16,6 +16,7 @@ export function milestoneStatusTally(
     Disputed: 0,
     Pending: 0,
     Paid: 0,
+    Archived: 0,
   };
 
   for (const m of milestones) {
