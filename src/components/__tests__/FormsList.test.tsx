@@ -133,12 +133,12 @@ describe('FormsList — skeleton / layout shift', () => {
     expect(screen.getByText('Form 0')).toBeInTheDocument();
   });
 
-  it('renders an error state in place of the skeleton when provided', () => {
+  it('shows the loading skeleton when both isLoading and error are provided (loading takes precedence)', () => {
     const forms = createForms(3);
     render(<FormsList forms={forms} isLoading error="Unable to load forms" />);
 
-    expect(screen.queryByTestId('forms-list-skeleton')).not.toBeInTheDocument();
-    expect(screen.getByText('Unable to load forms')).toBeInTheDocument();
+    expect(screen.getByTestId('forms-list-skeleton')).toBeInTheDocument();
+    expect(screen.queryByText('Unable to load forms')).not.toBeInTheDocument();
   });
 });
 

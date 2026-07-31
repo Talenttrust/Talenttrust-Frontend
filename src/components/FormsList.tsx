@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Skeleton } from './Skeleton';
+import { Skeleton, SkeletonContainer } from './Skeleton';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { useToast } from '@/components/toast/toast-provider';
 import { exportData } from '@/utils/export';
@@ -104,6 +104,72 @@ export function execCommandFallback(text: string): boolean {
   return success;
 }
 
+// ---------------------------------------------------------------------------
+// Skeleton
+// ---------------------------------------------------------------------------
+
+/**
+ * FormsListSkeleton — themed shimmer that mirrors the FormsList visual
+ * structure so there is no layout shift when real content loads.
+ *
+ * Accessibility:
+ * - Wrapped in a `<SkeletonContainer>` with `role="status"` and
+ *   `aria-busy="true"` so AT announces the loading state on mount.
+ * - All shimmer blocks carry `aria-hidden="true"` via the `<Skeleton>`
+ *   component — they are decorative placeholders.
+ * - The shimmer animation is suppressed under `prefers-reduced-motion`
+ *   via the project-wide globals.css rule plus `motion-reduce:animate-none`.
+ *
+ * Exported separately for use in tests or Next.js `loading.tsx` files.
+ */
+export const FormsListSkeleton: React.FC = () => (
+  <SkeletonContainer label="Loading forms" data-testid="forms-loading">
+    {/* Filter + Export action bar — mirrors the `justify-between` row */}
+    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+      {/* Filter buttons group */}
+      <div className="flex gap-2" aria-hidden="true">
+        <Skeleton width="w-24" height="h-8" rounded="rounded-lg" />
+        <Skeleton width="w-24" height="h-8" rounded="rounded-lg" />
+        <Skeleton width="w-28" height="h-8" rounded="rounded-lg" />
+      </div>
+
+      {/* Export buttons */}
+      <div className="flex gap-2" aria-hidden="true">
+        <Skeleton width="w-[5.25rem]" height="h-7" rounded="rounded" />
+        <Skeleton width="w-[5.75rem]" height="h-7" rounded="rounded" />
+      </div>
+    </div>
+
+    {/* Form list rows — each mirrors a title + id/copy row */}
+    <ul data-testid="forms-list-skeleton" aria-hidden="true" className="space-y-2">
+      {Array.from({ length: 10 }, (_, index) => (
+        <li
+          key={`skeleton-${index}`}
+          data-testid="forms-skeleton-row"
+          className="flex items-center justify-between gap-3 py-2"
+        >
+          {/* Form title */}
+          <Skeleton
+            width="w-full"
+            height="h-5"
+            rounded="rounded-md"
+            className="max-w-[12rem]"
+          />
+          {/* Form ID + Copy button */}
+          <div className="flex items-center gap-2 shrink-0">
+            <Skeleton width="w-28" height="h-4" rounded="rounded-md" />
+            <Skeleton width="w-14" height="h-6" rounded="rounded" />
+          </div>
+        </li>
+      ))}
+    </ul>
+  </SkeletonContainer>
+);
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export const FormsList = ({ forms, isLoading = false, error = null }: FormsListProps) => {
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<FormStatus>('All');
@@ -121,67 +187,9 @@ export const FormsList = ({ forms, isLoading = false, error = null }: FormsListP
   const displayedForms = filteredForms.slice(0, page * pageSize);
   const hasMore = displayedForms.length < filteredForms.length;
 
-  // ── Loading skeleton ──────────────────────────────────────────────────────
-  // Mirrors the loaded layout exactly to prevent layout shift.
-  // - Filter row: 3 filter button skeletons + 2 export button skeletons
-  // - List rows: title skeleton (left) + id & copy button skeletons (right)
+  // ── Loading state ──
   if (isLoading) {
-    return (
-      <div>
-        <div
-          role="status"
-          aria-label="Loading forms"
-          aria-live="polite"
-          aria-busy="true"
-          data-testid="forms-loading"
-        >
-          {error ? (
-            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
-          {!error ? (
-            <>
-              {/* Filter + export row — mirrors the loaded toolbar */}
-              <div
-                className="flex flex-wrap items-center justify-between gap-2 mb-4"
-                aria-hidden="true"
-              >
-                <div className="flex gap-2" data-testid="forms-skeleton-filters">
-                  <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
-                  <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
-                  <Skeleton width="w-28" height="h-9" rounded="rounded-lg" />
-                </div>
-                <div className="flex gap-2" data-testid="forms-skeleton-export">
-                  <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
-                  <Skeleton width="w-24" height="h-9" rounded="rounded-lg" />
-                </div>
-              </div>
-
-              {/* Skeleton rows — mirror the loaded list-item structure */}
-              <ul data-testid="forms-list-skeleton" aria-hidden="true">
-                {Array.from({ length: 10 }, (_, index) => (
-                  <li
-                    key={`skeleton-${index}`}
-                    data-testid="forms-skeleton-row"
-                    className="flex items-center justify-between gap-3 py-2"
-                  >
-                    {/* Title placeholder */}
-                    <Skeleton width="w-48" height="h-5" rounded="rounded-md" />
-                    {/* ID + copy button area */}
-                    <span className="flex items-center gap-2">
-                      <Skeleton width="w-24" height="h-4" rounded="rounded-md" />
-                      <Skeleton width="w-16" height="h-7" rounded="rounded" />
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
-          <span className="sr-only">Loading forms</span>
-        </div>
-      </div>
-    );
+    return <FormsListSkeleton />;
   }
 
   if (error) {
