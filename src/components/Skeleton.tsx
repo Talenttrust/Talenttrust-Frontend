@@ -71,13 +71,12 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 // SkeletonContainer
 // ---------------------------------------------------------------------------
 
-export interface SkeletonContainerProps {
+export interface SkeletonContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
    * Accessible label for the loading region (e.g. "Loading payment stream form").
    */
   label: string;
   children: React.ReactNode;
-  className?: string;
 }
 
 /**
@@ -95,8 +94,15 @@ export const SkeletonContainer: React.FC<SkeletonContainerProps> = ({
   label,
   children,
   className = '',
+  // Destructure out ARIA attributes we control to prevent accidental overrides
+  role: _role,
+  'aria-label': _ariaLabel,
+  'aria-live': _ariaLive,
+  'aria-busy': _ariaBusy,
+  ...rest
 }) => (
   <div
+    {...rest}
     role="status"
     aria-label={label}
     aria-live="polite"
