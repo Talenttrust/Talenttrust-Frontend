@@ -92,6 +92,7 @@ import {
   type ReputationSortDir,
 } from '@/lib/reputationUrlState';
 import ReputationExportButton from './ReputationExportButton';
+import { KbdHint } from '@/components/KbdHint';
 
 /** Number of history events shown per page before "Load more" is needed. */
 export const REPUTATION_PAGE_SIZE = 5;
@@ -213,6 +214,8 @@ export default function ReputationProfile({
   const [displayCount, setDisplayCount] = useState(REPUTATION_PAGE_SIZE);
 
   const { optimisticDelete } = useOptimisticReputationMutation(events, setEvents);
+
+  const clearSelection = useCallback(() => setSelectedIds([]), []);
 
   // Keep the local, deletable copy of history in sync whenever the parent
   // supplies a new history array (data reload, filter change upstream, etc.).
