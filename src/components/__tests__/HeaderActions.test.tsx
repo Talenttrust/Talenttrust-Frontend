@@ -74,6 +74,7 @@ describe('HeaderActions — initial render', () => {
     const toggle = getToggle();
     expect(toggle).toBeInTheDocument();
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveAttribute('aria-label', 'Open wallet actions');
   });
 
   it('renders the controlled wallet-actions panel', () => {
@@ -142,6 +143,7 @@ describe('HeaderActions — ARIA attribute wiring', () => {
     // After opening, find toggle by updated label
     const toggle = screen.getByRole('button', { name: /close wallet actions/i });
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveAttribute('aria-label', 'Close wallet actions');
   });
 
   it('aria-expanded returns to "false" after the second click', () => {
