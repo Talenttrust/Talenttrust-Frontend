@@ -1,28 +1,29 @@
-'use client';
+"use client";
 
-import { use, useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import Breadcrumbs from '@/components/Breadcrumbs';
-import ContractSummary from '@/components/ContractSummary';
-import MilestonesList from '@/components/MilestonesList';
-import ActionPanel from '@/components/ActionPanel';
-import ContractProgress from '@/components/ContractProgress';
-import { ContractProgressSkeleton } from '@/components/ContractProgressSkeleton';
-import { ContractSummarySkeleton } from '@/components/ContractSummarySkeleton';
-import { MilestonesListSkeleton } from '@/components/MilestonesListSkeleton';
-import ContractStatusAnnouncer from '@/components/ContractStatusAnnouncer';
-import SafeBoundary from '@/components/SafeBoundary';
-import { resolveContractData, ContractData } from '@/lib/contractResolver';
-import { useToast } from '@/components/toast/toast-provider';
-import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
+import { use, useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import ContractSummary from "@/components/ContractSummary";
+import MilestonesList from "@/components/MilestonesList";
+import ActionPanel from "@/components/ActionPanel";
+import ContractProgress from "@/components/ContractProgress";
+import { ContractProgressSkeleton } from "@/components/ContractProgressSkeleton";
+import { ContractSummarySkeleton } from "@/components/ContractSummarySkeleton";
+import { MilestonesListSkeleton } from "@/components/MilestonesListSkeleton";
+import ContractStatusAnnouncer from "@/components/ContractStatusAnnouncer";
+import SafeBoundary from "@/components/SafeBoundary";
+import { resolveContractData, ContractData } from "@/lib/contractResolver";
+import { useToast } from "@/components/toast/toast-provider";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
+import { listMilestonesByContract } from "@/lib/repository";
+import { isValidContractId } from "@/lib/validateContractId";
 import {
-  listMilestonesByContract,
-  updateMilestone,
-} from '@/lib/repository';
-import { isValidContractId } from '@/lib/validateContractId';
-import { useOptimisticContractStatus, type BuildPersistedContract } from '@/hooks/useOptimisticContractStatus';
-import type { Milestone } from '@/types/domain';
+  useOptimisticContractStatus,
+  type BuildPersistedContract,
+} from "@/hooks/useOptimisticContractStatus";
+import { useOptimisticMilestoneMutation } from "@/hooks/useOptimisticMilestoneMutation";
+import type { Milestone } from "@/types/domain";
 
 /**
  * Merges the contract's resolved milestones with any milestones persisted in
@@ -58,28 +59,33 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPersistingStatus, setIsPersistingStatus] = useState(false);
   const isMountedRef = useRef(true);
-  const milestonesRef = useRef(milestones);
-  milestonesRef.current = milestones;
   const { showError, showSuccess } = useToast();
+  const { optimisticUpdate } = useOptimisticMilestoneMutation(
+    milestones,
+    setMilestones,
+  );
 
   const { copied, copy } = useCopyToClipboard({
     delay: 2000,
     onSuccess: () => {
       showSuccess({
-        title: 'Contract ID copied',
-        description: 'The contract identifier has been copied to your clipboard.',
+        title: "Contract ID copied",
+        description:
+          "The contract identifier has been copied to your clipboard.",
       });
     },
     onError: (err) => {
-      if (err instanceof Error && err.message.includes('supported')) {
+      if (err instanceof Error && err.message.includes("supported")) {
         showError({
-          title: 'Copy not supported',
-          description: 'Your browser does not support clipboard access. Please copy the ID manually.',
+          title: "Copy not supported",
+          description:
+            "Your browser does not support clipboard access. Please copy the ID manually.",
         });
       } else {
         showError({
-          title: 'Copy failed',
-          description: 'Unable to copy the contract ID to your clipboard. Please try again.',
+          title: "Copy failed",
+          description:
+            "Unable to copy the contract ID to your clipboard. Please try again.",
         });
       }
     },
@@ -130,7 +136,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
    */
   const persistContractStatus = useCallback(
     (
-      nextStatus: ContractData['status'],
+      nextStatus: ContractData["status"],
       successTitle: string,
       successDescription: string,
     ) => {
@@ -142,7 +148,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
       if (!result.ok) {
         setErrorMessage(result.error);
         showError({
-          title: 'Unable to update contract',
+          title: "Unable to update contract",
           description: result.error,
         });
         setIsPersistingStatus(false);
@@ -177,7 +183,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
           setErrorMessage(
             error instanceof Error
               ? error.message
-              : 'Failed to load contract. Please try again.',
+              : "Failed to load contract. Please try again.",
           );
         }
       } finally {
@@ -206,9 +212,9 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
    */
   const handleReleaseFunds = useCallback(() => {
     persistContractStatus(
-      'Completed',
-      'Funds released',
-      'The contract was marked as Completed and the change was saved.',
+      "Completed",
+      "Funds released",
+      "The contract was marked as Completed and the change was saved.",
     );
   }, [persistContractStatus]);
 
@@ -217,9 +223,9 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
    */
   const handleDispute = useCallback(() => {
     persistContractStatus(
-      'Disputed',
-      'Dispute opened',
-      'The contract was marked as Disputed and the change was saved.',
+      "Disputed",
+      "Dispute opened",
+      "The contract was marked as Disputed and the change was saved.",
     );
   }, [persistContractStatus]);
 
@@ -227,53 +233,77 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
     // Replace with summary navigation.
   };
 
-  const handleUpdateMilestone = useCallback((id: string, patch: Partial<Milestone>) => {
-    const snapshot = milestonesRef.current;
-
-    setMilestones((current) =>
-      current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
-    );
-
-    const persisted = updateMilestone(id, patch);
-
-    if (!persisted) {
-      setMilestones(snapshot);
+  const handleUpdateMilestone = useCallback(
+    (id: string, patch: Partial<Milestone>) => {
+      const result = optimisticUpdate(id, patch);
+      if (result.ok) return true;
+      showError({
+        title: "Unable to update milestone",
+        description: result.error,
+      });
       return false;
-    }
+    },
+    [optimisticUpdate, showError],
+  );
 
-    return true;
-  }, []);
-
-  const status = contractData?.status || 'Active';
+  const status = contractData?.status || "Active";
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
-      {contractData ? <ContractStatusAnnouncer status={contractData.status} /> : null}
+      {contractData ? (
+        <ContractStatusAnnouncer status={contractData.status} />
+      ) : null}
       <div className="mx-auto max-w-screen-2xl space-y-6">
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div>
             <Breadcrumbs
               items={[
-                { label: 'Dashboard', href: '/' },
-                { label: 'Contracts', href: '/contracts' },
+                { label: "Dashboard", href: "/" },
+                { label: "Contracts", href: "/contracts" },
                 { label: `#${id}` },
               ]}
             />
             <div className="flex items-center gap-3">
-              <h1 className="mt-2 text-3xl font-semibold text-slate-900">Contract #{id}</h1>
+              <h1 className="mt-2 text-3xl font-semibold text-slate-900">
+                Contract #{id}
+              </h1>
               <button
                 onClick={() => copy(id)}
                 className="mt-2 flex-shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                aria-label={copied ? 'Contract ID copied' : 'Copy contract ID to clipboard'}
-                title={copied ? 'Contract ID copied' : 'Copy contract ID'}
+                aria-label={
+                  copied
+                    ? "Contract ID copied"
+                    : "Copy contract ID to clipboard"
+                }
+                title={copied ? "Contract ID copied" : "Copy contract ID"}
               >
                 {copied ? (
-                  <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="h-5 w-5 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 ) : (
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
                   </svg>
                 )}
               </button>

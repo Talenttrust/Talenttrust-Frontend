@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { StatusType, statusColorMap, statusIconMap } from './StatusBadge';
-import MilestoneRow from './milestones/MilestoneRow';
-import { BulkActionToolbar } from './milestones/BulkActionToolbar';
-import { ConfirmDialog } from './ConfirmDialog';
-import { usePreferences } from '@/lib/preferences';
-import { isDueSoon } from '@/lib/dueSoon';
-import { findCurrencyMismatches, normalizeCurrencyCode } from '@/lib/currencyMismatch';
-import { milestoneStatusTally } from '@/lib/milestoneStatusTally';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { StatusType, statusColorMap, statusIconMap } from "./StatusBadge";
+import MilestoneRow from "./milestones/MilestoneRow";
+import { BulkActionToolbar } from "./milestones/BulkActionToolbar";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { usePreferences } from "@/lib/preferences";
+import { isDueSoon } from "@/lib/dueSoon";
+import {
+  findCurrencyMismatches,
+  normalizeCurrencyCode,
+} from "@/lib/currencyMismatch";
+import { milestoneStatusTally } from "@/lib/milestoneStatusTally";
 
 export type Milestone = {
   id: string;
@@ -26,8 +29,8 @@ export type Milestone = {
    * by another session tab.
    */
   version?: number;
-  createdAt?: string;    
-  updatedAt?: string;    
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export const PAGE_SIZE_DEFAULT = 5;
@@ -77,7 +80,7 @@ const MilestonesList = ({
   /**
    * Screen-reader announcement text for selection changes.
    */
-  const [selectionAnnouncement, setSelectionAnnouncement] = useState('');
+  const [selectionAnnouncement, setSelectionAnnouncement] = useState("");
   /**
    * Whether the delete confirmation dialog is open.
    */
@@ -87,7 +90,7 @@ const MilestonesList = ({
    * save / save-failure. Cleared on the *next* save so repeated messages
    * are always announced (screen readers intentionally skip repeat strings).
    */
-  const [announcement, setAnnouncement] = useState('');
+  const [announcement, setAnnouncement] = useState("");
   /**
    * We force-bump a key on the live region right before writing the message
    * so ATs re-announce identical strings ("Milestone saved.") on repeat.
@@ -96,7 +99,7 @@ const MilestonesList = ({
 
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  const isCompact = preferences.milestonesDensity === 'compact';
+  const isCompact = preferences.milestonesDensity === "compact";
 
   // Reset to the first page whenever the underlying list or page size
   // changes (e.g. a status filter narrows the results).
@@ -117,7 +120,11 @@ const MilestonesList = ({
   );
 
   const mismatchCurrencies = Array.from(
-    new Set(mismatchedMilestones.map((milestone) => normalizeCurrencyCode(milestone.currency))),
+    new Set(
+      mismatchedMilestones.map((milestone) =>
+        normalizeCurrencyCode(milestone.currency),
+      ),
+    ),
   ).sort();
 
   const normalizedContractCurrency = contractCurrency
@@ -131,16 +138,18 @@ const MilestonesList = ({
   // - Check if due date is within REMINDER_WINDOW_DAYS
   const dueSoonMilestones = milestones.filter(
     (m) =>
-      m.status !== 'Paid' &&
-      m.status !== 'Completed' &&
+      m.status !== "Paid" &&
+      m.status !== "Completed" &&
       isDueSoon(m.dueDate, today, REMINDER_WINDOW_DAYS),
   );
 
   const showBanner = dueSoonMilestones.length > 0 && !isDismissed;
 
   const handleToggleDensity = () => {
-    const next: 'comfortable' | 'compact' = isCompact ? 'comfortable' : 'compact';
-    updatePreference('milestonesDensity', next);
+    const next: "comfortable" | "compact" = isCompact
+      ? "comfortable"
+      : "compact";
+    updatePreference("milestonesDensity", next);
     setIsDensityAnnounced(true);
   };
 
@@ -151,7 +160,7 @@ const MilestonesList = ({
   };
 
   const pushAnnouncement = useCallback((message: string) => {
-    setAnnouncement('');
+    setAnnouncement("");
     // Bump the nonce on the wrapper span so a same-message repeat still
     // announces (some SRs dedupe on identical text + key).
     setAnnouncementNonce((n) => n + 1);
@@ -160,7 +169,7 @@ const MilestonesList = ({
   }, []);
 
   const handleSave = useCallback(
-    (id: string, patch: Partial<Milestone>) => {
+    (id: string, patch: Partial<Milestone>): boolean => {
       const ok = onUpdateMilestone ? onUpdateMilestone(id, patch) : true;
       if (ok) {
         setEditingId(null);
@@ -169,15 +178,16 @@ const MilestonesList = ({
         // still resolves to a "saved" status even if the row's local
         // announcer was bypassed (e.g. parent owns the milestone copy).
       } else {
-        pushAnnouncement('Failed to save milestone.');
+        pushAnnouncement("Failed to save milestone.");
       }
+      return ok;
     },
     [onUpdateMilestone, pushAnnouncement],
   );
 
   const handleCancel = useCallback(() => {
     setEditingId(null);
-    setAnnouncement('');
+    setAnnouncement("");
   }, []);
 
   const prevMilestonesRef = useRef(milestones);
@@ -192,16 +202,21 @@ const MilestonesList = ({
   // Multi-select handlers
   // --------------------------------------------------------------------------
 
-  const allSelected = milestones.length > 0 && selectedIds.size === milestones.length;
+  const allSelected =
+    milestones.length > 0 && selectedIds.size === milestones.length;
   const hasSelection = selectedIds.size > 0;
 
   const announceSelection = useCallback((ids: Set<string>) => {
     const count = ids.size;
     if (count === 0) {
-      requestAnimationFrame(() => setSelectionAnnouncement('Selection cleared'));
+      requestAnimationFrame(() =>
+        setSelectionAnnouncement("Selection cleared"),
+      );
     } else {
       requestAnimationFrame(() =>
-        setSelectionAnnouncement(`${count} ${count === 1 ? 'milestone' : 'milestones'} selected`),
+        setSelectionAnnouncement(
+          `${count} ${count === 1 ? "milestone" : "milestones"} selected`,
+        ),
       );
     }
   }, []);
@@ -269,9 +284,15 @@ const MilestonesList = ({
   const isIndeterminate = hasSelection && !allSelected;
 
   return (
-    <section aria-labelledby="milestones-title" className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section
+      aria-labelledby="milestones-title"
+      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+    >
       <div className="flex items-center justify-between gap-4">
-        <h2 id="milestones-title" className="text-xl font-semibold text-slate-900">
+        <h2
+          id="milestones-title"
+          className="text-xl font-semibold text-slate-900"
+        >
           Milestones
         </h2>
         <div className="flex items-center gap-3">
@@ -279,7 +300,11 @@ const MilestonesList = ({
             type="button"
             onClick={handleToggleDensity}
             aria-pressed={isCompact}
-            aria-label={isCompact ? 'Switch to comfortable density' : 'Switch to compact density'}
+            aria-label={
+              isCompact
+                ? "Switch to comfortable density"
+                : "Switch to compact density"
+            }
             className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
           >
             <svg
@@ -292,35 +317,47 @@ const MilestonesList = ({
             >
               {isCompact ? (
                 <>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 12h16" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 8h16M4 16h16"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 12h16"
+                  />
                 </>
               ) : (
                 <>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
                 </>
               )}
             </svg>
-            {isCompact ? 'Compact' : 'Comfortable'}
+            {isCompact ? "Compact" : "Comfortable"}
           </button>
-          <span id="milestones-count" className="text-sm text-slate-500">{milestones.length} total</span>
+          <span id="milestones-count" className="text-sm text-slate-500">
+            {milestones.length} total
+          </span>
         </div>
       </div>
 
       {/* aria-live region: announces density change to screen readers */}
-      <span
-        className="sr-only"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {isDensityAnnounced ? `Milestones density set to ${isCompact ? 'compact' : 'comfortable'}` : ''}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {isDensityAnnounced
+          ? `Milestones density set to ${isCompact ? "compact" : "comfortable"}`
+          : ""}
       </span>
 
       {tallies.length > 0 && (
         <div
           role="list"
           aria-label="Milestone status summary"
-          className={`flex flex-wrap gap-2 ${isCompact ? 'mt-2' : 'mt-4'}`}
+          className={`flex flex-wrap gap-2 ${isCompact ? "mt-2" : "mt-4"}`}
         >
           {tallies.map(({ status, count }) => (
             <span
@@ -344,14 +381,18 @@ const MilestonesList = ({
           className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
         >
           <p className="font-semibold">
-            {mismatchedMilestones.length}{' '}
-            {mismatchedMilestones.length === 1 ? 'milestone uses' : 'milestones use'}{' '}
-            {mismatchCurrencies.join(', ')} instead of {normalizedContractCurrency}.
+            {mismatchedMilestones.length}{" "}
+            {mismatchedMilestones.length === 1
+              ? "milestone uses"
+              : "milestones use"}{" "}
+            {mismatchCurrencies.join(", ")} instead of{" "}
+            {normalizedContractCurrency}.
           </p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             {mismatchedMilestones.map((milestone) => (
               <li key={milestone.id}>
-                {milestone.title}: {formatAmount(milestone.payout, milestone.currency)}
+                {milestone.title}:{" "}
+                {formatAmount(milestone.payout, milestone.currency)}
               </li>
             ))}
           </ul>
@@ -365,12 +406,23 @@ const MilestonesList = ({
         >
           <div className="flex-1">
             <p className="font-semibold text-sm">
-              {dueSoonMilestones.length} {dueSoonMilestones.length === 1 ? 'milestone is' : 'milestones are'} due within {REMINDER_WINDOW_DAYS} days
+              {dueSoonMilestones.length}{" "}
+              {dueSoonMilestones.length === 1
+                ? "milestone is"
+                : "milestones are"}{" "}
+              due within {REMINDER_WINDOW_DAYS} days
             </p>
             <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-amber-800 dark:text-amber-300">
               {dueSoonMilestones.map((m, idx) => (
                 <li key={m.id} className="flex items-center gap-1.5">
-                  {idx > 0 && <span className="text-amber-400 select-none" aria-hidden="true">•</span>}
+                  {idx > 0 && (
+                    <span
+                      className="text-amber-400 select-none"
+                      aria-hidden="true"
+                    >
+                      •
+                    </span>
+                  )}
                   <a
                     href={`#milestone-${m.id}`}
                     className="font-medium underline hover:text-amber-950 dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 rounded"
@@ -387,7 +439,9 @@ const MilestonesList = ({
             aria-label="Dismiss reminder"
             className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-amber-600 hover:bg-amber-100 hover:text-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 dark:text-amber-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-200 transition-colors"
           >
-            <span aria-hidden="true" className="text-lg leading-none">&times;</span>
+            <span aria-hidden="true" className="text-lg leading-none">
+              &times;
+            </span>
           </button>
         </div>
       )}
@@ -437,7 +491,7 @@ const MilestonesList = ({
         <div
           role="group"
           aria-label="Milestone selection controls"
-          className={`flex items-center ${isCompact ? 'mt-2' : 'mt-4'}`}
+          className={`flex items-center ${isCompact ? "mt-2" : "mt-4"}`}
         >
           <label className="flex items-center gap-2 text-sm text-slate-600">
             <input
@@ -447,15 +501,15 @@ const MilestonesList = ({
                 if (el) el.indeterminate = isIndeterminate;
               }}
               onChange={handleToggleSelectAll}
-              aria-checked={isIndeterminate ? 'mixed' : allSelected}
+              aria-checked={isIndeterminate ? "mixed" : allSelected}
               aria-label={
                 allSelected
-                  ? 'Deselect all milestones'
-                  : 'Select all milestones'
+                  ? "Deselect all milestones"
+                  : "Select all milestones"
               }
               className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
             />
-            <span>{allSelected ? 'Deselect all' : 'Select all'}</span>
+            <span>{allSelected ? "Deselect all" : "Select all"}</span>
           </label>
         </div>
       )}
@@ -471,9 +525,9 @@ const MilestonesList = ({
 
       <ConfirmDialog
         isOpen={showDeleteDialog}
-        title={`Delete ${selectedIds.size} ${selectedIds.size === 1 ? 'milestone' : 'milestones'}?`}
-        description={`Are you sure you want to delete ${selectedIds.size} selected ${selectedIds.size === 1 ? 'milestone' : 'milestones'}? This action cannot be undone.`}
-        confirmLabel={`Delete ${selectedIds.size} ${selectedIds.size === 1 ? 'item' : 'items'}`}
+        title={`Delete ${selectedIds.size} ${selectedIds.size === 1 ? "milestone" : "milestones"}?`}
+        description={`Are you sure you want to delete ${selectedIds.size} selected ${selectedIds.size === 1 ? "milestone" : "milestones"}? This action cannot be undone.`}
+        confirmLabel={`Delete ${selectedIds.size} ${selectedIds.size === 1 ? "item" : "items"}`}
         tone="destructive"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setShowDeleteDialog(false)}
@@ -481,10 +535,14 @@ const MilestonesList = ({
 
       <div
         ref={listContainerRef}
-        role={milestones.length > 0 ? 'region' : undefined}
-        aria-labelledby={milestones.length > 0 ? 'milestones-title milestones-count' : undefined}
+        role={milestones.length > 0 ? "region" : undefined}
+        aria-labelledby={
+          milestones.length > 0
+            ? "milestones-title milestones-count"
+            : undefined
+        }
         tabIndex={milestones.length > 0 ? 0 : undefined}
-        className={`max-h-[calc(100vh-260px)] overflow-y-auto pr-2 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 ${isCompact ? 'mt-4 space-y-2' : 'mt-6 space-y-4'}`}
+        className={`max-h-[calc(100vh-260px)] overflow-y-auto pr-2 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 ${isCompact ? "mt-4 space-y-2" : "mt-6 space-y-4"}`}
       >
         {visibleMilestones.map((milestone) => (
           <MilestoneRow
@@ -503,7 +561,11 @@ const MilestonesList = ({
           <div className="flex justify-center pt-2">
             <button
               type="button"
-              onClick={() => setDisplayCount((prev) => Math.min(prev + pageSize, milestones.length))}
+              onClick={() =>
+                setDisplayCount((prev) =>
+                  Math.min(prev + pageSize, milestones.length),
+                )
+              }
               data-testid="load-more-btn"
               className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             >
