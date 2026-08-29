@@ -73,4 +73,14 @@ describe('useOnlineStatus', () => {
     expect(removeEventListenerSpy).toHaveBeenCalledWith('online', expect.any(Function));
     expect(removeEventListenerSpy).toHaveBeenCalledWith('offline', expect.any(Function));
   });
+
+  it('defaults to true when navigator.onLine is undefined', () => {
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      value: undefined,
+    });
+
+    const { result } = renderHook(() => useOnlineStatus());
+    expect(result.current.isOnline).toBe(true);
+  });
 });

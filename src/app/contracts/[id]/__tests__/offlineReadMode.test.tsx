@@ -233,6 +233,24 @@ describe('ContractDetailPage - Offline Read Mode Requirements (#1131)', () => {
       // Mutation buttons disabled due to stale data
       const submitBtn = screen.getByRole('button', { name: /submit milestone/i });
       expect(submitBtn).toBeDisabled();
+
+      // Milestone edit is blocked on stale data
+      const editButton = screen.getAllByRole('button', { name: /edit/i })[0];
+      if (editButton) {
+        await act(async () => {
+          fireEvent.click(editButton);
+        });
+
+        const saveButton = screen.queryByRole('button', { name: /save/i });
+        if (saveButton) {
+          await act(async () => {
+            fireEvent.click(saveButton);
+          });
+          expect(
+            screen.getByText('Cannot update stale data'),
+          ).toBeInTheDocument();
+        }
+      }
     });
   });
 

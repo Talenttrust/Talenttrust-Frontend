@@ -254,5 +254,13 @@ describe('contractCache', () => {
       const saved = cacheContractData(mockContract.id, mockContract);
       expect(saved).toBe(false);
     });
+
+    it('handles localStorage.removeItem throwing error during clearContractCache', () => {
+      jest.spyOn(window.localStorage, 'removeItem').mockImplementation(() => {
+        throw new Error('StorageError');
+      });
+
+      expect(clearContractCache()).toBe(false);
+    });
   });
 });
