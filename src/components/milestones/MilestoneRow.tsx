@@ -1,32 +1,32 @@
-'use client';
+"use client";
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import StatusBadge from '@/components/StatusBadge';
-import type { StatusType } from '@/components/StatusBadge';
-import { FormField } from '@/components/FormField';
-import { ErrorSummary } from '@/components/ErrorSummary';
-import { usePreferences } from '@/lib/preferences';
-import { sanitizeUserText } from '@/lib/sanitizeUserText';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import StatusBadge from "@/components/StatusBadge";
+import type { StatusType } from "@/components/StatusBadge";
+import { FormField } from "@/components/FormField";
+import { ErrorSummary } from "@/components/ErrorSummary";
+import { usePreferences } from "@/lib/preferences";
+import { sanitizeUserText } from "@/lib/sanitizeUserText";
 import {
   MAX_MILESTONE_TITLE_LENGTH,
   MILESTONE_EDIT_FIELD_IDS,
   validateMilestoneEdit,
   type MilestoneEditFormValues,
-} from '@/lib/validateMilestoneEdit';
-import type { Milestone } from '@/components/MilestonesList';
-import { MilestoneTimestamp } from './MilestoneTimestamp';
+} from "@/lib/validateMilestoneEdit";
+import type { Milestone } from "@/components/MilestonesList";
+import { MilestoneTimestamp } from "./MilestoneTimestamp";
 
 /** Status options exposed in the inline edit form (same set as create form). */
 const EDIT_STATUS_OPTIONS: StatusType[] = [
-  'Pending',
-  'Active',
-  'Completed',
-  'Paid',
-  'Disputed',
+  "Pending",
+  "Active",
+  "Completed",
+  "Paid",
+  "Disputed",
 ];
 
 /** Currency options exposed in the inline edit form (same set as create form). */
-const EDIT_CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'XLM'] as const;
+const EDIT_CURRENCY_OPTIONS = ["USD", "EUR", "GBP", "XLM"] as const;
 
 export interface MilestoneRowProps {
   /** The milestone this row renders. */
@@ -52,7 +52,7 @@ export interface MilestoneRowProps {
    * (title/payout/currency trimmed, payout coerced to `number`, dueDate
    * normalised) so it is safe to merge directly into the milestone record.
    */
-  onSave: (id: string, patch: Partial<Milestone>) => void;
+  onSave: (id: string, patch: Partial<Milestone>) => boolean | void;
   /**
    * Called when the user cancels (Cancel button, Escape key, or invalid
    * focus-escape attempt). Parent should flip `isEditing` to `false`.
@@ -130,8 +130,10 @@ export const MilestoneRow: React.FC<MilestoneRowProps> = ({
   const [payout, setPayout] = useState(String(milestone.payout));
   const [currency, setCurrency] = useState(milestone.currency);
   const [status, setStatus] = useState<StatusType>(milestone.status);
-  const [dueDate, setDueDate] = useState(milestone.dueDate ?? '');
-  const [errors, setErrors] = useState<Array<{ fieldId: string; message: string }>>([]);
+  const [dueDate, setDueDate] = useState(milestone.dueDate ?? "");
+  const [errors, setErrors] = useState<
+    Array<{ fieldId: string; message: string }>
+  >([]);
 
   // Refs for focus management.
   const editButtonRef = useRef<HTMLButtonElement>(null);
@@ -154,7 +156,7 @@ export const MilestoneRow: React.FC<MilestoneRowProps> = ({
     setPayout(String(milestone.payout));
     setCurrency(milestone.currency);
     setStatus(milestone.status);
-    setDueDate(milestone.dueDate ?? '');
+    setDueDate(milestone.dueDate ?? "");
     setErrors([]);
     // Defer focus to the next frame so the inputs are mounted.
     const focusTimer = window.setTimeout(() => {
@@ -177,14 +179,14 @@ export const MilestoneRow: React.FC<MilestoneRowProps> = ({
   useEffect(() => {
     if (!isEditing) return undefined;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
+      if (event.key !== "Escape") return;
       event.stopPropagation();
       // Drop any unsaved validation errors.
       setErrors([]);
       onCancel();
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isEditing, onCancel]);
 
   /**
@@ -236,9 +238,14 @@ export const MilestoneRow: React.FC<MilestoneRowProps> = ({
       // because the ErrorSummary itself already carries `role="alert"`.
       return;
     }
-    onSave(milestone.id, result.patch);
-    onAnnounce?.(`Milestone “${result.patch.title}” saved.`);
-    focusEditButton();
+    // Legacy callers return void, which is treated as success. Integrated
+    // optimistic callers return false on rollback so a failed save is not
+    // announced as successful and edit mode remains available for retry.
+    const persisted = onSave(milestone.id, result.patch);
+    if (persisted !== false) {
+      onAnnounce?.(`Milestone “${result.patch.title}” saved.`);
+      focusEditButton();
+    }
   }, [buildPatch, milestone.id, onSave, onAnnounce, focusEditButton]);
 
   /**
@@ -273,8 +280,8 @@ export const MilestoneRow: React.FC<MilestoneRowProps> = ({
         tabIndex={tabIndex}
         className={`rounded-3xl border p-4 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
           isSelected
-            ? 'border-indigo-300 bg-indigo-50'
-            : 'border-slate-200 bg-slate-50'
+            ? "border-indigo-300 bg-indigo-50"
+            : "border-slate-200 bg-slate-50"
         }`}
       >
         <div className="flex items-start gap-3">
@@ -285,54 +292,56 @@ export const MilestoneRow: React.FC<MilestoneRowProps> = ({
                 checked={isSelected}
                 onChange={handleToggle}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     e.preventDefault();
                     handleToggle();
                   }
                 }}
-                aria-label={`${isSelected ? 'Deselect' : 'Select'} ${milestone.title}`}
-                tabIndex={tabIndex}
+                aria-label={`${isSelected ? "Deselect" : "Select"} ${milestone.title}`}
                 className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
               />
             </div>
           )}
           <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-slate-600">{milestone.title}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-              <span>Due {milestone.dueDate ?? 'TBD'}</span>
-              <span aria-hidden="true" className="text-slate-300">•</span>
-              <MilestoneTimestamp 
-                date={milestone.updatedAt || milestone.createdAt} 
-              />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-slate-600">
+                {milestone.title}
+              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                <span>Due {milestone.dueDate ?? "TBD"}</span>
+                <span aria-hidden="true" className="text-slate-300">
+                  •
+                </span>
+                <MilestoneTimestamp
+                  date={milestone.updatedAt || milestone.createdAt}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <StatusBadge status={milestone.status} />
+              <button
+                ref={editButtonRef}
+                type="button"
+                onClick={onRequestEdit}
+                aria-label={`Edit milestone ${milestone.title}`}
+                data-testid={`edit-milestone-${milestone.id}`}
+                className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              >
+                <span aria-hidden="true">✎</span>
+                Edit
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <StatusBadge status={milestone.status} />
-            <button
-              ref={editButtonRef}
-              type="button"
-              onClick={onRequestEdit}
-              aria-label={`Edit milestone ${milestone.title}`}
-              data-testid={`edit-milestone-${milestone.id}`}
-              tabIndex={tabIndex}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-            >
-              <span aria-hidden="true">✎</span>
-              Edit
-            </button>
-          </div>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between gap-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
-            <p>Payout</p>
-            <p
-              data-testid={`milestone-payout-${milestone.id}`}
-              className="font-semibold text-slate-900"
-            >
-              {formatAmount(milestone.payout, milestone.currency)}
-            </p>
-          </div>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
+          <p>Payout</p>
+          <p
+            data-testid={`milestone-payout-${milestone.id}`}
+            className="font-semibold text-slate-900"
+          >
+            {formatAmount(milestone.payout, milestone.currency)}
+          </p>
+        </div>
       </article>
     );
   }
