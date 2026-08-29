@@ -19,7 +19,7 @@ interface OfflineIndicatorProps {
  * Provides clear feedback about data freshness and network state.
  */
 export function OfflineIndicator({ isStale = false, cachedAt }: OfflineIndicatorProps) {
-  const { isOnline } = useOnlineStatus();
+  const isOnline = useOnlineStatus();
 
   if (isOnline && !isStale) {
     return null; // Don't show anything when online with fresh data

@@ -15,13 +15,15 @@ import MilestoneFilter, {
   type MilestoneStatusFilter,
 } from '../../components/milestones/MilestoneFilter';
 import { MilestoneCreationForm } from '../../components/milestones/MilestoneCreationForm';
-import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository';
+import { listMilestones } from '@/lib/repository';
 import { getItem, setItem } from '@/lib/safeStorage';
 import { useToast } from '@/components/toast/toast-provider';
 import SafeBoundary from '@/components/SafeBoundary';
 import { downloadMilestonesICS } from '@/lib/icsExport';
+import { useOfflineMilestones } from '@/hooks/useOfflineMilestones';
 import { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from './constants';
 import type { Milestone } from '@/types/domain';
+import { useOptimisticMilestoneMutation } from '@/hooks/useOptimisticMilestoneMutation';
 
 const UNPAGINATED_LIST_SIZE = 9999;
 
@@ -66,6 +68,14 @@ const MilestonesContent: React.FC = () => {
   );
   const [showForm, setShowForm] = useState(false);
   const { showError } = useToast();
+  const reconcileFromRepo = useCallback(() => {
+    setMilestones(listMilestones());
+  }, []);
+  const offline = useOfflineMilestones(reconcileFromRepo);
+  const { optimisticCreate, optimisticUpdate } = useOptimisticMilestoneMutation(
+    milestones,
+    setMilestones,
+  );
 
   useEffect(() => {
     setStatusFilter(getValidStatus(searchParams.get('status')));
@@ -157,32 +167,32 @@ const MilestonesContent: React.FC = () => {
   }, []);
 
   const handleSubmitMilestone = useCallback((milestone: Milestone) => {
+    const result = optimisticCreate(milestone);
+    if (!result.ok) {
+      showError({
+        title: 'Unable to create milestone',
+        description: result.error,
+      });
+      return;
+    }
     setShowForm(false);
-    saveMilestone(milestone);
     setIsDismissed(true);
-    setMilestones((prev) => [...prev, milestone]);
-  }, []);
+  }, [optimisticCreate, showError]);
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
   }, []);
 
   const handleUpdateMilestone = useCallback(
     (id: string, patch: Partial<Milestone>): boolean => {
-      try {
-        updateMilestone(id, patch);
-        setMilestones((prev) =>
-          prev.map((item) => (item.id === id ? { ...item, ...patch } : item)),
-        );
-        return true;
-      } catch {
-        showError({
-          title: 'Unable to update milestone',
-          description: 'Your milestone could not be saved. Please try again.',
-        });
-        return false;
-      }
+      const result = optimisticUpdate(id, patch);
+      if (result.ok) return true;
+      showError({
+        title: 'Unable to update milestone',
+        description: result.error,
+      });
+      return false;
     },
-    [showError],
+    [optimisticUpdate, showError],
   );
 
   return (
@@ -190,6 +200,31 @@ const MilestonesContent: React.FC = () => {
       <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold mb-6 focus:outline-none">
         Milestones
       </h1>
+
+      {(offline.isFlushing || offline.notice || offline.pendingCount > 0) && (
+        <div
+          data-testid="offline-status-banner"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/5 dark:text-amber-200"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p className="font-medium">
+              {!offline.isOnline
+                ? 'You’re offline — milestone changes are saved on this device and will sync automatically when you reconnect.'
+                : offline.isFlushing
+                  ? 'Synchronizing your pending milestones…'
+                  : offline.notice}
+            </p>
+            {!offline.isOnline && offline.pendingCount > 0 && (
+              <span className="ml-2 shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-200">
+                {offline.pendingCount} pending
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {showSampleBanner && (
         <div

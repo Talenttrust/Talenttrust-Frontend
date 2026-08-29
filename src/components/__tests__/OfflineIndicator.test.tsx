@@ -15,14 +15,14 @@ describe('OfflineIndicator', () => {
 
   describe('rendering behavior', () => {
     it('renders nothing when user is online and data is not stale', () => {
-      mockedUseOnlineStatus.mockReturnValue({ isOnline: true });
+      mockedUseOnlineStatus.mockReturnValue(true);
 
       const { container } = render(<OfflineIndicator isStale={false} />);
       expect(container.firstChild).toBeNull();
     });
 
     it('renders offline message when user is offline', () => {
-      mockedUseOnlineStatus.mockReturnValue({ isOnline: false });
+      mockedUseOnlineStatus.mockReturnValue(false);
 
       render(<OfflineIndicator isStale={false} />);
 
@@ -33,7 +33,7 @@ describe('OfflineIndicator', () => {
     });
 
     it('renders stale data message when online but data is stale', () => {
-      mockedUseOnlineStatus.mockReturnValue({ isOnline: true });
+      mockedUseOnlineStatus.mockReturnValue(true);
 
       render(<OfflineIndicator isStale={true} />);
 
@@ -44,7 +44,7 @@ describe('OfflineIndicator', () => {
     });
 
     it('formats cached time correctly when provided', () => {
-      mockedUseOnlineStatus.mockReturnValue({ isOnline: false });
+      mockedUseOnlineStatus.mockReturnValue(false);
 
       const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
       render(<OfflineIndicator isStale={true} cachedAt={tenMinutesAgo} />);
@@ -53,7 +53,7 @@ describe('OfflineIndicator', () => {
     });
 
     it('formats cached time as "just now" for very recent timestamps', () => {
-      mockedUseOnlineStatus.mockReturnValue({ isOnline: false });
+      mockedUseOnlineStatus.mockReturnValue(false);
 
       const justNow = new Date(Date.now() - 10 * 1000).toISOString();
       render(<OfflineIndicator isStale={false} cachedAt={justNow} />);
@@ -62,7 +62,7 @@ describe('OfflineIndicator', () => {
     });
 
     it('formats cached time in hours and days appropriately', () => {
-      mockedUseOnlineStatus.mockReturnValue({ isOnline: false });
+      mockedUseOnlineStatus.mockReturnValue(false);
 
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       const { rerender } = render(<OfflineIndicator isStale={true} cachedAt={twoHoursAgo} />);
@@ -76,7 +76,7 @@ describe('OfflineIndicator', () => {
 
   describe('accessibility (a11y)', () => {
     it('has role="status" and aria-live="polite"', () => {
-      mockedUseOnlineStatus.mockReturnValue({ isOnline: false });
+      mockedUseOnlineStatus.mockReturnValue(false);
 
       render(<OfflineIndicator isStale={false} />);
 
@@ -86,7 +86,7 @@ describe('OfflineIndicator', () => {
     });
 
     it('passes axe accessibility audit when offline', async () => {
-      mockedUseOnlineStatus.mockReturnValue({ isOnline: false });
+      mockedUseOnlineStatus.mockReturnValue(false);
 
       const { container } = render(
         <main>
@@ -100,7 +100,7 @@ describe('OfflineIndicator', () => {
     });
 
     it('passes axe accessibility audit when displaying stale data', async () => {
-      mockedUseOnlineStatus.mockReturnValue({ isOnline: true });
+      mockedUseOnlineStatus.mockReturnValue(true);
 
       const { container } = render(
         <main>

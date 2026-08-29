@@ -24,7 +24,10 @@ import {
 } from '@/lib/repository';
 import { cacheContractData, getCachedContractData } from '@/lib/contractCache';
 import { isValidContractId } from '@/lib/validateContractId';
-import { useOptimisticContractStatus, type BuildPersistedContract } from '@/hooks/useOptimisticContractStatus';
+import {
+  useOptimisticContractStatus,
+  type BuildPersistedContract,
+} from '@/hooks/useOptimisticContractStatus';
 import type { Milestone } from '@/types/domain';
 
 /**
@@ -67,7 +70,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
   const milestonesRef = useRef(milestones);
   milestonesRef.current = milestones;
   const { showError, showSuccess } = useToast();
-  const { isOnline } = useOnlineStatus();
+  const isOnline = useOnlineStatus();
 
   const { copied, copy } = useCopyToClipboard({
     delay: 2000,
