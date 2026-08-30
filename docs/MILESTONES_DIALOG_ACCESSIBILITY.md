@@ -285,3 +285,7 @@ still required before merge because the hook is shared by other dialogs.
 This table is intentionally small enough to use as a review checklist. Any
 future change to the form should either preserve these outcomes or update the
 issue-specific acceptance criteria, tests, and documentation together.
+
+The table also makes keyboard behavior reviewable without relying on a
+particular browser's native tab order. The hook owns the invariant; the form
+owns only the visual overlay and its close callback.
