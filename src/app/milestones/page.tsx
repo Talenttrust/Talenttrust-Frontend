@@ -19,6 +19,8 @@ import { listMilestones, saveMilestone, updateMilestone } from '@/lib/repository
 import { getItem, setItem } from '@/lib/safeStorage';
 import { useToast } from '@/components/toast/toast-provider';
 import SafeBoundary from '@/components/SafeBoundary';
+import MilestonesErrorBoundary from '@/components/milestones/MilestonesErrorBoundary';
+import MilestonesBoardSkeleton from '@/components/milestones/MilestonesBoardSkeleton';
 import { downloadMilestonesICS } from '@/lib/icsExport';
 import { SAMPLE_MILESTONES, SAMPLE_DISMISSED_KEY } from './constants';
 import type { Milestone } from '@/types/domain';
@@ -238,64 +240,70 @@ const MilestonesContent: React.FC = () => {
         />
       ) : (
         <>
-          <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <MilestoneFilter
-              selected={statusFilter}
-              onChange={setStatusFilter}
-              resultCount={sortedMilestones.length}
-            />
-            <div className="flex flex-wrap items-center gap-3">
-              <label
-                htmlFor="milestone-sort"
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm"
-              >
-                <span className="font-medium text-slate-700">Sort</span>
-                <select
-                  id="milestone-sort"
-                  aria-label="Sort milestones"
-                  value={sortOrder}
-                  onChange={(event) => setSortOrder(event.target.value as MilestoneSortOption)}
-                  className="rounded-xl border border-slate-200 bg-transparent px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          <div className="mb-4 flex min-h-[42px] flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <MilestonesErrorBoundary sectionName="filters">
+              <MilestoneFilter
+                selected={statusFilter}
+                onChange={setStatusFilter}
+                resultCount={sortedMilestones.length}
+              />
+            </MilestonesErrorBoundary>
+            <MilestonesErrorBoundary sectionName="actions">
+              <div className="flex min-h-[42px] flex-wrap items-center gap-3">
+                <label
+                  htmlFor="milestone-sort"
+                  className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm"
                 >
-                  <option value="newest">Newest first</option>
-                  <option value="oldest">Oldest first</option>
-                </select>
-              </label>
-              <button
-                type="button"
-                onClick={() => downloadMilestonesICS(sortedMilestones)}
-                aria-label="Add to calendar"
-                className="flex-shrink-0 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-              >
-                <span aria-hidden="true" className="mr-1">📅</span>
-                Add to Calendar
-              </button>
-              <button
-                type="button"
-                aria-label="Add Milestone"
-                onClick={handleAddMilestone}
-                className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-              >
-                Add Milestone
-              </button>
-            </div>
+                  <span className="font-medium text-slate-700">Sort</span>
+                  <select
+                    id="milestone-sort"
+                    aria-label="Sort milestones"
+                    value={sortOrder}
+                    onChange={(event) => setSortOrder(event.target.value as MilestoneSortOption)}
+                    className="rounded-xl border border-slate-200 bg-transparent px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => downloadMilestonesICS(sortedMilestones)}
+                  aria-label="Add to calendar"
+                  className="flex-shrink-0 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                >
+                  <span aria-hidden="true" className="mr-1">📅</span>
+                  Add to Calendar
+                </button>
+                <button
+                  type="button"
+                  aria-label="Add Milestone"
+                  onClick={handleAddMilestone}
+                  className="flex-shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                >
+                  Add Milestone
+                </button>
+              </div>
+            </MilestonesErrorBoundary>
           </div>
 
-          {sortedMilestones.length === 0 ? (
-            <EmptyState
-              illustration="milestones"
-              title="No milestones match this filter"
-              description={`There are no ${statusFilter.toLowerCase()} milestones at the moment. Try a different filter or add a new milestone.`}
-              actionLabel="Add Milestone"
-              onAction={handleAddMilestone}
-            />
-          ) : (
-            <MilestonesList
-              milestones={sortedMilestones}
-              onUpdateMilestone={handleUpdateMilestone}
-              pageSize={UNPAGINATED_LIST_SIZE}
-            />
-          )}
+          <MilestonesErrorBoundary sectionName="milestone list">
+            {sortedMilestones.length === 0 ? (
+              <EmptyState
+                illustration="milestones"
+                title="No milestones match this filter"
+                description={`There are no ${statusFilter.toLowerCase()} milestones at the moment. Try a different filter or add a new milestone.`}
+                actionLabel="Add Milestone"
+                onAction={handleAddMilestone}
+              />
+            ) : (
+              <MilestonesList
+                milestones={sortedMilestones}
+                onUpdateMilestone={handleUpdateMilestone}
+                pageSize={UNPAGINATED_LIST_SIZE}
+              />
+            )}
+          </MilestonesErrorBoundary>
         </>
       )}
 
@@ -311,7 +319,7 @@ const MilestonesContent: React.FC = () => {
 
 const MilestonesPage: React.FC = () => (
   <SafeBoundary fallbackTitle="Milestones failed to load.">
-    <Suspense fallback={null}>
+    <Suspense fallback={<MilestonesBoardSkeleton />}>
       <MilestonesContent />
     </Suspense>
   </SafeBoundary>
