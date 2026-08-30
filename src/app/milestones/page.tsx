@@ -68,6 +68,10 @@ const MilestonesContent: React.FC = () => {
   );
   const [showForm, setShowForm] = useState(false);
   const { showError } = useToast();
+  const reconcileFromRepo = useCallback(() => {
+    setMilestones(listMilestones());
+  }, []);
+  const offline = useOfflineMilestones(reconcileFromRepo);
   const { optimisticCreate, optimisticUpdate } = useOptimisticMilestoneMutation(
     milestones,
     setMilestones,
