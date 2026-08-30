@@ -265,3 +265,23 @@ npm run build
 
 The focused tests prove this dialog contract. The repository-wide commands are
 still required before merge because the hook is shared by other dialogs.
+
+## Behavior decision table
+
+| Situation | Expected result | Owner |
+| --- | --- | --- |
+| Form mounts after trigger activation | Title input receives focus | Shared hook |
+| Title is disabled by a future state | Dialog root receives focus | Shared hook |
+| Focus is on the last enabled field and Tab is pressed | First enabled field receives focus | Shared hook |
+| Focus is on the first enabled field and Shift+Tab is pressed | Last enabled field receives focus | Shared hook |
+| Focus is outside while Tab is pressed | First dialog control receives focus | Shared hook |
+| Focus is outside while Shift+Tab is pressed | Last dialog control receives focus | Shared hook |
+| Escape is pressed in any control | Owner close callback runs once | Shared hook |
+| Backdrop receives a click | Form cancel callback runs | Form overlay |
+| Panel receives a click | Form remains open | Form panel |
+| Opener is still mounted after close | Opener receives focus | Shared hook |
+| Opener was replaced after submit | Page heading or main receives focus | Shared hook |
+
+This table is intentionally small enough to use as a review checklist. Any
+future change to the form should either preserve these outcomes or update the
+issue-specific acceptance criteria, tests, and documentation together.
