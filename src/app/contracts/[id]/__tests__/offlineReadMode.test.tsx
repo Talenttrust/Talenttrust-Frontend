@@ -16,7 +16,10 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 
-jest.mock('@/lib/contractResolver');
+jest.mock('@/lib/contractResolver', () => ({
+  ...jest.requireActual('@/lib/contractResolver'),
+  resolveContractData: jest.fn(),
+}));
 jest.mock('@/lib/repository', () => ({
   upsertContract: jest.fn(),
   listMilestonesByContract: jest.fn(() => []),
@@ -31,7 +34,7 @@ const mockedResolveContractData = jest.mocked(contractResolver.resolveContractDa
 const mockedUseWallet = useWallet as jest.MockedFunction<typeof useWallet>;
 
 const testContract: contractResolver.ContractData = {
-  id: 'contract-offline-123',
+  id: '123',
   name: 'Offline Test Contract',
   status: 'Active',
   parties: [
@@ -62,7 +65,7 @@ const testContract: contractResolver.ContractData = {
   ],
 };
 
-async function renderContractPage(id = 'contract-offline-123') {
+async function renderContractPage(id = '123') {
   let result: ReturnType<typeof render>;
   await act(async () => {
     result = render(
@@ -115,7 +118,7 @@ describe('ContractDetailPage - Offline Read Mode Requirements (#1131)', () => {
 
       mockedResolveContractData.mockRejectedValue(new Error('Network error: offline'));
 
-      await renderContractPage('contract-offline-123');
+      await renderContractPage('123');
 
       // The offline indicator should be present
       expect(

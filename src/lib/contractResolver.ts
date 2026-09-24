@@ -18,8 +18,42 @@ interface ResolverOptions {
 }
 
 /**
+ * The contract ids the demo backend knows about.
+ *
+ * Existence is a real answer now, not an invention: an id outside this set
+ * does not exist, and the route can say so. Ids in this set resolve.
+ */
+const KNOWN_CONTRACT_IDS: ReadonlySet<string> = new Set(['123']);
+
+/**
+ * Contracts restricted to named wallets.
+ *
+ * A contract whose id appears here may only be read by a wallet on its
+ * permitted list. Everything known-but-unlisted is public, which keeps every
+ * contract that predates the permission model readable — including the demo
+ * id the whole existing suite renders with (`123`).
+ */
+const RESTRICTED_CONTRACTS: Readonly<Record<string, readonly string[]>> = {
+  'restricted-demo': ['GADEMOCLIENT0000000000000000000000000000000001'],
+};
+
+/** Whether the demo backend holds a contract with this id. */
+export function contractExists(id: string): boolean {
+  return KNOWN_CONTRACT_IDS.has(id) || Object.hasOwn(RESTRICTED_CONTRACTS, id);
+}
+
+/** The permitted wallets for a contract, or null when it is public. */
+export function permittedAddressesFor(id: string): readonly string[] | null {
+  return Object.hasOwn(RESTRICTED_CONTRACTS, id) ? RESTRICTED_CONTRACTS[id] : null;
+}
+
+/**
  * Simulates async contract data resolution.
  * Deterministic for testing; in production, replace with real API call.
+ *
+ * Unknown ids throw — the route renders that as "not found". Inventing data
+ * for any id (the old behaviour) made every link "work" and is what turned
+ * existence into a question the route could not answer.
  */
 export async function resolveContractData(
   id: string,
@@ -33,6 +67,10 @@ export async function resolveContractData(
 
   if (simulateError) {
     throw new Error(`Failed to load contract #${id}. Please try again.`);
+  }
+
+  if (!contractExists(id)) {
+    throw new Error(`Contract #${id} was not found.`);
   }
 
   // Mock data for the given contract ID

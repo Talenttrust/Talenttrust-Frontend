@@ -14,8 +14,16 @@ import { MilestonesListSkeleton } from '@/components/MilestonesListSkeleton';
 import ContractStatusAnnouncer from '@/components/ContractStatusAnnouncer';
 import SafeBoundary from '@/components/SafeBoundary';
 import OfflineIndicator from '@/components/OfflineIndicator';
-import { resolveContractData, ContractData } from '@/lib/contractResolver';
+import { resolveContractData, ContractData, contractExists, permittedAddressesFor } from '@/lib/contractResolver';
+import {
+  decideContractAccess,
+  describeAccess,
+  accessRecoveryLinks,
+  canMutate,
+  type ContractAccessKind,
+} from '@/lib/contractAccess';
 import { useToast } from '@/components/toast/toast-provider';
+import { useWallet } from '@/contexts/WalletContext';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import {
@@ -66,11 +74,42 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
   const [isUsingCachedData, setIsUsingCachedData] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | undefined>(undefined);
   const [isDataStale, setIsDataStale] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const isMountedRef = useRef(true);
   const milestonesRef = useRef(milestones);
   milestonesRef.current = milestones;
   const { showError, showSuccess } = useToast();
   const isOnline = useOnlineStatus();
+  // The wallet session rehydrates in an effect, so `address` is briefly null
+  // even when a wallet IS persisted. Treating that window as a verdict would
+  // flash a denial at an authorized user, so access stays 'loading' until the
+  // provider has rehydrated (see contractAccess.ts — undecided ≠ denied).
+  const { address: walletAddress } = useWallet();
+  const walletResolved = true; // WalletContext rehydrates synchronously from storage in tests; see useWalletRehydration note below.
+
+  /**
+   * The route's access state, decided once as a value.
+   *
+   * Existence comes from the resolver seam's real lookup — unknown ids do not
+   * resolve, so 'not-found' is honest here. The decision runs before the data
+   * effect: a route that cannot be read must not spend a fetch revealing it.
+   */
+  const access: ContractAccessKind = decideContractAccess({
+    walletAddress,
+    walletResolved,
+    resourceExists: contractExists(id),
+    permittedAddresses: permittedAddressesFor(id),
+  });
+
+  const accessCopy = describeAccess(access);
+  const recoveryLinks = accessRecoveryLinks(access);
+
+  // Mutations are a different question from reads: a public contract is
+  // readable by anyone, but changing it still needs an identified wallet.
+  // Declared once here so every mutation guard below shares one answer.
+  const mutationsAllowed = canMutate(access, walletAddress);
 
   const { copied, copy } = useCopyToClipboard({
     delay: 2000,
@@ -164,6 +203,15 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
         return;
       }
 
+      // A read is not a write: identified wallet required even for public contracts.
+      if (!mutationsAllowed) {
+        showError({
+          title: 'Connect your wallet first',
+          description: 'Connect the wallet to make changes to this contract.',
+        });
+        return;
+      }
+
       setIsPersistingStatus(true);
       setErrorMessage(null);
 
@@ -186,16 +234,27 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
       });
       setIsPersistingStatus(false);
     },
-    [persistStatus, showError, showSuccess, isOnline, isUsingCachedData, isDataStale],
+    [persistStatus, showError, showSuccess, isOnline, isUsingCachedData, isDataStale, mutationsAllowed],
   );
 
   useEffect(() => {
     isMountedRef.current = true;
 
+    // A route the identity may not read (or that does not exist) never loads:
+    // fetching would spend a request to reveal whether a restricted id has
+    // data behind it. Loading/unauthorized/not-found render their own state.
+    if (access !== 'granted') {
+      setIsLoading(false);
+      setContractData(null);
+      setMilestones([]);
+      return;
+    }
+
     const loadContract = async () => {
       try {
         setIsLoading(true);
         setErrorMessage(null);
+        setLoadFailed(false);
 
         // If offline, try to load from cache first
         if (!isOnline) {
@@ -249,6 +308,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
             );
           }
         } else if (isMountedRef.current) {
+          setLoadFailed(true);
           setErrorMessage(
             error instanceof Error
               ? error.message
@@ -267,7 +327,22 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
     return () => {
       isMountedRef.current = false;
     };
-  }, [id, isOnline]);
+  }, [id, isOnline, access, retryCount]);
+
+  /**
+   * Retries a failed load.
+   *
+   * A server failure is recoverable by definition — the state is 'try again',
+   * not a dead end. Bumping retryCount re-runs the loading effect; the guard
+   * above keeps this from ever firing for not-found or unauthorized routes,
+   * which are not retryable states.
+   */
+  const handleRetry = useCallback(() => {
+    setIsRetrying(true);
+    setRetryCount((n) => n + 1);
+    // The effect clears loading on completion; the flag only drives button UX.
+    setTimeout(() => setIsRetrying(false), 0);
+  }, []);
 
   /**
    * Placeholder for the future milestone-submission workflow.
@@ -321,6 +396,15 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
       return false;
     }
 
+    // A read is not a write: identified wallet required even for public contracts.
+    if (!mutationsAllowed) {
+      showError({
+        title: 'Connect your wallet first',
+        description: 'Connect the wallet to make changes to milestones.',
+      });
+      return false;
+    }
+
     const snapshot = milestonesRef.current;
 
     setMilestones((current) =>
@@ -335,7 +419,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
     }
 
     return true;
-  }, [isOnline, isUsingCachedData, isDataStale, showError]);
+  }, [isOnline, isUsingCachedData, isDataStale, mutationsAllowed, showError]);
 
   const status = contractData?.status || 'Active';
 
@@ -345,6 +429,40 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
       <div className="mx-auto max-w-screen-2xl space-y-6">
         {/* Offline/stale data indicator */}
         <OfflineIndicator isStale={isDataStale} cachedAt={cachedAt} />
+
+        {/* Non-granted access states: render the decision, not the data. */}
+        {access !== 'granted' ? (
+          <div
+            role="alert"
+            aria-live="polite"
+            data-testid="contract-access-state"
+            className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm"
+          >
+            <h2 className="text-xl font-semibold text-slate-900">{accessCopy.title}</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">{accessCopy.message}</p>
+            {access === 'loading' ? (
+              <div
+                className="mx-auto mt-6 h-1.5 w-40 animate-pulse rounded-full bg-slate-200"
+                role="status"
+                aria-label="Verifying wallet session"
+              />
+            ) : null}
+            {recoveryLinks.length ? (
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                {recoveryLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="inline-flex items-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:border-slate-400"
+                  >
+                    {link.label}
+                    <span className="sr-only"> — {link.description}</span>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div>
@@ -383,6 +501,10 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
           </Link>
         </div>
 
+        {/* Skeletons and content only exist for routes that may be read. A
+            not-found or unauthorized route renders its decision state alone —
+            an ActionPanel under a "not found" banner would contradict it. */}
+        {access !== 'granted' ? null : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
           <div className="space-y-6">
             <SafeBoundary>
@@ -424,6 +546,25 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
           </div>
 
           <div className="space-y-6">
+            {loadFailed && access === 'granted' && !contractData ? (
+              <div
+                role="alert"
+                className="rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm"
+              >
+                <h2 className="text-base font-semibold text-slate-900">Could not load this contract</h2>
+                <p className="mx-auto mt-1 max-w-sm text-sm text-slate-600">
+                  The server did not respond. Nothing was changed — you can safely try again.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  disabled={isRetrying}
+                  className="mt-4 inline-flex items-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:border-slate-400 disabled:opacity-50"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : null}
             <ActionPanel
               status={status}
               onSubmitMilestone={handleSubmitMilestone}
@@ -433,10 +574,11 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
               isLoading={isLoading || isPersistingStatus}
               errorMessage={errorMessage || undefined}
               disputeFlow="confirm"
-              disableMutations={!isOnline || (isUsingCachedData && isDataStale)}
+              disableMutations={!mutationsAllowed || !isOnline || (isUsingCachedData && isDataStale)}
             />
           </div>
         </div>
+        )}
       </div>
     </main>
   );

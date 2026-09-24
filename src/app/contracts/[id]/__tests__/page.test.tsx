@@ -38,7 +38,10 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 
-jest.mock('@/lib/contractResolver');
+jest.mock('@/lib/contractResolver', () => ({
+  ...jest.requireActual('@/lib/contractResolver'),
+  resolveContractData: jest.fn(),
+}));
 jest.mock('@/lib/repository', () => ({
   upsertContract: jest.fn(),
   listMilestonesByContract: jest.fn(() => []),
@@ -170,7 +173,7 @@ describe('ContractDetailPage', () => {
   it('copies the contract id to the clipboard and shows a success toast', async () => {
     const writeText = installClipboard();
 
-    await renderPage('contract-42');
+    await renderPage('123');
 
     const copyButton = screen.getByRole('button', { name: /copy contract id to clipboard/i });
     expect(copyButton).toBeInTheDocument();
@@ -180,7 +183,7 @@ describe('ContractDetailPage', () => {
       copyButton.click();
     });
 
-    expect(writeText).toHaveBeenCalledWith('contract-42');
+    expect(writeText).toHaveBeenCalledWith('123');
   });
 
   it('shows the check icon and updated label when the contract id is copied', async () => {
@@ -688,7 +691,7 @@ describe('ContractDetailPage', () => {
     });
 
     it('keeps the "Back to contracts" link for a valid id', async () => {
-      await renderPage('contract-42');
+      await renderPage('123');
 
       const backLink = screen.getByRole('link', { name: /back to contracts/i });
       expect(backLink).toBeInTheDocument();
