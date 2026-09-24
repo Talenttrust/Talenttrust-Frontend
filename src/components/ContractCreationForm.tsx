@@ -1,11 +1,18 @@
 'use client';
 
-import React, { useState, useCallback, FormEvent, useRef } from 'react';
+import React, { useState, useCallback, useEffect, FormEvent, useRef } from 'react';
 import { FormField } from './FormField';
 import { ErrorSummary } from './ErrorSummary';
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
 import { isValidStellarAddress } from '@/lib/stellarAddress';
 import { sanitizeUserText } from '@/lib/sanitizeUserText';
+import {
+  MAX_CONTRACT_NAME_LENGTH,
+  MAX_PARTY_LABEL_LENGTH,
+  clearContractDraft,
+  loadContractDraft,
+  saveContractDraft,
+} from '@/lib/contractDraft';
 import {
   combineValidators,
   validateRequired,
@@ -15,8 +22,9 @@ import {
 } from '@/lib/fieldValidators';
 import type { Contract } from '@/types/domain';
 
-export const MAX_CONTRACT_NAME_LENGTH = 200;
-export const MAX_PARTY_LABEL_LENGTH = 100;
+// Field limits live with the draft envelope that has to re-validate them on
+// restore, and are re-exported here so existing importers keep working.
+export { MAX_CONTRACT_NAME_LENGTH, MAX_PARTY_LABEL_LENGTH };
 
 export interface ContractFormData {
   contractName: string;
@@ -28,7 +36,22 @@ export interface ContractFormData {
 interface ContractCreationFormProps {
   onSubmit: (contract: Contract) => void;
   onCancel: () => void;
+  /**
+   * The wallet address the draft belongs to.
+   *
+   * Drafts are only persisted when this is a non-empty string. An anonymous
+   * session has no identity to own a draft, and storing one anyway is how a
+   * half-typed contract ends up in front of a different wallet after a
+   * reconnect — the exact hazard this feature exists to close.
+   */
+  identity?: string | null;
 }
+
+/** The pristine form: two empty party rows, USD, nothing typed. */
+const emptyParties = (): Array<{ label: string; address: string }> => [
+  { label: '', address: '' },
+  { label: '', address: '' },
+];
 
 /**
  * Accessible contract creation form that collects contract details
@@ -46,7 +69,10 @@ interface ContractCreationFormProps {
 export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
   onSubmit,
   onCancel,
+  identity = null,
 }) => {
+  // Only a real address can own a draft; `undefined` and '' are both anonymous.
+  const draftOwner = typeof identity === 'string' && identity.trim() !== '' ? identity : null;
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
@@ -61,12 +87,21 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
   const [contractName, setContractName] = useState('');
   const [totalValue, setTotalValue] = useState('');
   const [currency, setCurrency] = useState('USD');
-  const [parties, setParties] = useState<Array<{ label: string; address: string }>>([
-    { label: '', address: '' },
-    { label: '', address: '' },
-  ]);
+  const [parties, setParties] = useState<Array<{ label: string; address: string }>>(emptyParties);
   const [errors, setErrors] = useState<Array<{ fieldId: string; message: string }>>([]);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  /** Set once a draft has been restored, so the form can say so and offer a way out. */
+  const [restoredAt, setRestoredAt] = useState<string | null>(null);
+  /** A non-blocking message about the draft itself (restored, dropped, unsaved). */
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  /**
+   * The identity whose restore has completed.
+   *
+   * Saving is gated on this so a wallet switch cannot write the previous
+   * identity's field values into the new identity's envelope during the same
+   * render the switch arrives on.
+   */
+  const [restoredFor, setRestoredFor] = useState<string | null>(null);
 
   // Inline validators for real-time validation
   const validateContractNameField = combineValidators([
@@ -92,6 +127,93 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
     validateRequired(`Party ${index + 1} address`),
     validateStellarAddress(`Party ${index + 1} address`),
   ]);
+
+  /**
+   * Restores this identity's draft once, when the identity becomes known.
+   *
+   * Restoring on every render would fight the user's typing; restoring on
+   * mount only would miss a wallet connected after the form opened. The
+   * identity is the dependency, so the draft is loaded exactly when the owner
+   * changes — and a draft belonging to a *different* wallet is discarded and
+   * reported, never shown.
+   */
+  useEffect(() => {
+    if (!draftOwner) {
+      setRestoredFor(null);
+      return;
+    }
+
+    const result = loadContractDraft(draftOwner);
+
+    if (result.status === 'restored') {
+      setContractName(result.draft.contractName);
+      setParties(result.draft.parties.length ? result.draft.parties : emptyParties());
+      setTotalValue(result.draft.totalValue);
+      if (result.draft.currency) setCurrency(result.draft.currency);
+      // A restored draft has not been validated by its owner yet, so the form
+      // starts clean of errors rather than red-flagged before they touch it.
+      setErrors([]);
+      setRestoredAt(result.savedAt || null);
+      setDraftNotice('Draft restored. Continue where you left off, or discard it to start fresh.');
+    } else if (result.status === 'discarded') {
+      // The stored draft is unreadable or belongs to someone else. Reset the
+      // visible form too: leaving the previous identity's text on screen under
+      // a new wallet is the leak this feature exists to prevent.
+      setContractName('');
+      setParties(emptyParties());
+      setTotalValue('');
+      setCurrency('USD');
+      setErrors([]);
+      setRestoredAt(null);
+      setDraftNotice(
+        result.reason === 'identity-mismatch'
+          ? 'A saved draft belonged to a different wallet, so it was discarded.'
+          : 'A saved draft could not be read and was discarded.',
+      );
+    } else {
+      setRestoredAt(null);
+    }
+
+    setRestoredFor(draftOwner);
+  }, [draftOwner]);
+
+  /**
+   * Persists the in-progress draft as the user types.
+   *
+   * Skipped for a pristine form (there is nothing worth restoring) and until
+   * the restore for this identity has run (see {@link restoredFor}). A failed
+   * write is reported once, because a draft that only exists in memory is not
+   * a draft.
+   */
+  useEffect(() => {
+    if (!draftOwner || restoredFor !== draftOwner) return;
+
+    const hasContent =
+      contractName.trim() !== '' ||
+      totalValue.trim() !== '' ||
+      parties.some((party) => party.label.trim() !== '' || party.address.trim() !== '');
+
+    if (!hasContent) return;
+
+    const saved = saveContractDraft(draftOwner, { contractName, parties, totalValue, currency });
+    if (!saved) {
+      setDraftNotice('This draft could not be saved in your browser, so a refresh may lose it.');
+    }
+  }, [draftOwner, restoredFor, contractName, parties, totalValue, currency]);
+
+  /**
+   * Discards the saved draft and returns the form to its pristine state.
+   */
+  const handleDiscardDraft = useCallback(() => {
+    clearContractDraft();
+    setContractName('');
+    setParties(emptyParties());
+    setTotalValue('');
+    setCurrency('USD');
+    setErrors([]);
+    setRestoredAt(null);
+    setDraftNotice('Draft discarded.');
+  }, []);
 
   /**
    * Validates the form data and returns an array of error objects.
@@ -225,6 +347,11 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
         milestoneCount: 0,
       };
 
+      // The draft's job ends at submission; leaving it behind would offer to
+      // restore a contract that already exists.
+      clearContractDraft();
+      setRestoredAt(null);
+
       onSubmit(contract);
     },
     [contractName, totalValue, currency, parties, validateForm, onSubmit]
@@ -278,6 +405,26 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
         <h2 id="create-contract-title" className="text-2xl font-bold text-slate-900 mb-6">
           Create New Contract
         </h2>
+
+        {draftNotice && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+          >
+            <span>
+              {draftNotice}
+              {restoredAt ? ` (saved ${new Date(restoredAt).toLocaleString()})` : ''}
+            </span>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="rounded font-medium text-blue-700 underline hover:text-blue-900 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            >
+              Discard draft
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <ErrorSummary errors={errors} />

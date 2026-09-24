@@ -5,6 +5,7 @@ import EmptyState from '../../components/EmptyState';
 import ContractsList from '../../components/contracts/ContractsList';
 import { ContractCreationForm } from '../../components/ContractCreationForm';
 import { listContracts, saveContract } from '@/lib/repository';
+import { useWalletAddress } from '@/contexts/WalletContext';
 import { downloadContractsCsv, downloadContractsJson } from '@/lib/exportContracts';
 import { useToast } from '@/components/toast/toast-provider';
 import { usePreferences } from '@/lib/preferences';
@@ -37,6 +38,10 @@ const ContractsPage: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<ContractSortOrder>(DEFAULT_CONTRACT_SORT_ORDER);
   const { showError } = useToast();
   const { preferences, updatePreference } = usePreferences();
+  // Scopes the creation draft to the connected wallet, so a refresh restores
+  // work to its owner and never to a different wallet. Null when no wallet is
+  // connected — the form then keeps the draft in memory only.
+  const walletAddress = useWalletAddress();
   const { contracts } = fetchState;
 
   const contractsDensity = preferences.contractsDensity;
@@ -265,6 +270,7 @@ const ContractsPage: React.FC = () => {
         <ContractCreationForm
           onSubmit={handleSubmitContract}
           onCancel={handleCancelForm}
+          identity={walletAddress}
         />
       )}
     </main>

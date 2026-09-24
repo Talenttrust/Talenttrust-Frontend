@@ -414,3 +414,20 @@ export function useWallet() {
   }
   return context;
 }
+
+/**
+ * The connected wallet address, or `null` when there is no wallet provider.
+ *
+ * Deliberately non-throwing, unlike {@link useWallet}: a component that keeps
+ * working without a wallet (a public form, a draft that simply goes unsaved)
+ * should not have to be wrapped in a provider just to ask who is signed in.
+ * Outside a provider the answer is `null`, which every caller already treats
+ * as the anonymous case.
+ *
+ * @returns The connected address, or `null`.
+ */
+export function useWalletAddress(): string | null {
+  const context = useContext(WalletContext);
+  return context?.address ?? null;
+}
+

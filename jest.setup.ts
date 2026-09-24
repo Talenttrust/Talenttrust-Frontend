@@ -71,14 +71,23 @@ if (typeof window !== 'undefined') {
   Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 }
 
-// Global mock for WalletContext so components using useWallet work without a provider
+// Global mock for WalletContext so components using useWallet work without a
+// provider. A module factory replaces the *whole* module, so every export the
+// real module gains has to be listed here or it arrives as `undefined` at the
+// call site. `useWalletAddress` is the non-throwing sibling of `useWallet` and
+// both must report the same identity, or a component that reads the address
+// through one and the connection state through the other would disagree.
+const mockWalletAddress =
+  'GBDGTR4S5O3K7I6E7K5QH3Y2W6Z4JFQ2X3C5V7M8N9P0Q1R2S3T4U5V6W7X';
+
 jest.mock('@/contexts/WalletContext', () => ({
   useWallet: jest.fn().mockReturnValue({
-    address: 'GBDGTR4S5O3K7I6E7K5QH3Y2W6Z4JFQ2X3C5V7M8N9P0Q1R2S3T4U5V6W7X',
+    address: mockWalletAddress,
     isConnecting: false,
     error: null,
     connect: jest.fn(),
     disconnect: jest.fn(),
   }),
+  useWalletAddress: jest.fn().mockReturnValue(mockWalletAddress),
   WalletProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
