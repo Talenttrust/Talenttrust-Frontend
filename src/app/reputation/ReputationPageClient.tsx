@@ -87,7 +87,7 @@ export function isFocusableElement(node: unknown): node is HTMLElement {
  *
  * @returns the element to focus, or `null` when no valid target exists.
  */
-export function resolveFocusTarget(ref: HTMLElement | null): HTMLElement | null {
+export function resolveFocusTarget(ref: HTMLElement | null, selector: string = DEFAULT_FOCUS_SELECTOR): HTMLElement | null {
   if (isFocusableElement(ref)) {
     return ref;
   }
@@ -96,7 +96,7 @@ export function resolveFocusTarget(ref: HTMLElement | null): HTMLElement | null 
     return null;
   }
 
-  const queried = document.querySelector('main');
+  const queried = document.querySelector(selector);
   return isFocusableElement(queried) ? queried : null;
 }
 
@@ -156,33 +156,37 @@ export default function ReputationPageClient({
   const focusRequestIdRef = useRef(0);
 
   useEffect(() => {
+    const requestId = ++focusRequestIdRef.current;
+
     // Store the previously focused element when the page mounts. Focus
     // restoration on navigation away is deliberately delegated to the global
     // RouteAnnouncer; this ref is informational to avoid double-restoring.
-    previousFocusRef.current = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
+    // Only capture this on the first request to avoid overwriting on re-renders.
+    if (requestId === 1) {
+      previousFocusRef.current = document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    }
 
     let cancelled = false;
     let attempts = 0;
-    let timer: ReturnType<typeof setTimeout> | null = null;
 
     const clearTimer = () => {
-      if (timer !== null) {
-        clearTimeout(timer);
-        timer = null;
+      if (focusTimerRef.current !== null) {
+        clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = null;
       }
     };
 
     const attemptFocus = () => {
       // A later attempt from a superseded/unmounted mount must be a no-op.
-      if (cancelled) {
+      if (cancelled || focusRequestIdRef.current !== requestId) {
         return;
       }
 
       attempts += 1;
 
-      if (applyFocus(resolveFocusTarget(mainRef.current))) {
+      if (applyFocus(resolveFocusTarget(mainRef.current, focusSelector))) {
         return;
       }
 
@@ -197,11 +201,11 @@ export default function ReputationPageClient({
         return;
       }
 
-      timer = setTimeout(attemptFocus, FOCUS_DELAY_MS);
+      focusTimerRef.current = setTimeout(attemptFocus, focusDelayMs);
     };
 
     // Focus after a small delay to ensure the DOM is ready.
-    timer = setTimeout(attemptFocus, FOCUS_DELAY_MS);
+    focusTimerRef.current = setTimeout(attemptFocus, focusDelayMs);
 
     return () => {
       cancelled = true;

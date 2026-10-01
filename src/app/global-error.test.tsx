@@ -65,20 +65,55 @@ describe('GlobalError page', () => {
     await testA11y(<GlobalError error={testError} reset={mockReset} />);
   });
 
-  it('prevents duplicate reporting of the same error object', () => {
-    const error = new Error('Network timeout');
+  it('prevents duplicate reporting of the same logical error even with different instances', () => {
+    const error1 = new Error('Network timeout');
     const report = jest.fn();
     setErrorReporter(report);
 
-    const { rerender } = render(<GlobalError error={error} reset={jest.fn()} />);
-    rerender(<GlobalError error={error} reset={jest.fn()} />);
-    rerender(<GlobalError error={error} reset={jest.fn()} />);
+    const { rerender } = render(<GlobalError error={error1} reset={jest.fn()} />);
+    rerender(<GlobalError error={error1} reset={jest.fn()} />);
+
+    const error2 = new Error('Network timeout'); // Same logical error
+    rerender(<GlobalError error={error2} reset={jest.fn()} />);
 
     expect(report).toHaveBeenCalledTimes(1);
 
     const newError = new Error('Database disconnected');
     rerender(<GlobalError error={newError} reset={jest.fn()} />);
     expect(report).toHaveBeenCalledTimes(2);
+  });
+
+  it('handles invalid error inputs safely', () => {
+    const report = jest.fn();
+    setErrorReporter(report);
+    // @ts-expect-error testing boundary conditions
+    render(<GlobalError error="String error instead of object" reset={jest.fn()} />);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(report.mock.calls[0][0].message).toBe('String error instead of object');
+  });
+
+  it('handles invalid reset inputs safely by reloading the window', () => {
+    const reload = jest.fn();
+    Object.defineProperty(window, 'location', {
+      value: { reload },
+      writable: true
+    });
+    // @ts-expect-error testing boundary conditions
+    render(<GlobalError error={testError} reset={null} />);
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('swallows errors thrown during reportError to ensure fallback UI still renders', () => {
+    const report = jest.fn(() => { throw new Error('Reporter crashed'); });
+    setErrorReporter(report);
+    
+    expect(() => {
+      render(<GlobalError error={testError} reset={jest.fn()} />);
+    }).not.toThrow();
+    
+    expect(screen.getByRole('heading', { name: /critical error/i })).toBeInTheDocument();
   });
 
   it('prevents concurrent execution of reset (idempotent retries)', async () => {

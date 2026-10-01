@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import { jest } from '@jest/globals';
 import ReputationPageClient from './ReputationPageClient';
 
-jdest.mock('./ReputationPageContent', () => ({
+jest.mock('./ReputationPageContent', () => ({
   ReputationPageContent: () => <div data-testid="reputation-content">Reputation Content</div>,
 }));
 
@@ -11,7 +11,7 @@ describe('ReputationPageClient', () => {
     jest.useFakeTimers();
   });
 
-  afterEach((() => {
+  afterEach(() => {
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
     document.body.innerHTML = '';
@@ -107,7 +107,7 @@ describe('ReputationPageClient', () => {
     }).not.toThrow();
   });
 
-  it('is idlempotent across re-renders with new props', () => {
+  it('is idempotent across re-renders with new props', () => {
     const { rerender } = render(<ReputationPageClient userName="Alice" />);
     act(() => {
       jest.advanceTimersByTime(100);

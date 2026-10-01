@@ -24,29 +24,55 @@ interface GlobalErrorProps {
  */
 
 function getErrorKey(error: Error & { digest?: string }): string {
-  if (error.digest) {
+  if (error && error.digest) {
     return `digest:${error.digest}`;
   }
-  const message = typeof error.message === 'string' ? error.message : '';
-  const name = typeof error.name === 'string' ? error.name : 'Error';
+  const message = typeof error?.message === 'string' ? error.message : '';
+  const name = typeof error?.name === 'string' ? error.name : 'Error';
   return `${name}:${message}`;
 }
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   const [isPending, startTransition] = useTransition();
-  const reportedErrorRef = useRef<Error | null>(null);
+  const reportedKeysRef = useRef<Set<string>>(new Set());
+
+  // Input validation and normalization
+  const safeReset = typeof reset === 'function' ? reset : () => {
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
+  };
+
+  const safeError = (error instanceof Error ? error : new Error(
+    typeof error === 'string' ? error : 'Unknown error'
+  )) as Error & { digest?: string };
+
+  if (error && typeof (error as any).digest === 'string' && !safeError.digest) {
+    safeError.digest = (error as any).digest;
+  }
 
   useEffect(() => {
-    if (reportedErrorRef.current !== error) {
-      reportError(error, 'Global Error Boundary');
-      reportedErrorRef.current = error;
+    const key = getErrorKey(safeError);
+    if (!reportedKeysRef.current.has(key)) {
+      reportedKeysRef.current.add(key);
+      try {
+        reportError(safeError, 'Global Error Boundary');
+      } catch (err) {
+        // Reporting failures are swallowed to ensure the fallback UI stays intact
+      }
     }
-  }, [error]);
+  }, [safeError]);
 
   const handleReset = () => {
     if (isPending) return;
     startTransition(() => {
-      reset();
+      try {
+        safeReset();
+      } catch (err) {
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+      }
     });
   };
 
