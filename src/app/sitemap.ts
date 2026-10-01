@@ -548,6 +548,21 @@ function createDeduplicatedReporter(report: ErrorReporter): ErrorReporter {
 }
 
 /**
+ * Test-only hook: clears the per-process report dedupe set so a suite can
+ * observe first-report behaviour again.
+ *
+ * Mirrors `__resetRobotsResolverForTests` in `robots.ts`: without it, any test
+ * asserting the once-per-condition behaviour in S7 is order-dependent, because
+ * the set is module-scoped and survives between cases in a file.
+ *
+ * Not part of the Next.js metadata route contract and unused by application
+ * code.
+ */
+export function __resetSitemapReporterForTests(): void {
+  reportedConditions.clear();
+}
+
+/**
  * Generates sitemap.xml for every public static route.
  *
  * @returns Sitemap entries with a single shared lastModified date.
