@@ -161,50 +161,61 @@ function normalizeMetricTileLabels(value: unknown): NormalizedMetricLabels | nul
 export function resolveReputationLoadingGeometry(
   input?: ReputationLoadingGeometryInput | null,
 ): ReputationLoadingGeometry {
-  if (input === undefined || input === null) {
-    return DEFAULT_REPUTATION_LOADING_GEOMETRY;
-  }
-
-  let metricTileLabels = DEFAULT_REPUTATION_LOADING_GEOMETRY.metricTileLabels;
-  let historyRowCount = DEFAULT_REPUTATION_LOADING_GEOMETRY.historyRowCount;
-  const invalidFields: string[] = [];
-  let droppedLabels = 0;
-
-  if (input.metricTileLabels !== undefined) {
-    const normalized = normalizeMetricTileLabels(input.metricTileLabels);
-    if (normalized === null) {
-      invalidFields.push('metricTileLabels');
-    } else {
-      metricTileLabels = normalized.labels;
-      droppedLabels = normalized.dropped;
+  try {
+    if (input === undefined || input === null) {
+      return DEFAULT_REPUTATION_LOADING_GEOMETRY;
     }
-  }
 
-  if (input.historyRowCount !== undefined) {
-    if (
-      typeof input.historyRowCount !== 'number' ||
-      !Number.isFinite(input.historyRowCount)
-    ) {
-      invalidFields.push('historyRowCount');
-    } else {
-      historyRowCount = Math.min(
-        MAX_HISTORY_ROW_COUNT,
-        Math.max(MIN_HISTORY_ROW_COUNT, Math.floor(input.historyRowCount)),
+    let metricTileLabels = DEFAULT_REPUTATION_LOADING_GEOMETRY.metricTileLabels;
+    let historyRowCount = DEFAULT_REPUTATION_LOADING_GEOMETRY.historyRowCount;
+    const invalidFields: string[] = [];
+    let droppedLabels = 0;
+
+    if (input.metricTileLabels !== undefined) {
+      const normalized = normalizeMetricTileLabels(input.metricTileLabels);
+      if (normalized === null) {
+        invalidFields.push('metricTileLabels');
+      } else {
+        metricTileLabels = normalized.labels;
+        droppedLabels = normalized.dropped;
+      }
+    }
+
+    if (input.historyRowCount !== undefined) {
+      if (
+        typeof input.historyRowCount !== 'number' ||
+        !Number.isFinite(input.historyRowCount)
+      ) {
+        invalidFields.push('historyRowCount');
+      } else {
+        historyRowCount = Math.min(
+          MAX_HISTORY_ROW_COUNT,
+          Math.max(MIN_HISTORY_ROW_COUNT, Math.floor(input.historyRowCount)),
+        );
+      }
+    }
+
+    if (invalidFields.length > 0 || droppedLabels > 0) {
+      reportError(
+        new Error('Invalid reputation loading geometry'),
+        'reputation/loading',
+        'warn',
+        { invalidFields, droppedLabels },
       );
     }
-  }
 
-  if (invalidFields.length > 0 || droppedLabels > 0) {
+    return Object.freeze({ metricTileLabels, historyRowCount });
+  } catch (error) {
     reportError(
-      new Error('Invalid reputation loading geometry'),
+      error instanceof Error ? error : new Error('Unknown geometry resolution error'),
       'reputation/loading',
-      'warn',
-      { invalidFields, droppedLabels },
+      'error',
+      { action: 'fallback_to_defaults' }
     );
+    return DEFAULT_REPUTATION_LOADING_GEOMETRY;
   }
-
-  return Object.freeze({ metricTileLabels, historyRowCount });
 }
+
 
 // ---------------------------------------------------------------------------
 // Local sub-skeletons
