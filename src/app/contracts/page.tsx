@@ -79,9 +79,10 @@ const ContractsPage: React.FC = () => {
     // announced before the result replaces it.
     queueMicrotask(() => {
       try {
-        setFetchState({ status: 'success', contracts: listContracts() });
+        const nextContracts = listContracts();
+        setFetchState({ status: 'success', contracts: nextContracts });
       } catch {
-        setFetchState({ status: 'error', contracts: [] });
+        setFetchState((current) => ({ ...current, status: 'error' }));
       }
     });
   }, []);
