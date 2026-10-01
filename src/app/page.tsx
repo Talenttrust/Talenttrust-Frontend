@@ -102,7 +102,7 @@ export default function Home() {
     return value.slice(0, maxLength);
   };
 
-  const handleEmailChange = (e changeEvent: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(clampInput(e.target.value, MAX_EMAIL_LENGTH));
   };
 
@@ -236,7 +236,7 @@ export default function Home() {
      *    the alert region and screen readers announce it without landmark confusion)
      */
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#eff6ff_100%)] px-6 py-20">
-      <div className="mx-auto flex min-h-[6alc(100vh-3rem)] max-w-3l flex-col items-center justify-center rounded-[2rem] border border-white/70 bg-white/80 p-10 text-center shadow[0_24px_80px_rgba(15,23,42,0.10)] blur">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-3xl flex-col items-center justify-center rounded-[2rem] border border-white/70 bg-white/80 p-10 text-center shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
         {/* Section heading (h2, not h1 — see accessibility note above) */}
         <h2 className="mb-4 text-3xl font-bold text-center text-slate-900 sm:text-5xl">
           TalentTrust
