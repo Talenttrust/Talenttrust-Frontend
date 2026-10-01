@@ -42,6 +42,62 @@
 
 import type { WalletItem } from '@/types/domain';
 
+export class InvariantError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvariantError';
+  }
+}
+
+export function isValidWalletItemStatus(value: unknown): value is 'Active' | 'Archived' | 'Pending' {
+  return value === 'Active' || value === 'Archived' || value === 'Pending';
+}
+
+function isValidDate(dateString: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return false;
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.toISOString().startsWith(dateString);
+}
+
+export function isValidWalletItem(item: unknown): item is WalletItem {
+  if (typeof item !== 'object' || item === null) return false;
+  const w = item as Record<string, unknown>;
+
+  if (typeof w.id !== 'string' || w.id.length === 0) return false;
+  if (typeof w.name !== 'string' || w.name.length === 0) return false;
+  if (typeof w.type !== 'string' || w.type.length === 0) return false;
+  if (typeof w.currency !== 'string' || w.currency.length === 0) return false;
+  if (!isValidWalletItemStatus(w.status)) return false;
+  if (typeof w.balance !== 'number' || !Number.isFinite(w.balance) || w.balance < 0) return false;
+  if (typeof w.createdAt !== 'string' || !isValidDate(w.createdAt)) return false;
+
+  if (w.address !== undefined) {
+    if (typeof w.address !== 'string') return false;
+    if (!/^G[A-Z2-7]{55}$/.test(w.address)) return false;
+  }
+  return true;
+}
+
+export function assertValidWalletItems(items: unknown[]): asserts items is WalletItem[] {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new InvariantError('Array must contain at least one item');
+  }
+
+  const ids = new Set<string>();
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!isValidWalletItem(item)) {
+      throw new InvariantError(`Invalid wallet item at index ${i}`);
+    }
+    const id = (item as WalletItem).id;
+    if (ids.has(id)) {
+      throw new InvariantError(`Duplicate ID found: ${id}`);
+    }
+    ids.add(id);
+  }
+}
+
 /**
  * Canonical starter wallet items shown when the repository is empty.
  *
@@ -53,7 +109,7 @@ import type { WalletItem } from '@/types/domain';
  *   {@link getSampleWalletItems}, which returns fresh, de-duplicated copies.
  */
 const RAW_SAMPLE_WALLET_ITEMS: WalletItem[] = [
-  {
+  Object.freeze({
     id: 'w-1',
     name: 'Stellar Lumens (XLM)',
     type: 'Native Asset',
@@ -97,6 +153,7 @@ const RAW_SAMPLE_WALLET_ITEMS: WalletItem[] = [
 // record of primitives, so freezing each item plus the array is sufficient.
 RAW_SAMPLE_WALLET_ITEMS.forEach((item) => Object.freeze(item));
 Object.freeze(RAW_SAMPLE_WALLET_ITEMS);
+assertValidWalletItems(RAW_SAMPLE_WALLET_ITEMS);
 
 /**
  * @deprecated Read-only demo seed. Prefer {@link getSampleWalletItems}, which
