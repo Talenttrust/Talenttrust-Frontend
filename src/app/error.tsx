@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { reportError } from '../lib/errorReporter';
 
@@ -34,145 +34,87 @@ export interface ErrorProps {
  */
 const MAX_RETRIES = 3;
 
-/**
- * Route-level error boundary rendered by Next.js App Router when a segment
- * throws during rendering or in a server action.
- *
- * Failure-recovery invariants:
- *   1. Exactly-once reporting — the `error` object is reported once per distinct
- *      error identity. A ref tracks the last-reported error to prevent duplicate
- *      reports when the component re-renders without a new error.
- *   2. Reset guard — `reset()` is only called when no reset is already in
- *      flight (`isResetting` ref). Concurrent clicks cannot stack invocations.
- *   3. Error-in-reset surface — if `reset()` itself throws, the thrown value
- *      is caught, reported via `reportError`, and surfaced to the user as a
- *      "recovery failed" message without exposing raw error details.
- *   4. Retry cap — after `MAX_RETRIES` failed attempts the component stops
- *      calling `reset()` and presents a permanent recovery path (reload / home)
- *      to prevent infinite retry loops and unrecoverable frozen states.
- *   5. Accessible live region — a visually-hidden `aria-live="assertive"` region
- *      announces the current recovery state to assistive technologies so screen
- *      reader users know what is happening after each attempt.
- *   6. No detail leakage — neither the error message nor the stack trace is
- *      rendered in the visible UI.
- */
-export default function GlobalError({ error, reset }: ErrorProps) {
-  /**
-   * Tracks how many `reset()` calls have been attempted. Used to cap retries at
-   * `MAX_RETRIES` and to decide which recovery UI to present.
-   */
+export default function ErrorBoundary({ error, reset }: ErrorProps) {
   const [retryCount, setRetryCount] = useState(0);
-
-  /**
-   * Holds the user-visible recovery status message announced to assistive
-   * technology via the `aria-live` region. Empty means no active announcement.
-   */
   const [liveMessage, setLiveMessage] = useState('');
-
-  /**
-   * Set to a non-null string when `reset()` itself throws, surfacing a
-   * "recovery failed" message. Cleared on the next retry attempt.
-   */
   const [resetError, setResetError] = useState<string | null>(null);
-
-  /**
-   * Synchronous guard: true while a `reset()` call is in flight.
-   * Using a ref (not state) ensures the guard is checked and set atomically
-   * within the same event handler without an intermediate re-render.
-   */
+  const [isResetting, setIsResetting] = useState(false);
   const isResettingRef = useRef(false);
-
-  /**
-   * Tracks the last error identity that was reported so we never fire
-   * `reportError` more than once for the same error object.
-   */
   const lastReportedErrorRef = useRef<Error | null>(null);
 
+  const retriesExhausted = retryCount >= MAX_RETRIES;
+
   useEffect(() => {
-    if (error !== lastReportedErrorRef.current) {
-      lastReportedErrorRef.current = error;
-      reportError(error, 'Error Boundary');
+    // Structural validation for error invariant
+    const safeError = error instanceof Error ? error : new Error(typeof error === 'string' ? error : 'Unknown error');
+    
+    if (safeError !== lastReportedErrorRef.current) {
+      lastReportedErrorRef.current = safeError;
+      try {
+        reportError(safeError, 'Error Boundary');
+      } catch (err) {
+        // Prevent reportError failure from crashing the boundary
+      }
     }
   }, [error]);
 
-  /**
-   * Handles "Try Again":
-   *
-   *   1. No-ops if already resetting (concurrent-click guard).
-   *   2. No-ops if the retry cap has been reached.
-   *   3. Clears any previous reset error.
-   *   4. Announces "Retrying…" before calling `reset()`.
-   *   5. Catches any synchronous throw from `reset()`, reports it, and shows
-   *      a safe "recovery failed" message without leaking error details.
-   *   6. Increments `retryCount` unconditionally so the cap is enforced even
-   *      when `reset()` throws.
-   */
-  const handleRetry = () => {
-    if (isResettingRef.current) return;
-    if (retryCount >= MAX_RETRIES) return;
+  const handleReset = useCallback(() => {
+    if (isResettingRef.current || retriesExhausted) return;
+
+    if (typeof reset !== 'function') {
+      try {
+        reportError(new TypeError('Error boundary reset handler is not a function'), 'Error Boundary');
+      } catch (err) {
+        // Ignore
+      }
+      return;
+    }
 
     isResettingRef.current = true;
+    setIsResetting(true);
     setResetError(null);
     setLiveMessage('Retrying, please wait…');
 
     try {
-      reset();
-      // If reset() returns without throwing, Next.js will unmount this component
-      // on successful recovery. If the underlying segment still errors the
-      // component will be re-rendered with a new error prop, resetting this state.
-    } catch (err) {
-      reportError(err, 'Error Boundary reset', 'error', { retryCount });
-      setResetError(
-        'Recovery failed. Please try again or reload the page.',
-      );
-      setLiveMessage('Recovery failed. Please try reloading the page.');
-    } finally {
-      isResettingRef.current = false;
-      setRetryCount((c) => c + 1);
-    }
-  };
-
-  const handleReset = useCallback(() => {
-    if (isResetting) {
-      return;
-    }
-
-    if (typeof reset !== 'function') {
-      reportError(
-        new TypeError('Error boundary reset handler is not a function'),
-        'Error Boundary'
-      );
-      return;
-    }
-
-    try {
-      setIsResetting(true);
       const result: unknown = reset();
 
-      if (typeof (result as Promise<unknown>)?.then === 'function') {
+      if (result && typeof (result as Promise<unknown>).then === 'function') {
         (result as Promise<unknown>)
           .catch((err) => {
-            reportError(err, 'Error Boundary Reset');
+            try {
+              reportError(err instanceof Error ? err : new Error('Reset failed'), 'Error Boundary Reset');
+            } catch (e) {
+              // Ignore
+            }
+            setResetError('Recovery failed. Please try again or reload the page.');
+            setLiveMessage('Recovery failed. Please try reloading the page.');
           })
           .finally(() => {
+            isResettingRef.current = false;
             setIsResetting(false);
+            setRetryCount((c) => c + 1);
           });
       } else {
+        isResettingRef.current = false;
         setIsResetting(false);
+        setRetryCount((c) => c + 1);
       }
     } catch (err) {
+      isResettingRef.current = false;
       setIsResetting(false);
-      reportError(err, 'Error Boundary Reset');
+      setRetryCount((c) => c + 1);
+      try {
+        reportError(err instanceof Error ? err : new Error('Reset failed'), 'Error Boundary Reset');
+      } catch (e) {
+        // Ignore
+      }
+      setResetError('Recovery failed. Please try again or reload the page.');
+      setLiveMessage('Recovery failed. Please try reloading the page.');
     }
-  }, [reset, isResetting]);
+  }, [reset, retriesExhausted]);
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-[var(--background)]">
-      {/*
-       * Visually-hidden assertive live region.
-       * Announces retry state changes to screen reader users immediately.
-       * aria-atomic ensures the full message is read rather than just the diff.
-       */}
       <div
         role="status"
         aria-live="assertive"
@@ -193,17 +135,25 @@ export default function GlobalError({ error, reset }: ErrorProps) {
             : 'Something went wrong on our end. Please try again or contact support if the problem persists.'}
         </p>
 
-        {/*
-         * resetError is only set when reset() itself threw. It shows a safe,
-         * generic message — never the raw error details.
-         */}
         {resetError && (
           <p
             role="alert"
             className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
           >
-            {isResetting ? 'Retrying...' : 'Try Again'}
-          </button>
+            {resetError}
+          </p>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-6">
+          {!retriesExhausted && (
+            <button
+              onClick={handleReset}
+              disabled={isResetting}
+              className="px-5 py-2 rounded-lg bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isResetting ? 'Retrying...' : 'Try Again'}
+            </button>
+          )}
           <Link
             href="/"
             className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-colors"
@@ -238,4 +188,3 @@ export default function GlobalError({ error, reset }: ErrorProps) {
 // Preserve backwards compatibility for callers expecting `GlobalError` or `ErrorPage`
 export const GlobalError = ErrorBoundary;
 export const ErrorPage = ErrorBoundary;
-export default ErrorBoundary;
