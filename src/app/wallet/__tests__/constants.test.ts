@@ -6,7 +6,58 @@
  */
 
 import type { WalletItem } from '@/types/domain';
-import { SAMPLE_WALLET_ITEMS, getSampleWalletItems } from '../constants';
+import {
+  SAMPLE_WALLET_ITEMS,
+  getSampleWalletItems,
+  isValidWalletItemStatus,
+  isValidWalletItem,
+  assertValidWalletItems,
+  InvariantError,
+} from '../constants';
+
+describe('wallet seed invariants', () => {
+  it('isValidWalletItemStatus correctly validates statuses', () => {
+    expect(isValidWalletItemStatus('Active')).toBe(true);
+    expect(isValidWalletItemStatus('Archived')).toBe(true);
+    expect(isValidWalletItemStatus('Pending')).toBe(true);
+    expect(isValidWalletItemStatus('Invalid')).toBe(false);
+    expect(isValidWalletItemStatus('')).toBe(false);
+  });
+
+  it('isValidWalletItem validates correctly', () => {
+    const valid = {
+      id: 'w-test',
+      name: 'Test',
+      type: 'Asset',
+      balance: 100,
+      currency: 'TST',
+      status: 'Active',
+      createdAt: '2026-01-01',
+    };
+    expect(isValidWalletItem(valid)).toBe(true);
+    expect(isValidWalletItem({ ...valid, id: '' })).toBe(false);
+    expect(isValidWalletItem({ ...valid, balance: -1 })).toBe(false);
+    expect(isValidWalletItem({ ...valid, status: 'Unknown' })).toBe(false);
+    expect(isValidWalletItem({ ...valid, createdAt: '2026-02-30' })).toBe(false);
+    expect(isValidWalletItem({ ...valid, address: 'Invalid' })).toBe(false);
+  });
+
+  it('assertValidWalletItems throws on invalid or duplicate items', () => {
+    const valid = {
+      id: 'w-test',
+      name: 'Test',
+      type: 'Asset',
+      balance: 100,
+      currency: 'TST',
+      status: 'Active',
+      createdAt: '2026-01-01',
+    };
+    expect(() => assertValidWalletItems([])).toThrow(InvariantError);
+    expect(() => assertValidWalletItems([valid])).not.toThrow();
+    expect(() => assertValidWalletItems([valid, valid])).toThrow(InvariantError);
+    expect(() => assertValidWalletItems([valid, { ...valid, id: 'w-test2', balance: -1 }])).toThrow(InvariantError);
+  });
+});
 
 describe('wallet seed constants', () => {
   it('exposes a deeply frozen canonical sample list', () => {
