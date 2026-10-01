@@ -47,7 +47,6 @@ const ContractsPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<ContractSortOrder>(DEFAULT_CONTRACT_SORT_ORDER);
-  const submittingRef = useRef(false);
   const { showError } = useToast();
   const { preferences, updatePreference } = usePreferences();
   const { contracts } = fetchState;
@@ -107,11 +106,27 @@ const ContractsPage: React.FC = () => {
    */
   const handleSubmitContract = useCallback(
     (contract: Contract) => {
-      if (submittingRef.current) return;
-      submittingRef.current = true;
+      // Rejects invalid contracts
+      if (!contract || !contract.id || !contract.contractName) {
+        return;
+      }
+
+      // Synchronous in-flight guard
+      if (submissionInFlightRef.current) return;
+
+      // Rejects duplicates against session accepted-id set
+      if (acceptedIdsRef.current.has(contract.id)) return;
+
+      // Reject duplicate against current list
+      const isDuplicate = contracts.some((c) => c.id === contract.id);
+      if (isDuplicate) return;
+
+      submissionInFlightRef.current = true;
+      acceptedIdsRef.current.add(contract.id);
+
       setFetchState((current) => ({
         status: 'success',
-        contracts: [...current.contracts, validated],
+        contracts: [...current.contracts, contract],
       }));
       setShowForm(false);
       setSearchQuery('');
@@ -122,13 +137,14 @@ const ContractsPage: React.FC = () => {
           status: 'success',
           contracts: current.contracts.filter((item) => item.id !== contract.id),
         }));
-        submittingRef.current = false;
+        acceptedIdsRef.current.delete(contract.id);
+        submissionInFlightRef.current = false;
         showError({
           title: "Unable to create contract",
           description: "Your contract could not be saved. Please try again.",
         });
       } else {
-        submittingRef.current = false;
+        submissionInFlightRef.current = false;
       }
     },
     [contracts, showError],
@@ -140,6 +156,8 @@ const ContractsPage: React.FC = () => {
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
   }, []);
+
+  const MAX_SEARCH_LENGTH = 100;
 
   /**
    * Bounds the search query to a deterministic maximum length so filtering
