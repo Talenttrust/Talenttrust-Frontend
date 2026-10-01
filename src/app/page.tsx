@@ -195,6 +195,18 @@ export default function Home() {
           type: 'error',
         });
       }
+    } catch (error) {
+      reportError(
+        error instanceof Error ? error : new Error(String(error)),
+        'Home.handleSubmit',
+        'error',
+        { reason: 'dependency_failure' },
+      );
+      announce({
+        message: 'An unexpected error occurred. Please try again.',
+        type: 'error',
+      });
+      setErrors([{ fieldId: 'submit', message: 'An unexpected error occurred. Please try again.' }]);
     } finally {
       // Always released, so a throwing dependency cannot leave the form
       // permanently un-submittable.
