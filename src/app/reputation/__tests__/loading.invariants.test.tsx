@@ -128,6 +128,27 @@ describe('resolveReputationLoadingGeometry', () => {
 
       expect(() => resolveReputationLoadingGeometry(hostile as never)).not.toThrow();
     });
+
+    it('recovers deterministically if property access throws', () => {
+      const hostileWithThrowingGetters = {};
+      Object.defineProperty(hostileWithThrowingGetters, 'metricTileLabels', {
+        get() {
+          throw new Error('Hostile getter');
+        },
+      });
+
+      const geometry = resolveReputationLoadingGeometry(
+        hostileWithThrowingGetters as never,
+      );
+
+      expect(geometry).toEqual(DEFAULT_REPUTATION_LOADING_GEOMETRY);
+      expect(reportErrorMock).toHaveBeenCalledWith(
+        expect.any(Error),
+        'reputation/loading',
+        'error',
+        expect.objectContaining({ action: 'fallback_to_defaults' }),
+      );
+    });
   });
 
   describe('duplicate input', () => {
