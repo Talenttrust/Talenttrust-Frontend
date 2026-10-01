@@ -141,3 +141,74 @@ export function assertSampleMilestones(
 
 // Fail fast at import time if the shipped sample data ever drifts from the contract.
 assertSampleMilestones();
+
+export const VALID_STATUSES: readonly MilestoneStatus[] = MILESTONE_STATUSES;
+
+export const MILESTONE_STATUS_ORDER: readonly MilestoneStatus[] = ['Pending', 'Completed', 'Paid'];
+
+export const TERMINAL_STATUSES: readonly MilestoneStatus[] = ['Paid'];
+
+export function isValidStatus(status: unknown): status is MilestoneStatus {
+  return typeof status === 'string' && MILESTONE_STATUS_SET.has(status);
+}
+
+export function isTerminalStatus(status: MilestoneStatus): boolean {
+  return TERMINAL_STATUSES.includes(status);
+}
+
+export function getStatusIndex(status: MilestoneStatus): number {
+  return MILESTONE_STATUS_ORDER.indexOf(status);
+}
+
+export function getNextStatus(status: MilestoneStatus): MilestoneStatus | null {
+  const idx = getStatusIndex(status);
+  if (idx === -1 || idx === MILESTONE_STATUS_ORDER.length - 1) {
+    return null;
+  }
+  return MILESTONE_STATUS_ORDER[idx + 1];
+}
+
+export function isAllowedTransition(from: MilestoneStatus, to: MilestoneStatus): boolean {
+  if (!isValidStatus(from) || !isValidStatus(to)) return false;
+  if (from === to) return false;
+  const fromIdx = getStatusIndex(from);
+  const toIdx = getStatusIndex(to);
+  if (fromIdx === -1) return false; // terminal or branch (Disputed)
+  return toIdx === fromIdx + 1;
+}
+
+export function isPayoutConsistentWithStatus(status: MilestoneStatus, payout: unknown): boolean {
+  if (typeof payout !== 'number' || !Number.isFinite(payout) || payout < 0) {
+    return false;
+  }
+  if (status === 'Paid' && payout <= 0) {
+    return false;
+  }
+  return true;
+}
+
+export function validateMilestoneInvariants(milestone: Milestone): string[] {
+  const violations: string[] = [];
+  if (!milestone.id || typeof milestone.id !== 'string' || milestone.id.trim() === '') {
+    violations.push('Missing or empty id');
+  }
+  if (!isValidStatus(milestone.status)) {
+    violations.push(`Unknown milestone status "${String(milestone.status)}"`);
+  }
+  if (!isPayoutConsistentWithStatus(milestone.status, milestone.payout)) {
+    violations.push('Payout is inconsistent with status');
+  }
+  return violations;
+}
+
+export function applyMilestoneTransition(milestone: Milestone, nextStatus: MilestoneStatus): Milestone {
+  if (!isAllowedTransition(milestone.status, nextStatus)) {
+    throw new Error('Invalid milestone transition');
+  }
+  const nextMilestone = { ...milestone, status: nextStatus };
+  const violations = validateMilestoneInvariants(nextMilestone);
+  if (violations.length > 0) {
+    throw new Error(`Transition violates invariants: ${violations.join(', ')}`);
+  }
+  return nextMilestone;
+}
