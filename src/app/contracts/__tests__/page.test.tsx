@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import ContractsPage from '../page';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import ContractsPage, { MAX_CONTRACT_SEARCH_LENGTH } from '../page';
 import * as repository from '@/lib/repository';
 import * as stellarAddress from '@/lib/stellarAddress';
 import type { Contract } from '@/types/domain';
@@ -51,6 +51,16 @@ jest.mock('@/components/ContractCreationForm', () => ({
         }
       >
         Submit
+      </button>
+      <button onClick={() => onSubmit({ id: 'invalid', contractName: '', parties: [], totalValue: 0, currency: '', status: 'Active', createdAt: '', milestoneCount: 0 })}>
+        Submit invalid contract
+      </button>
+      <button onClick={() => {
+        const contract = { id: 'replayed-contract', contractName: 'Replayed Contract', parties: [], totalValue: 100, currency: 'USD', status: 'Active', createdAt: '2025-01-01', milestoneCount: 0 };
+        onSubmit(contract);
+        onSubmit(contract);
+      }}>
+        Submit same contract twice
       </button>
     </div>
   ),
@@ -141,7 +151,7 @@ describe('ContractsPage', () => {
       });
       fireEvent.click(createButton);
 
-      const submitButton = screen.getByRole('button', { name: /Submit/i });
+      const submitButton = screen.getByRole('button', { name: 'Submit' });
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -189,6 +199,55 @@ describe('ContractsPage', () => {
   });
 
   describe('form interactions', () => {
+    it('rejects malformed form callback data without persisting it', () => {
+      render(<ContractsPage />);
+      fireEvent.click(screen.getByRole('button', { name: /Create Contract/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Submit invalid contract' }));
+
+      expect(mockSaveContract).not.toHaveBeenCalled();
+      expect(screen.getByTestId('contract-form')).toBeInTheDocument();
+      expect(mockShowError).toHaveBeenCalledWith(expect.objectContaining({ title: 'Invalid contract' }));
+    });
+
+    it('persists only once when the same contract is submitted twice synchronously', () => {
+      mockSaveContract.mockReturnValue(true);
+      render(<ContractsPage />);
+      fireEvent.click(screen.getByRole('button', { name: /Create Contract/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Submit same contract twice' }));
+
+      expect(mockSaveContract).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('Replayed Contract')).toBeInTheDocument();
+      expect(mockShowError).toHaveBeenCalledWith(expect.objectContaining({ title: 'Contract already exists' }));
+    });
+
+    it('keeps the form and current list intact when persistence fails', () => {
+      mockListContracts.mockReturnValue([makeContract({ contractName: 'Existing' })]);
+      mockSaveContract.mockReturnValue(false);
+      render(<ContractsPage />);
+      fireEvent.click(screen.getByRole('button', { name: /Create Contract/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+
+      expect(screen.getByTestId('contract-form')).toBeInTheDocument();
+      expect(screen.queryByText('New Contract')).not.toBeInTheDocument();
+      expect(mockShowError).toHaveBeenCalledWith(expect.objectContaining({ title: 'Unable to create contract' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(screen.getByText('Existing')).toBeInTheDocument();
+    });
+
+    it('surfaces a write exception as a recoverable save error', () => {
+      mockSaveContract.mockImplementation(() => { throw new Error('storage details must not be exposed'); });
+      render(<ContractsPage />);
+      fireEvent.click(screen.getByRole('button', { name: /Create Contract/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+
+      expect(screen.getByTestId('contract-form')).toBeInTheDocument();
+      expect(mockShowError).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Unable to create contract',
+        description: 'Your contract could not be saved. Please try again.',
+      }));
+      expect(mockShowError.mock.calls.flat().join(' ')).not.toContain('storage details');
+    });
+
     it('shows form when create button is clicked', () => {
       const contracts = [makeContract()];
       (repository.listContracts as jest.Mock).mockReturnValue(contracts);
@@ -244,7 +303,7 @@ describe('ContractsPage', () => {
       });
       fireEvent.click(createButton);
 
-      const submitButton = screen.getByRole('button', { name: /Submit/i });
+      const submitButton = screen.getByRole('button', { name: 'Submit' });
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -269,7 +328,7 @@ describe('ContractsPage', () => {
       expect(screen.getByText('Existing Contract')).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
-      fireEvent.click(screen.getByRole('button', { name: /submit/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
 
       await waitFor(() => {
         expect(screen.getByText('New Contract')).toBeInTheDocument();
@@ -291,7 +350,7 @@ describe('ContractsPage', () => {
       expect(contractsList.querySelectorAll('li').length).toBe(500);
     });
 
-    it('rolls back the optimistic contract and shows an error toast on save failure', async () => {
+    it('keeps the existing list unchanged and shows an error toast on save failure', async () => {
       const existingContract = makeContract({ contractName: 'Existing Contract' });
 
       mockListContracts.mockReturnValue([existingContract]);
@@ -299,7 +358,7 @@ describe('ContractsPage', () => {
       render(<ContractsPage />);
 
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
-      fireEvent.click(screen.getByRole('button', { name: /submit/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
 
       await waitFor(() => {
         expect(mockShowError).toHaveBeenCalledWith(
@@ -310,6 +369,7 @@ describe('ContractsPage', () => {
         );
       });
 
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(screen.getByText('Existing Contract')).toBeInTheDocument();
       expect(screen.queryByText('New Contract')).not.toBeInTheDocument();
     });
@@ -322,7 +382,7 @@ describe('ContractsPage', () => {
       fireEvent.click(screen.getByRole('button', { name: /create contract/i }));
       expect(screen.getByTestId('contract-form')).toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: /submit/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
 
       await waitFor(() => {
         expect(screen.queryByTestId('contract-form')).not.toBeInTheDocument();
@@ -493,6 +553,33 @@ describe('ContractsPage', () => {
   });
 
   describe('edge cases', () => {
+    it('bounds search input at the documented limit', () => {
+      mockListContracts.mockReturnValue([makeContract({ contractName: 'Boundary contract' })]);
+      render(<ContractsPage />);
+      const searchInput = screen.getByRole('searchbox', { name: 'Search contracts' });
+      fireEvent.change(searchInput, { target: { value: 'x'.repeat(MAX_CONTRACT_SEARCH_LENGTH + 1) } });
+
+      expect(searchInput).toHaveValue('x'.repeat(MAX_CONTRACT_SEARCH_LENGTH));
+    });
+
+    it('shows a recoverable error for a malformed stored collection', () => {
+      mockListContracts.mockReturnValue([null] as unknown as Contract[]);
+      render(<ContractsPage />);
+
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load contracts');
+      expect(screen.queryByTestId('contracts-list')).not.toBeInTheDocument();
+    });
+
+    it('does not silently hide records when persisted ids are duplicated', () => {
+      const duplicate = makeContract({ id: 'same-id', contractName: 'Duplicate' });
+      mockListContracts.mockReturnValue([duplicate, { ...duplicate, contractName: 'Other record' }]);
+      render(<ContractsPage />);
+
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load contracts');
+      expect(screen.queryByText('Duplicate')).not.toBeInTheDocument();
+      expect(screen.queryByText('Other record')).not.toBeInTheDocument();
+    });
+
     it('handles repository errors gracefully', () => {
       (repository.listContracts as jest.Mock).mockImplementation(() => {
         throw new Error('Storage error');
@@ -571,7 +658,7 @@ describe('ContractsPage', () => {
       });
       fireEvent.click(createButton);
 
-      const submitButton = screen.getByRole('button', { name: /Submit/i });
+      const submitButton = screen.getByRole('button', { name: 'Submit' });
       fireEvent.click(submitButton);
 
       await waitFor(() => {

@@ -17,6 +17,49 @@ import {
 } from '@/lib/sortContracts';
 import type { Contract } from '@/types/domain';
 
+export const MAX_CONTRACT_SEARCH_LENGTH = 120;
+
+const CONTRACT_STATUSES = new Set(['Active', 'Completed', 'Disputed', 'Pending', 'Paid', 'Archived']);
+
+/** Validate the form callback at the page boundary; TypeScript types do not
+ * protect this public callback from stale or malformed runtime callers. */
+function isSubmittableContract(value: unknown): value is Contract {
+  if (!value || typeof value !== 'object') return false;
+  const contract = value as Partial<Contract>;
+  return (
+    typeof contract.id === 'string' && contract.id.trim().length > 0 && contract.id.length <= 128 &&
+    typeof contract.contractName === 'string' && contract.contractName.trim().length > 0 && contract.contractName.length <= 200 &&
+    Array.isArray(contract.parties) && contract.parties.every((party) =>
+      party && typeof party.label === 'string' && typeof party.address === 'string',
+    ) &&
+    typeof contract.totalValue === 'number' && Number.isFinite(contract.totalValue) && contract.totalValue > 0 &&
+    typeof contract.currency === 'string' && contract.currency.trim().length > 0 &&
+    typeof contract.status === 'string' && CONTRACT_STATUSES.has(contract.status) &&
+    typeof contract.createdAt === 'string' && contract.createdAt.length > 0 &&
+    Number.isInteger(contract.milestoneCount) && (contract.milestoneCount ?? -1) >= 0
+  );
+}
+
+/** Reject malformed persisted entries as a whole so the page never silently
+ * drops user data while presenting a seemingly complete list. */
+function readContracts(): Contract[] {
+  const value: unknown = listContracts();
+  if (!Array.isArray(value) || !value.every(isSubmittableContract)) {
+    throw new Error('Invalid persisted contract collection');
+  }
+
+  // Refuse ambiguous legacy snapshots instead of hiding duplicate records or
+  // choosing a winner that could conceal a user's saved contract.
+  const seen = new Set<string>();
+  for (const contract of value) {
+    if (seen.has(contract.id)) {
+      throw new Error('Duplicate contract identifiers in persisted collection');
+    }
+    seen.add(contract.id);
+  }
+  return value;
+}
+
 type ContractsFetchState =
   | { status: 'loading'; contracts: Contract[] }
   | { status: 'success'; contracts: Contract[] }
@@ -36,8 +79,9 @@ type ContractsFetchState =
  */
 const getInitialFetchState = (): ContractsFetchState => {
   try {
-    return { status: 'success', contracts: listContracts() };
+    return { status: 'success', contracts: readContracts() };
   } catch {
+    console.error('[contracts-page] Contract data could not be loaded.');
     return { status: 'error', contracts: [] };
   }
 };
@@ -47,7 +91,6 @@ const ContractsPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<ContractSortOrder>(DEFAULT_CONTRACT_SORT_ORDER);
-  const submittingRef = useRef(false);
   const { showError } = useToast();
   const { preferences, updatePreference } = usePreferences();
   const { contracts } = fetchState;
@@ -55,9 +98,10 @@ const ContractsPage: React.FC = () => {
   // Synchronous in-flight guard. Prevents overlapping submissions from
   // interleaving their optimistic updates and persistence calls.
   const submissionInFlightRef = useRef(false);
+  const loadGenerationRef = useRef(0);
   // Tracks ids already accepted in this session so a replayed submission
   // cannot slip past the duplicate check after the list has been mutated.
-  const acceptedIdsRef = useRef<Set<string>>(new Set());
+  const acceptedIdsRef = useRef<Set<string>>(new Set(fetchState.contracts.map(({ id }) => id)));
 
   const contractsDensity = preferences.contractsDensity;
 
@@ -69,6 +113,7 @@ const ContractsPage: React.FC = () => {
 
   /** Re-reads persisted contracts after a recoverable load failure. */
   const loadContracts = useCallback(() => {
+    const generation = ++loadGenerationRef.current;
     setFetchState((current) => ({ ...current, status: 'loading' }));
 
     // A reload invalidates the session-level accepted-id cache because the
@@ -79,8 +124,13 @@ const ContractsPage: React.FC = () => {
     // announced before the result replaces it.
     queueMicrotask(() => {
       try {
-        setFetchState({ status: 'success', contracts: listContracts() });
+        const contracts = readContracts();
+        if (generation !== loadGenerationRef.current) return;
+        acceptedIdsRef.current = new Set(contracts.map(({ id }) => id));
+        setFetchState({ status: 'success', contracts });
       } catch {
+        if (generation !== loadGenerationRef.current) return;
+        console.error('[contracts-page] Contract data could not be loaded.');
         setFetchState({ status: 'error', contracts: [] });
       }
     });
@@ -94,12 +144,11 @@ const ContractsPage: React.FC = () => {
   }, []);
 
   /**
-   * Applies the new contract to the list immediately, then persists it.
-   * Rolls back the optimistic update and surfaces an error toast if the
-   * write fails.
+   * Persists first, then updates the UI. This avoids optimistic data loss if
+   * the synchronous repository write fails or throws.
    *
    * Validation boundaries:
-   *  - Rejects invalid contracts (missing id / name) before any state change.
+   *  - Rejects invalid contracts before any persistence or state change.
    *  - Rejects duplicates against both the current list and the session
    *    accepted-id set, so replayed or double-clicked submissions are no-ops.
    *  - Serializes concurrent submissions via a synchronous in-flight guard;
@@ -107,28 +156,49 @@ const ContractsPage: React.FC = () => {
    */
   const handleSubmitContract = useCallback(
     (contract: Contract) => {
-      if (submittingRef.current) return;
-      submittingRef.current = true;
-      setFetchState((current) => ({
-        status: 'success',
-        contracts: [...current.contracts, validated],
-      }));
-      setShowForm(false);
-      setSearchQuery('');
+      if (submissionInFlightRef.current) return;
+      if (!isSubmittableContract(contract)) {
+        showError({
+          title: 'Invalid contract',
+          description: 'Check the contract details and try again.',
+        });
+        return;
+      }
 
-      const persisted = saveContract(contract);
-      if (!persisted) {
+      if (acceptedIdsRef.current.has(contract.id) || contracts.some(({ id }) => id === contract.id)) {
+        showError({
+          title: 'Contract already exists',
+          description: 'This contract has already been added.',
+        });
+        return;
+      }
+
+      submissionInFlightRef.current = true;
+      try {
+        if (!saveContract(contract)) {
+          showError({
+            title: 'Unable to create contract',
+            description: 'Your contract could not be saved. Please try again.',
+          });
+          return;
+        }
+
+        acceptedIdsRef.current.add(contract.id);
         setFetchState((current) => ({
           status: 'success',
-          contracts: current.contracts.filter((item) => item.id !== contract.id),
+          contracts: current.contracts.some(({ id }) => id === contract.id)
+            ? current.contracts
+            : [...current.contracts, contract],
         }));
-        submittingRef.current = false;
+        setShowForm(false);
+        setSearchQuery('');
+      } catch {
         showError({
-          title: "Unable to create contract",
-          description: "Your contract could not be saved. Please try again.",
+          title: 'Unable to create contract',
+          description: 'Your contract could not be saved. Please try again.',
         });
-      } else {
-        submittingRef.current = false;
+      } finally {
+        submissionInFlightRef.current = false;
       }
     },
     [contracts, showError],
@@ -146,7 +216,7 @@ const ContractsPage: React.FC = () => {
    * remains predictable and cannot be driven by unbounded input.
    */
   const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value.slice(0, MAX_SEARCH_LENGTH));
+    setSearchQuery(value.slice(0, MAX_CONTRACT_SEARCH_LENGTH));
   }, []);
 
   const filteredContracts = useMemo(() => {
