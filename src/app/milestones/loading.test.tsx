@@ -35,7 +35,7 @@ describe('MilestonesLoading', () => {
   it('does not render any board content or error text', () => {
     render(<MilestonesLoading />);
 
-    expect(screen.queryBygetText(/Unable to load milestones/i)).not.toBeITheDocument();
+    expect(screen.queryByText(/Unable to load milestones/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 

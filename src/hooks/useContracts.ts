@@ -49,7 +49,7 @@ function toError(err: unknown, id: string): ContractStateError {
  */
 export function useContracts(utils: UseContractsOptions = {}): UseContractsResult {
   const [state, dispatch] = useReducer(contractsReducer, initialContractsState);
-  const locks = useRef('' as Record<string, Promise<void>>);
+  const locks = useRef<Record<string, Promise<void>>>({});
   const revisionCounter = useRef(0);
   const now = utils.now ?? (() => Date.now());
 

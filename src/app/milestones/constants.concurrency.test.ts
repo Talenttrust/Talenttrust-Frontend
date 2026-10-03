@@ -97,7 +97,7 @@ describe('immutable shared state', () => {
   });
 
   it('rejects mutation of shared state instead of letting it leak between callers', () => {
-    expect(() => (VALID_STATUSES as MilestoneStatus[]).push('Bogus')).toThrow();
+    expect(() => (VALID_STATUSES as unknown as MilestoneStatus[]).push('Bogus')).toThrow();
     expect(() =>
       (MILESTONE_STATUS_TRANSITIONS as Record<MilestoneStatus, MilestoneStatus[]>)['Paid'].push(
         'Pending',

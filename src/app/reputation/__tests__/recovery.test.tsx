@@ -19,9 +19,11 @@ jest.mock('@/components/ReputationSummaryCard', () => ({
   ),
 }));
 jest.mock('@/components/ReputationProfile', () => {
+  const actual = jest.requireActual('@/components/ReputationProfile');
   const React = require('react');
   return {
     __esModule: true,
+    ...actual,
     default: ({ history = [] }: { history?: ReputationEvent[] }) => {
       const [draft, setDraft] = React.useState('');
       if (mockProfileFailure) throw new Error('Simulated profile rendering failure');

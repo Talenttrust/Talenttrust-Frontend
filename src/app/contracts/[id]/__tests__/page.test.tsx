@@ -16,7 +16,8 @@ function installClipboard(): jest.Mock {
     configurable: true,
     value: { writeText },
   });
-  return writeText;}
+  return writeText;
+}
 
 /**
  * Removes navigator.clipboard to simulate an unsupported environment.

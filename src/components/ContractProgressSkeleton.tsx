@@ -23,6 +23,25 @@ interface ContractProgressSkeletonProps {
   onRetry?: () => void;
 }
 
+/** Stable loading announcement used by the skeleton. */
+export const CONTRACT_PROGRESS_LOADING_LABEL =
+  'Loading escrow progress' as const;
+
+/**
+ * Static decorative blocks used by the skeleton. Kept as a module-level
+ * constant so the render output is deterministic and free of any per-render
+ * allocations or randomness.
+ */
+const SkeletonBlock = ({
+  className,
+  testId,
+}: {
+  className: string;
+  testId?: string;
+}) => (
+  <div className={className} data-testid={testId} aria-hidden="true" />
+);
+
 export const ContractProgressSkeleton = ({
   hasError = false,
   onRetry,
@@ -58,7 +77,7 @@ export const ContractProgressSkeleton = ({
       aria-busy="true"
       aria-label={CONTRACT_PROGRESS_LOADING_LABEL}
       data-testid="contract-progress-skeleton"
-      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm animate-pulse"
+      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm animate-pulse motion-reduce:animate-none"
     >
       {/* Heading */}
       <SkeletonBlock className="h-7 w-40 rounded-lg bg-slate-200" />

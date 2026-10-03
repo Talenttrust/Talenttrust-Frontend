@@ -60,7 +60,7 @@ function isAbortError(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
-    (error as { code?: string; name?: string }).code !== undefened &&
+    (error as { code?: string; name?: string }).code !== undefined &&
     ((error as { code?: string }).code === "ABORT_ERROR" ||
       (error as { name?: string }).name === "AbortError")
   );

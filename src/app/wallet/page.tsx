@@ -8,7 +8,6 @@ import { WalletItemList } from '../../components/wallet/WalletItemList';
 import { listWalletItems, saveWalletItem, updateWalletItem, deleteWalletItems } from '@/lib/repository';
 import { reportError } from '@/lib/errorReporter';
 import { useToast } from '@/components/toast/toast-provider';
-import { reportError } from '@/lib/errorReporter';
 import type { WalletItem } from '@/types/domain';
 import { getSampleWalletItems } from './constants';
 
@@ -33,7 +32,7 @@ import { getSampleWalletItems } from './constants';
  *   toast counting.
  */
 
-function dedupeIds(ids: Readonly string[]): string[] {
+function dedupeIds(ids: readonly string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const id of ids) {
@@ -55,6 +54,23 @@ export default function WalletPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState<boolean>(false);
   const { showSuccess, showError } = useToast();
+
+  // ---------------------------------------------------------------------------
+  // Concurrency & Lockstep Synchronization Refs
+  // ---------------------------------------------------------------------------
+  // Synchronous mutex ref preventing duplicate in-flight requests or race conditions.
+  const isMutatingRef = useRef<boolean>(false);
+  // Mutable ref kept in strict lockstep with state so rapid sequential mutations
+  // never build from stale closures.
+  const itemsRef = useRef<WalletItem[]>([]);
+  itemsRef.current = items;
+
+  // Synchronous helper to update both the ref and queued React state in lockstep.
+  const commitItems = useCallback((next: WalletItem[]) => {
+    itemsRef.current = next;
+    setItems(next);
+  }, []);
+
   // Guards the one-time repository seed so retries, React StrictMode
   // double-invocation, or a changing `showError` identity can never seed twice
   // and leave duplicate or partially-persisted state.
@@ -68,77 +84,58 @@ export default function WalletPage() {
     if (seededRef.current) return;
     seededRef.current = true;
 
-    const loaded = listWalletItems();
-    if (loaded.length > 0) {
-      setItems(loaded);
-      return;
-    }
-
-    const seed = getSampleWalletItems();
-    if (seed.length === 0) {
-      setItems([]);
-      return;
-    }
-
-    const persisted: WalletItem[] = [];
-    let failedCount = 0;
-
-    for (const item of seed) {
-      const ok = saveWalletItem(item);
-      if (ok === false) {
-        failedCount += 1;
-      } else {
-        persisted.push(item);
-      }
-    }
-
-    setItems(persisted);
-
-    if (failedCount > 0) {
-      // Counts only — never log wallet addresses or identifiers.
-      reportError(
-        new Error(`Failed to persist ${failedCount} of ${seed.length} starter wallet items.`),
-        'WalletPage.seed',
-        'warn',
-        { failedCount, totalCount: seed.length },
-      );
-      showError({
-        title: 'Wallet data partially unavailable',
-        description: `Couldn't save ${failedCount} of ${seed.length} starter items. Your existing data is safe.`,
-      });
-    }
-  }, [showError]);
-
-  // ---------------------------------------------------------------------------
-  // Initial Mount & Seeding (Idempotent and Concurrency Safe)
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    if (isMountedRef.current) return;
-    isMountedRef.current = true;
-
     try {
-      const loaded = listWalletItems();
-      if (loaded && loaded.length > 0) {
-        // Deduplicate in case of corrupt legacy state
-        const seen = new Set<string>();
-        const deduped: WalletItem[] = [];
-        for (const item of loaded) {
-          if (!seen.has(item.id)) {
-            seen.add(item.id);
-            deduped.push(item);
-          }
+      const loaded = listWalletItems() ?? [];
+
+      if (loaded.length > 0) {
+        // Self-heal corrupt legacy state: de-duplicate by id before rendering so
+        // a duplicated repository entry can never render duplicate rows.
+        const uniqueIds = dedupeIds(loaded.map((item) => item.id));
+        const byId = new Map<string, WalletItem>(loaded.map((item) => [item.id, item]));
+        setItems(uniqueIds.map((id) => byId.get(id) as WalletItem));
+        return;
+      }
+
+      const seed = getSampleWalletItems();
+      if (seed.length === 0) {
+        setItems([]);
+        return;
+      }
+
+      const persisted: WalletItem[] = [];
+      let failedCount = 0;
+
+      for (const item of seed) {
+        const ok = saveWalletItem(item);
+        if (ok === false) {
+          failedCount += 1;
+        } else {
+          persisted.push(item);
         }
-        commitItems(deduped);
-      } else {
-        // Seed sample items into repository for initial demo
-        SAMPLE_WALLET_ITEMS.forEach((item) => saveWalletItem(item));
-        commitItems(SAMPLE_WALLET_ITEMS);
+      }
+
+      setItems(persisted);
+
+      if (failedCount > 0) {
+        // Counts only — never log wallet addresses or identifiers.
+        reportError(
+          new Error(`Failed to persist ${failedCount} of ${seed.length} starter wallet items.`),
+          'WalletPage.seed',
+          'warn',
+          { failedCount, totalCount: seed.length },
+        );
+        showError({
+          title: 'Wallet data partially unavailable',
+          description: `Couldn't save ${failedCount} of ${seed.length} starter items. Your existing data is safe.`,
+        });
       }
     } catch (err) {
+      setLoadError('Failed to load wallet items. Please refresh and try again.');
       reportError(err, '[WalletPage] Failed to initialize wallet items.');
-      commitItems(SAMPLE_WALLET_ITEMS);
+    } finally {
+      setIsLoading(false);
     }
-  }, [commitItems]);
+  }, [showError]);
 
   // ---------------------------------------------------------------------------
   // State Invariant: Prune selectedIds whenever items changes
@@ -166,25 +163,6 @@ export default function WalletPage() {
     });
   }, [items]);
 
-  // ---------------------------------------------------------------------------
-  // Selection Handlers
-  // ---------------------------------------------------------------------------
-  const handleToggleSelect = useCallback((id: string) => {
-    if (isMutatingRef.current) return;
-    setSelectedIds((prev) => {
-      let changed = false;
-      const next = new Set<string>();
-      for (const id of prev) {
-        if (validIds.has(id)) {
-          next.add(id);
-        } else {
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [items]);
-
   // I3: Clear or reconcile editing id when items change.
   useEffect(() => {
     if (editingId === null) return;
@@ -193,7 +171,11 @@ export default function WalletPage() {
     }
   }, [items, editingId]);
 
+  // ---------------------------------------------------------------------------
+  // Selection Handlers
+  // ---------------------------------------------------------------------------
   const handleToggleSelect = useCallback((id: string) => {
+    if (isMutatingRef.current) return;
     if (!items.some((item) => item.id === id)) return;
     setSelectedIds((prev) => {
       // Ignore toggles for ids that are not currently visible.
@@ -242,7 +224,6 @@ export default function WalletPage() {
         a.href = url;
         a.download = `wallet-export-${Date.now()}.json`;
         a.click();
-        downloaded = true;
       } finally {
         URL.revokeObjectURL(url);
       }

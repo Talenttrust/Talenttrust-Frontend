@@ -38,7 +38,17 @@ export type BreadcrumbsProps = {
    * data comes from untyped APIs) are silently dropped before rendering so
    * the component never throws on malformed input.
    */
-  items: ReadonlyArray<BreadcrumbItem>;
+  items?: ReadonlyArray<BreadcrumbItem>;
+  /**
+   * Route path used to derive the trail when `items` is omitted (or empty).
+   *
+   * Segments are stripped of query/hash suffixes, URI-decoded, humanised and
+   * prefixed with a `Home` crumb — see {@link createBreadcrumbsFromPath}.
+   * This lets route-level callers render a trail without building the array.
+   *
+   * @default undefined
+   */
+  path?: string | null;
   /**
    * Accessible label for the `<nav>` landmark.
    * Defaults to `"Breadcrumb"`. Override when the page mounts multiple
@@ -54,7 +64,54 @@ export type BreadcrumbsProps = {
    * minor releases; callers should apply only additive layout classes here.
    */
   className?: string;
+  /**
+   * DOM `aria-label` alias for {@link BreadcrumbsProps.ariaLabel}.
+   * Prose-API callers pass `aria-label`, component-API callers pass
+   * `ariaLabel`; both are honoured, with `ariaLabel` taking precedence.
+   */
+  'aria-label'?: string;
+  /**
+   * Character(s) rendered between consecutive crumbs. The separator is always
+   * hidden from assistive technology (`aria-hidden="true"`) because the `<ol>`
+   * already conveys the ordering.
+   *
+   * @default "/"
+   */
+  separator?: React.ReactNode;
+  /**
+   * Forwarded to the `<nav>` landmark so tests and tooling can target a
+   * specific trail when several are mounted on one page.
+   */
+  'data-testid'?: string;
 };
+
+// ---------------------------------------------------------------------------
+// Internal constants
+// ---------------------------------------------------------------------------
+
+/** Longest `href` we are willing to render before treating it as malformed. */
+const MAX_HREF_LENGTH = 2048;
+
+/** Longest label we accept from untrusted input before dropping it. */
+const MAX_LABEL_LENGTH = 512;
+
+/** Default separator rendered between crumbs. */
+const BREADCRUMB_SEPARATOR = '/';
+
+/**
+ * Shape returned by {@link normalizeBreadcrumbs}: the renderable items plus
+ * counters describing what sanitisation removed (useful for assertions and
+ * diagnostics).
+ */
+export type NormalizedBreadcrumbs = {
+  items: BreadcrumbItem[];
+  droppedInvalidCount: number;
+  dedupedCount: number;
+};
+
+/** True when `value` is a string containing at least one non-space character. */
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
 
 // ---------------------------------------------------------------------------
 // Invariant helpers
@@ -72,36 +129,129 @@ function warn(message: string): void {
 }
 
 /**
- * Validates and sanitises the items array before render.
+ * Humanises a single route segment into a display label.
  *
- * Invariants enforced:
- *  1. `null` / `undefined` entries are silently dropped (runtime safety for
- *     data arriving from untyped APIs; TypeScript callers should never pass
- *     these but production code must not crash on them).
- *  2. Empty-string labels are removed (they create invisible, non-descriptive
- *     accessible elements). A dev warning is emitted.
- *  3. Ancestor crumbs (not the last item) without an `href` receive a `"/"`
- *     fallback so the DOM is always valid, and a dev warning is emitted.
+ * Rules (deterministic, locale-independent):
+ *  - Percent-encoded segments are decoded when the escape sequence is valid.
+ *  - Purely numeric segments are ids → `"#42"`.
+ *  - Remaining separators (`-`, `_`, whitespace) become single spaces and each
+ *    word is capitalised: `"fast-2"` → `"Fast 2"`.
  *
  * @internal
  */
-function sanitiseItems(items: ReadonlyArray<BreadcrumbItem>): BreadcrumbItem[] {
-  const filtered: BreadcrumbItem[] = [];
+function labelFromSegment(segment: string): string {
+  let decoded = segment;
+
+  try {
+    decoded = decodeURIComponent(segment);
+  } catch {
+    // Malformed escape sequence (e.g. a lone '%') — keep the raw segment
+    // rather than throwing on untrusted route data.
+  }
+
+  if (/^\d+$/.test(decoded)) return `#${decoded}`;
+
+  const words = decoded.split(/[\s_-]+/).filter((word) => word.length > 0);
+  if (words.length === 0) return decoded;
+
+  return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
+
+/**
+ * Derives a breadcrumb trail from a route path.
+ *
+ * This is a pure, deterministic mapping so route-driven callers (and tests)
+ * can predict the trail exactly:
+ *  - `null` / `undefined` / empty / whitespace-only → `[]`
+ *  - `"/"` (or any run of slashes) → a single `Home` crumb
+ *  - `"/contracts/42"` → `[Home, Contracts, "#42"]` (final crumb has no href)
+ *  - query strings and hash anchors are stripped before splitting
+ *  - consecutive and trailing slashes are collapsed idempotently
+ *
+ * Every crumb except the last carries the cumulative href for its depth.
+ *
+ * @param path - Raw route path (may be untrusted).
+ * @returns The derived crumbs, or `[]` when there is nothing to render.
+ */
+export function createBreadcrumbsFromPath(path?: string | null): BreadcrumbItem[] {
+  if (typeof path !== 'string') return [];
+
+  const [withoutHash] = path.split('#');
+  const [pathname] = withoutHash.split('?');
+  const cleaned = pathname.trim();
+
+  if (cleaned.length === 0) return [];
+
+  const segments = cleaned
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+
+  // Root (and slash-only paths) collapse to the single Home crumb.
+  if (segments.length === 0) return [{ label: 'Home', href: '/' }];
+
+  const crumbs: BreadcrumbItem[] = [{ label: 'Home', href: '/' }];
+  let href = '';
+
+  segments.forEach((segment, index) => {
+    href += `/${segment}`;
+    const label = labelFromSegment(segment);
+
+    // The final crumb is the current page: it never links anywhere.
+    crumbs.push(index === segments.length - 1 ? { label } : { label, href });
+  });
+
+  return crumbs;
+}
+
+/**
+ * Validates and sanitises the items array before render, falling back to
+ * {@link createBreadcrumbsFromPath} when no usable items were supplied.
+ *
+ * Invariants enforced:
+ *  1. A missing/empty `items` array is derived from `path` (when provided).
+ *  2. `null` / `undefined` / non-object entries are silently dropped (runtime
+ *     safety for data arriving from untyped APIs) with a dev warning.
+ *  3. Empty or whitespace-only labels are removed (they create invisible,
+ *     non-descriptive accessible elements). A dev warning is emitted.
+ *  4. Unsafe hrefs (`javascript:`, `data:`, …) are stripped, keeping the label.
+ *  5. Ancestor crumbs (every crumb except the last) without an `href` receive a
+ *     `"/"` fallback at render time, and a dev warning is emitted here so it is
+ *     reported once per render regardless of list length.
+ *
+ * The input array is never mutated.
+ *
+ * @param items - Raw items from a caller (may be untyped runtime data).
+ * @param path - Optional route path used when `items` yields nothing.
+ * @returns A new array of renderable crumbs.
+ */
+export function normalizeBreadcrumbItems(
+  items: unknown,
+  path?: string | null,
+): BreadcrumbItem[] {
+  if (!Array.isArray(items) || items.length === 0) {
+    return createBreadcrumbsFromPath(path);
+  }
+
+  const normalized: BreadcrumbItem[] = [];
 
   for (let i = 0; i < items.length; i++) {
-    const item = items[i];
+    const rawItem: unknown = items[i];
 
-    // Guard: null/undefined entries from untyped runtime data.
-    if (item == null) {
+    // Guard: null/undefined/non-object entries from untyped runtime data.
+    if (rawItem == null || typeof rawItem !== 'object') {
       warn(
-        `items[${i}] is ${String(item)} and will be ignored. ` +
+        `items[${i}] is ${String(rawItem)} and will be ignored. ` +
           'Every breadcrumb entry must be a valid BreadcrumbItem object.',
       );
       continue;
     }
 
+    const candidate = rawItem as { label?: unknown; href?: unknown };
+    const label = typeof candidate.label === 'string' ? candidate.label.trim() : '';
+
     // Guard: empty-string label produces an invisible accessible element.
-    if (!item.label.trim()) {
+    if (label.length === 0) {
       warn(
         `items[${i}] has an empty label and will be ignored. ` +
           'Every breadcrumb crumb must have a visible, non-empty label.',
@@ -109,22 +259,25 @@ function sanitiseItems(items: ReadonlyArray<BreadcrumbItem>): BreadcrumbItem[] {
       continue;
     }
 
-    filtered.push(item);
+    const hasHref = candidate.href !== undefined && candidate.href !== null;
+    const href = hasHref && isSafeBreadcrumbHref(candidate.href)
+      ? (candidate.href as string)
+      : undefined;
+
+    normalized.push(href === undefined ? { label } : { label, href });
   }
 
   // After filtering, warn about ancestor crumbs that lack an href.
-  // The warning fires here (not during render) so it is emitted once per
-  // render cycle regardless of list length.
-  for (let i = 0; i < filtered.length - 1; i++) {
-    if (!filtered[i].href) {
+  for (let i = 0; i < normalized.length - 1; i++) {
+    if (!normalized[i].href) {
       warn(
-        `items[${i}] ("${filtered[i].label}") is an ancestor crumb with no ` +
+        `items[${i}] ("${normalized[i].label}") is an ancestor crumb with no ` +
           'href. Falling back to "/" — pass an explicit href to silence this warning.',
       );
     }
   }
 
-  return filtered;
+  return normalized;
 }
 
 /**
@@ -153,6 +306,7 @@ export const isSafeBreadcrumbHref = (href: unknown): href is string => {
   if (!isNonEmptyString(href)) return false;
   if (href.length > MAX_HREF_LENGTH) return false;
   // Reject control characters and newlines.
+  // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001F\u007F]/.test(href)) return false;
   // Reject leading/trailing whitespace.
   if (href !== href.trim()) return false;
@@ -294,17 +448,26 @@ export const normalizeBreadcrumbs = (items: unknown): NormalizedBreadcrumbs => {
  */
 const Breadcrumbs = ({
   items,
-  ariaLabel = 'Breadcrumb',
+  path,
+  ariaLabel,
+  'aria-label': ariaLabelProp,
+  separator = BREADCRUMB_SEPARATOR,
   className,
+  'data-testid': dataTestId,
 }: BreadcrumbsProps): React.ReactElement | null => {
-  // Sanitise once per render; results memoised implicitly by React's reconciler.
-  const crumbs = sanitiseItems(items);
+  // Normalise once per render; the result is pure and deterministic, so React's
+  // reconciler can diff it cheaply on every re-render.
+  const crumbs = normalizeBreadcrumbItems(items, path);
 
   // Invariant: empty list (after sanitisation) renders nothing.
   if (crumbs.length === 0) return null;
 
   return (
-    <nav aria-label={ariaLabel} className={className}>
+    <nav
+      aria-label={ariaLabel ?? ariaLabelProp ?? 'Breadcrumb'}
+      className={className}
+      data-testid={dataTestId}
+    >
       <ol className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
         {crumbs.map((item, index) => {
           const isLast = index === crumbs.length - 1;

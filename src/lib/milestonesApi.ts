@@ -136,7 +136,7 @@ function normalizeMilestone(value: unknown, index: number): Milestone | null {
       typeof value.updatedAt === 'string' && value.updatedAt.length > 0
         ? value.updatedAt
         : new Date(0).toISOString(),
-  } || null;
+  };
 }
 
 function extractItems(value: unknown): unknown[] {

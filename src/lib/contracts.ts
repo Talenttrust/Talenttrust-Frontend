@@ -98,12 +98,33 @@ export class InvalidContractTransitionError extends Error {
  * leaving the input untouched. Throws `InvalidContractTransitionError` when
  * the transition is not allowed.
  */
+/**
+ * A contract after {@link applyContractStatusTransition} has moved it, with the
+ * status narrowed to the status machine's own vocabulary.
+ *
+ * `Contract['status']` is the wider {@link StatusType}, which also carries
+ * milestone-facing states such as `Paid`, so the transitioned shape is expressed
+ * as an override of the `status` field rather than a plain `Contract`.
+ */
+export type TransitionedContract = Omit<Contract, 'status'> & { status: ContractStatus };
+
+/**
+ * Applies a status transition to a contract, returning a new object and
+ * leaving the input untouched. Throws `InvalidContractTransitionError` when
+ * the transition is not allowed.
+ *
+ * `status` is read through {@link ContractStatus}: a contract whose status is
+ * outside the machine's vocabulary has no entry in
+ * `CONTRACT_STATUS_TRANSITIONS`, so it is reported as an illegal transition
+ * instead of being silently mutated.
+ */
 export function applyContractStatusTransition(
   contract: Contract,
   to: ContractStatus,
-): Contract {
-  if (!canNTransitionContractStatus(contract.status, to)) {
-    throw new InvalidContractTransitionError(contract.status, to);
+): TransitionedContract {
+  const from = contract.status as ContractStatus;
+  if (!canNTransitionContractStatus(from, to)) {
+    throw new InvalidContractTransitionError(from, to);
   }
   return { ...contract, status: to };
 }

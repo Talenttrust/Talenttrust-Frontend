@@ -31,6 +31,15 @@ export type MilestoneStatus = Extract<
   'Pending' | 'Completed' | 'Paid' | 'Disputed'
 >;
 
+/**
+ * Canonical lifecycle status of a contract.
+ *
+ * Deliberately narrower than {@link StatusType}: it is exactly the set of
+ * states the contract status machine knows how to transition between, so it
+ * stays in lockstep with `CONTRACT_STATUS_TRANSITIONS` in `@/lib/contracts`.
+ */
+export type ContractStatus = 'Active' | 'Complete' | 'Dispute';
+
 /** Canonical contract shape aligned with ContractSummary props. */
 export type Contract = ContractSummaryProps & { id: string };
 

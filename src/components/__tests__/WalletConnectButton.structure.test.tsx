@@ -18,7 +18,15 @@ const mockUseWallet = useWallet as jest.MockedFunction<typeof useWallet>;
 
 const originalClipboard = navigator.clipboard;
 
-function createWalletState(overrides: { address: string | null; isConnecting: boolean; error: string | null; connect: jest.Mock; disconnect: jest.Mock }) {
+type WalletStateOverrides = Partial<{
+  address: string | null;
+  isConnecting: boolean;
+  error: string | null;
+  connect: jest.Mock;
+  disconnect: jest.Mock;
+}>;
+
+function createWalletState(overrides: WalletStateOverrides = {}) {
   return {
     address: null,
     isConnecting: false,

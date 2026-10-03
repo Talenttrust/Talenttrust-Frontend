@@ -44,6 +44,11 @@
   --status-error-foreground: #9f1239;
   --status-warning-bg: #fef3c7;
   --status-warning-foreground: #92400e;
+  /* Neutral pair for StatusBadge's unknown/failed-lookup fallback and for
+     `Archived`, which is retired rather than failed. slate-200 on slate-700
+     keeps the chip legible without implying a status colour. */
+  --status-neutral-bg: #e2e8f0;
+  --status-neutral-foreground: #334155;
 }
 
 [data-theme='dark'] {
@@ -91,6 +96,8 @@
   --status-error-foreground: #fda4af;
   --status-warning-bg: #78350f;
   --status-warning-foreground: #fcd34d;
+  --status-neutral-bg: #1e293b;
+  --status-neutral-foreground: #e2e8f0;
 }
 
 body {

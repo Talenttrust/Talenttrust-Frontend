@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
 import { ConfirmDialog } from './ConfirmDialog';
 import { DISPUTE_REASON_MAX_LENGTH, validateDisputeReason } from '@/lib/disputeReason';
@@ -66,6 +66,18 @@ export type ActionPanelProps = {
    * May be synchronous or async; errors are caught and surfaced via `onActionError`.
    */
   onReleaseFunds?: () => void | Promise<void>;
+  /**
+   * Notified when a mutation action is dispatched — after every gate has passed
+   * and immediately before the callback runs. Parents use it to start their own
+   * in-flight UI in lockstep with the panel's `pendingAction` guard.
+   */
+  onActionStart?: (action: ActionName) => void;
+  /**
+   * Notified when an action callback throws synchronously or rejects. The panel
+   * itself surfaces a `role="alert"` banner from the error message; this hook
+   * lets the parent log or report the raw error.
+   */
+  onActionError?: (action: ActionName, error: unknown) => void;
   /** Callback triggered to view the summary of a completed contract. */
   onViewSummary?: () => void;
   /**
@@ -145,7 +157,7 @@ const DUPLICATE_DISPATCH: ActionGateResult = Object.freeze({
 type ConfirmAction = keyof typeof CONFIRM_COPY | null;
 
 /** Maps a confirmation dialog target onto its canonical action id. */
-const CONFIRM_ACTION_ID: Record<Exclude<ConfirmAction, null>, ActionId> = {
+const CONFIRM_ACTION_ID: Record<Exclude<ConfirmAction, null>, ActionName> = {
   submit: 'submitMilestone',
   release: 'releaseFunds',
   dispute: 'dispute',
@@ -211,6 +223,8 @@ const ActionPanel = ({
   disputeFlow: _disputeFlow = 'inline',
   disableMutations = false,
   onBlockedAction,
+  onActionStart,
+  onActionError,
 }: ActionPanelProps) => {
   const visibleActions = getVisibleActions(status);
   const { address } = useWallet();
@@ -220,27 +234,20 @@ const ActionPanel = ({
   const panelRef = useRef<HTMLElement | null>(null);
 
   /**
-   * Guards against concurrent / duplicate mutation dispatch. The ref is the
-   * source of truth for synchronous re-entrancy checks (state updates are
-   * async and would allow two clicks in the same tick to both pass), while the
-   * state mirrors it for rendering (disabling buttons, aria-busy).
+   * Guards against concurrent / duplicate mutation dispatch. `pendingActionRef`
+   * is the source of truth for synchronous re-entrancy checks (state updates
+   * are async and would allow two clicks in the same tick to both pass), while
+   * `pendingAction` mirrors it for rendering (disabling buttons).
+   *
+   * `internalError` holds the message of a callback that threw or rejected so
+   * it can be announced by the panel's own `role="alert"` banner.
    */
-  const mutationInFlightRef = useRef(false);
-  const [mutationInFlight, setMutationInFlight] = useState(false);
-  const [mutationError, setMutationError] = useState('');
+  const pendingActionRef = useRef<ActionName | null>(null);
+  const [pendingAction, setPendingAction] = useState<ActionName | null>(null);
+  const [internalError, setInternalError] = useState<string | null>(null);
 
-  const beginMutation = useCallback((): boolean => {
-    if (mutationInFlightRef.current) return false;
-    mutationInFlightRef.current = true;
-    setMutationInFlight(true);
-    setMutationError('');
-    return true;
-  }, []);
-
-  const endMutation = useCallback(() => {
-    mutationInFlightRef.current = false;
-    setMutationInFlight(false);
-  }, []);
+  /** True while a dispatched action is still settling (async callbacks only). */
+  const mutationInFlight = pendingAction !== null;
 
   const describedBy = (perActionId: string | undefined) =>
     isLoading ? LOADING_DESCRIPTION_ID : perActionId;
@@ -307,6 +314,34 @@ const ActionPanel = ({
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   /** Reason a confirm was refused, surfaced inside the dialog as `role="alert"`. */
   const [confirmBlockError, setConfirmBlockError] = useState<string | null>(null);
+
+  /**
+   * I3/I4 — a stale transient surface must never outlive the state it was
+   * opened against:
+   *
+   *   - any contract status change (the parent's state machine moved on, e.g.
+   *     Active -> Disputed), and
+   *   - the `isLoading` flag flipping true (a background refresh, a concurrent
+   *     mutation),
+   *
+   * close the confirmation dialog and the inline dispute form. Both surfaces
+   * capture a snapshot of the gate state when they open, so leaving one open
+   * would let a user confirm an action the panel would now refuse.
+   */
+  useEffect(() => {
+    if (!isLoading) return;
+    setConfirmAction(null);
+    setConfirmBlockError(null);
+    setDisputeFormOpen(false);
+  }, [isLoading]);
+
+  useEffect(() => {
+    // Closing is idempotent: the state updates below are no-ops when nothing
+    // is open, so a status change never causes a spurious re-render.
+    setConfirmAction(null);
+    setConfirmBlockError(null);
+    setDisputeFormOpen(false);
+  }, [status]);
 
   /**
    * Duplicate-submission guard.
@@ -413,21 +448,14 @@ const ActionPanel = ({
     // Consume before dispatch so a synchronous re-entrant confirm is refused.
     consumeSurface();
 
-    if (confirmAction === 'submit') {
-      onSubmitMilestone?.();
-    } else if (confirmAction === 'release') {
-      onReleaseFunds?.();
-    } else {
-      onDispute?.(DEFAULT_DISPUTE_REASON);
-    }
     setConfirmBlockError(null);
     setConfirmAction(null);
     // Clear any previous internal error; a new attempt is being made.
     setInternalError(null);
-    onActionStart?.(action);
+    onActionStart?.(actionId);
 
     // Set the ref immediately (synchronous re-entrance guard).
-    pendingActionRef.current = action;
+    pendingActionRef.current = actionId;
 
     /**
      * Invokes the action callback and always returns a Promise.
@@ -437,13 +465,13 @@ const ActionPanel = ({
     const invokeCallback = (): { promise: Promise<void>; isAsync: boolean } => {
       let returnValue: void | Promise<void>;
       try {
-        if (action === 'submitMilestone') {
+        if (actionId === 'submitMilestone') {
           returnValue = onSubmitMilestone?.();
-        } else if (action === 'releaseFunds') {
+        } else if (actionId === 'releaseFunds') {
           returnValue = onReleaseFunds?.();
         } else {
-          // action === 'dispute' (legacy confirm flow)
-          returnValue = onDispute?.('Dispute opened from action panel.');
+          // actionId === 'dispute' (legacy confirm flow)
+          returnValue = onDispute?.(DEFAULT_DISPUTE_REASON);
         }
       } catch (syncErr) {
         return { promise: Promise.reject(syncErr), isAsync: false };
@@ -459,7 +487,7 @@ const ActionPanel = ({
     // interactions are not blocked by a stale ref that would only clear after a
     // microtask. The promise .then still clears it again (idempotently) for safety.
     if (isAsync) {
-      setPendingAction(action);
+      setPendingAction(actionId);
     } else {
       pendingActionRef.current = null;
     }
@@ -475,7 +503,7 @@ const ActionPanel = ({
         const message =
           err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.';
         setInternalError(message);
-        onActionError?.(action, err);
+        onActionError?.(actionId, err);
       },
     );
   };
@@ -650,14 +678,19 @@ const ActionPanel = ({
       return;
     }
 
+    const trimmedReason = disputeReason.trim();
+
     consumeSurface();
-    onDispute?.(disputeReason.trim());
     closeDisputeForm();
+
+    // Clear any previous internal error; a new attempt is being made.
+    setInternalError(null);
+    onActionStart?.('dispute');
 
     // Set the ref immediately (synchronous re-entrance guard).
     pendingActionRef.current = 'dispute';
 
-    let returnValue: void | Promise<void>;
+    let returnValue: void | Promise<void> = undefined;
     let invokeError: unknown;
     let didThrow = false;
     try {
@@ -760,7 +793,7 @@ const ActionPanel = ({
           <button
             type="button"
             onClick={(e) => handleOpenConfirm('submit', e)}
-            disabled={!gates.submitMilestone.allowed}
+            disabled={!gates.submitMilestone.allowed || mutationInFlight}
             title={!isWalletConnected ? noWalletMsg : mutationsDisabledMsg}
             aria-label="Submit milestone for approval"
             aria-describedby={describedBy(describedById('submitMilestone'))}
@@ -774,7 +807,7 @@ const ActionPanel = ({
           <button
             type="button"
             onClick={(event) => handleOpenConfirm('release', event)}
-            disabled={!gates.releaseFunds.allowed}
+            disabled={!gates.releaseFunds.allowed || mutationInFlight}
             title={!isWalletConnected ? noWalletMsg : mutationsDisabledMsg}
             aria-label="Release funds to the contractor"
             aria-describedby={describedBy(describedById('releaseFunds'))}
@@ -790,7 +823,7 @@ const ActionPanel = ({
               ref={disputeTriggerRef}
               type="button"
               onClick={handleOpenDisputeForm}
-              disabled={!gates.disputeTrigger.allowed}
+              disabled={!gates.disputeTrigger.allowed || mutationInFlight}
               title={!isWalletConnected ? noWalletMsg : mutationsDisabledMsg}
               aria-label="Open a dispute for this contract"
               aria-expanded={_disputeFlow === 'inline' ? disputeFormOpen : undefined}
@@ -939,7 +972,7 @@ const ActionPanel = ({
         tone={confirmAction === 'release' || confirmAction === 'dispute' ? 'destructive' : 'default'}
         error={confirmBlockError ?? undefined}
         onConfirm={handleConfirm}
-        isConfirming={mutationInFlight}
+        isLoading={mutationInFlight}
         onCancel={handleCancel}
       />
     </aside>

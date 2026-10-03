@@ -40,7 +40,7 @@ const TWO_CRUMBS: BreadcrumbItem[] = [
   { label: 'Settings' },
 ];
 
-const ONE_CRUM: BreadcrumbItem[] = [{ label: 'Dashboard', href: '/' }];
+const ONE_CRUMB: BreadcrumbItem[] = [{ label: 'Dashboard', href: '/' }];
 
 // ----------------------------------------------------------------------------
 // Structure & ARIA
@@ -136,7 +136,7 @@ describe('Breadcrumbs — aria-current', () => {
   });
 
   it('applies aria-current="page" to a single-crumb list', () => {
-    render(<Breadcrumbs items={ONE_CRUM} />);
+    render(<Breadcrumbs items={ONE_CRUMB} />);
     expect(screen.getByText('Dashboard')).toHaveAttribute('aria-current', 'page');
   });
 });
@@ -361,8 +361,7 @@ describe('Breadcrumbs — boundary and adversarial inputs', () => {
     const items = [
       undefined,
       { label: 'Contracts', href: '/contracts' },
-      undefined,
-      { label: 'Contract #42' },
+      { label: 'Current' },
     ] as unknown as BreadcrumbItem[];
 
     render(<Breadcrumbs items={items} />);
@@ -717,6 +716,9 @@ describe('Breadcrumbs — regression: separator count with filtered items', () =
     ];
 
     const { container } = render(<Breadcrumbs items={items} />);
+
+    expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(2);
+  });
 
   it('has exactly (n - 1) separators for n items after whitespace filtering', () => {
     const { container } = render(

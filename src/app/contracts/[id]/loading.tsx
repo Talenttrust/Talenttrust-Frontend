@@ -33,6 +33,7 @@ import { isValidContractId } from '@/lib/contracts/validation';
 import { ContractSummarySkeleton } from '@/components/ContractSummarySkeleton';
 import { ContractProgressSkeleton } from '@/components/ContractProgressSkeleton';
 import { MilestonesListSkeleton } from '@/components/MilestonesListSkeleton';
+import type { ReactElement } from 'react';
 
 const ACTION_PLACEHOLDERS = ['primary', 'secondary', 'tertiary'] as const;
 

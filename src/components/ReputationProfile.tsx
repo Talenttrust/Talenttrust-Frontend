@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { execCommandFallback } from '@/lib/clipboardFallback';
 import { useOptimisticReputationMutation } from '@/hooks/useOptimisticReputationMutation';

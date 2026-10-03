@@ -47,10 +47,13 @@ const MAX_TEXT_LENGTH = 200;
 const MAX_ICONS = 16;
 
 /** Allowed PWA display modes. */
-const ALLOWED_DISPLAY = new Set<string>(['fullscreen', 'standalone', 'minimal-ui', 'browser']);
+const ALLOWED_DISPLAY = ['fullscreen', 'standalone', 'minimal-ui', 'browser'] as const;
+
+/** A display mode accepted by the manifest builder. */
+export type ManifestDisplay = (typeof ALLOWED_DISPLAY)[number];
 
 /** Default display mode when an invalid one is supplied. */
-const DEFAULT_DISPLAY = 'standalone';
+const DEFAULT_DISPLAY: ManifestDisplay = 'standalone';
 
 /** Default theme color (TalentTrust blue). */
 const DEFAULT_THEME_COLOR = '#2563eb';
@@ -64,8 +67,8 @@ const DEFAULT_START_URL = '/';
 /** Regular expression for a 6-digit hex color (e.g. `#ffffff`). */
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
 
-/** Regurl for a `sizes` value such as `any` or `192x192`. */
-const SIZES_REGEX = /^(any|\d{1,4}x\{1,4})$/;
+/** Regular expression for a `sizes` value such as `any` or `192x192`. */
+const SIZES_REGEX = /^(any|\d{1,4}x\d{1,4})$/;
 
 /** Regular expression for a simple image MIME type. */
 const MIME_REGEX = /^image\/[a-z0-9.+-]+$/i;
@@ -99,7 +102,7 @@ export interface NormalizedManifest {
   short_name: string;
   description: string;
   start_url: string;
-  display: string;
+  display: ManifestDisplay;
   background_color: string;
   theme_color: string;
   icons: ManifestIcon[];
@@ -158,9 +161,12 @@ function normalizeStartUrl(value: unknown): string {
 }
 
 /** Normalizes the display mode to an allowed value. */
-function normalizeDisplay(value: unknown): string {
-  if (isNonEmptyString(value) && ALLOWED_DISPLAY.has(value.trim())) {
-    return value.trim();
+function normalizeDisplay(value: unknown): ManifestDisplay {
+  if (isNonEmptyString(value)) {
+    const trimmed = value.trim();
+    if ((ALLOWED_DISPLAY as readonly string[]).includes(trimmed)) {
+      return trimmed as ManifestDisplay;
+    }
   }
   return DEFAULT_DISPLAY;
 }
