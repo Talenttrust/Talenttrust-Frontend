@@ -61,9 +61,9 @@ export default function MilestonesError({ error, reset }: MilestonesErrorProps) 
         <p className="mt-3 text-slate-600">
           Please try again. Contact support if the problem continues.
         </p>
-        {retryCountRef.current > 0 ? (
+        {isRetrying ? (
           <p className="mt-2 text-sm text-slate-500" role="status">
-            Retry attempts: {retryCountRef.current}
+            Retrying…
           </p>
         ) : null}
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">

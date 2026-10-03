@@ -178,6 +178,150 @@ describe('validateReputationData', () => {
       }),
     ).toThrow(/duplicate event identifiers/);
   });
+
+  it('validates success cases deterministically', () => {
+    expect(() =>
+      validateReputationData({
+        score: 0,
+        history: [],
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      validateReputationData({
+        score: 5,
+        history: [],
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      validateReputationData({
+        score: 2.5,
+        history: [{ id: 'evt-1', type: 'Review', summary: 'Good', date: '2026-01-01' }],
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      validateReputationData({
+        score: 1,
+        history: [
+          { id: 'a', type: 'Referral', summary: 'Referred', date: '2025-06-15', version: 0 },
+          { id: 'b', type: 'Review', summary: 'Nice', date: '2025-07-20', version: 1 },
+        ],
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects invalid score values deterministically', () => {
+    expect(() => validateReputationData({ score: -0.01, history: [] })).toThrow();
+    expect(() => validateReputationData({ score: 5.01, history: [] })).toThrow();
+    expect(() => validateReputationData({ score: NaN, history: [] })).toThrow();
+    expect(() => validateReputationData({ score: Infinity, history: [] })).toThrow();
+    expect(() => validateReputationData({ score: -Infinity, history: [] })).toThrow();
+    expect(() => validateReputationData({ score: '5', history: [] })).toThrow();
+    expect(() => validateReputationData({ score: true, history: [] })).toThrow();
+  });
+
+  it('rejects invalid history structure deterministically', () => {
+    expect(() => validateReputationData({ history: { id: 'evt-1' } })).toThrow();
+    expect(() => validateReputationData({ history: 'not-an-array' })).toThrow();
+    expect(() => validateReputationData({ score: 4.5, history: null })).toThrow();
+  });
+
+  it('rejects events with invalid identifiers deterministically', () => {
+    expect(() =>
+      validateReputationData({
+        score: 4.5,
+        history: [{ id: '', type: 'Review', summary: 'Good', date: '2026-01-01' }],
+      }),
+    ).toThrow();
+  });
+
+  it('rejects events with invalid type or summary deterministically', () => {
+    expect(() =>
+      validateReputationData({
+        score: 4.5,
+        history: [{ id: 'evt-1', type: '', summary: 'Good', date: '2026-01-01' }],
+      }),
+    ).toThrow();
+
+    expect(() =>
+      validateReputationData({
+        score: 4.5,
+        history: [{ id: 'evt-1', type: 'Review', summary: '', date: '2026-01-01' }],
+      }),
+    ).toThrow();
+  });
+
+  it('rejects events with invalid dates deterministically', () => {
+    expect(() =>
+      validateReputationData({
+        score: 4.5,
+        history: [{ id: 'evt-1', type: 'Review', summary: 'Good', date: 'not-a-date' }],
+      }),
+    ).toThrow();
+  });
+
+  it('rejects events with invalid versions deterministically', () => {
+    expect(() =>
+      validateReputationData({
+        score: 4.5,
+        history: [{ id: 'evt-1', type: 'Review', summary: 'Good', date: '2026-01-01', version: -1 }],
+      }),
+    ).toThrow();
+
+    expect(() =>
+      validateReputationData({
+        score: 4.5,
+        history: [{ id: 'evt-1', type: 'Review', summary: 'Good', date: '2026-01-01', version: 1.5 }],
+      }),
+    ).toThrow();
+  });
+
+  it('rejects duplicate event IDs deterministically', () => {
+    expect(() =>
+      validateReputationData({
+        score: 4.5,
+        history: [
+          { id: 'evt-1', type: 'Review', summary: 'Good', date: '2026-01-01' },
+          { id: 'evt-1', type: 'Review', summary: 'Duplicate', date: '2026-01-02' },
+        ],
+      }),
+    ).toThrow(/duplicate event identifiers/);
+  });
+
+  it('accepts null or omitted optional score', () => {
+    expect(() => validateReputationData({ score: null, history: [] })).not.toThrow();
+    expect(() => validateReputationData({ history: [] })).not.toThrow();
+    expect(() => validateReputationData({})).not.toThrow();
+  });
+
+  it('accepts valid reputation events with version', () => {
+    expect(() =>
+      validateReputationData({
+        score: 4.5,
+        history: [{ id: 'evt-1', type: 'Review', summary: 'Good', date: '2026-01-01', version: 0 }],
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects negative version', () => {
+    expect(() =>
+      validateReputationData({
+        score: 4.5,
+        history: [{ id: 'evt-1', type: 'Review', summary: 'Good', date: '2026-01-01', version: -1 }],
+      }),
+    ).toThrow();
+  });
+
+  it('rejects float version', () => {
+    expect(() =>
+      validateReputationData({
+        score: 4.5,
+        history: [{ id: 'evt-1', type: 'Review', summary: 'Good', date: '2026-01-01', version: 1.5 }],
+      }),
+    ).toThrow();
+  });
 });
 
 describe('ReputationPage route', () => {
