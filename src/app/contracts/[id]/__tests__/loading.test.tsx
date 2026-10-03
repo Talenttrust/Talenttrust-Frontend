@@ -5,7 +5,7 @@ import ContractDetailLoading from '../loading';
 
 describe('ContractDetailLoading concurrency invariants', () => {
   it('exposes one busy boundary and one loading announcement', () => {
-    const { container } = render(<ContractDetailLoading />);
+    const { container } = render(<ContractDetailLoading params={{ id: 'abc123' }} />);
 
     expect(container.querySelector('main')).toHaveAttribute('aria-busy', 'true');
     expect(screen.getByRole('status')).toHaveTextContent('Loading contract…');
@@ -19,8 +19,8 @@ describe('ContractDetailLoading concurrency invariants', () => {
   it('keeps each concurrent boundary isolated and deterministic', () => {
     const { container } = render(
       <>
-        <ContractDetailLoading />
-        <ContractDetailLoading />
+        <ContractDetailLoading params={{ id: 'abc123' }} />
+        <ContractDetailLoading params={{ id: 'abc123' }} />
       </>,
     );
 
@@ -39,23 +39,23 @@ describe('ContractDetailLoading concurrency invariants', () => {
   });
 
   it('does not accumulate stale announcements across retries or completion', () => {
-    const { container, rerender, unmount } = render(<ContractDetailLoading />);
+    const { container, rerender, unmount } = render(<ContractDetailLoading params={{ id: 'abc123' }} />);
 
-    rerender(<ContractDetailLoading />);
-    rerender(<ContractDetailLoading />);
+    rerender(<ContractDetailLoading params={{ id: 'abc123' }} />);
+    rerender(<ContractDetailLoading params={{ id: 'abc123' }} />);
     expect(screen.getAllByRole('status')).toHaveLength(1);
     expect(container.querySelectorAll('[data-loading-layout="contract-detail"]')).toHaveLength(1);
 
     unmount();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
-    const retry = render(<ContractDetailLoading />);
+    const retry = render(<ContractDetailLoading params={{ id: 'abc123' }} />);
     expect(screen.getAllByRole('status')).toHaveLength(1);
     retry.unmount();
   });
 
   it('renders request-independent placeholders for invalid or boundary route ids', () => {
-    const { container } = render(<ContractDetailLoading />);
+    const { container } = render(<ContractDetailLoading params={{ id: 'abc123' }} />);
 
     expect(container).not.toHaveTextContent('undefined');
     expect(container).not.toHaveTextContent('[object Object]');
@@ -64,7 +64,7 @@ describe('ContractDetailLoading concurrency invariants', () => {
   });
 
   it('has no automated accessibility violations', async () => {
-    const { container } = render(<ContractDetailLoading />);
+    const { container } = render(<ContractDetailLoading params={{ id: 'abc123' }} />);
 
     expect(await axe(container)).toHaveNoViolations();
   });

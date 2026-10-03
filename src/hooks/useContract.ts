@@ -103,9 +103,7 @@ export function useContract(
   // Track the latest request token and active controller outside of React state
   // so that async callbacks can compare against the current value without stale closures.
   const requestIdRef = useRef(0);
-  const controllerRef = useRef({
-    current: null as AbortController | null,
-  });
+  const controllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
   const onErrorRef = useRef(onError);
 

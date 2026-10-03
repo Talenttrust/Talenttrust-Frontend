@@ -24,25 +24,12 @@ import {
 } from '@/lib/repository';
 import { cacheContractData, getCachedContractData } from '@/lib/contractCache';
 import { isValidContractId } from '@/lib/validateContractId';
-import { validateStatusTransition } from '@/lib/validateContractStatusTransition';
 import { validateMilestonePatch } from '@/lib/validateMilestonePatch';
 import {
   useOptimisticContractStatus,
   type BuildPersistedContract,
 } from '@/hooks/useOptimisticContractStatus';
 import type { Milestone } from '@/types/domain';
-import { canTransitionContractStatus } from '@/lib/contractStatusTransitions';
-
-/**
- * Monotonic token used to identify the latest in-flight load for a given
- * contract id. Concurrent or repeated loads (e.g. rapid `id`/`isOnline`
- * changes, StrictMode double-invocation, or overlapping retries) each capture
- * a token; only the load holding the newest token is allowed to commit state.
- *
- * This guarantees that a slower, older request can never overwrite the result
- * of a newer one, preventing stale or inconsistent renders.
- */
-let loadSequence = 0;
 
 /**
  * Per-contract in-flight mutation guard.
@@ -220,6 +207,43 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
   const milestonesRef = useRef(milestones);
   milestonesRef.current = milestones;
 
+  /**
+   * Monotonic token identifying the latest in-flight load for this contract.
+   * Concurrent or repeated loads (rapid `id`/`isOnline` changes, StrictMode
+   * double-invocation, overlapping retries) each capture a token; only the
+   * load holding the newest token may commit state, so a slower, older request
+   * can never overwrite the result of a newer one.
+   */
+  const loadRequestIdRef = useRef(0);
+
+  /** Automatic retries already spent on the current load attempt. */
+  const loadAttemptRef = useRef(0);
+
+  /** Controller for the in-flight load; aborted before a newer load starts. */
+  const loadAbortRef = useRef<AbortController | null>(null);
+
+  /** `false` once unmounted, so a late response cannot update state. */
+  const isMountedRef = useRef(true);
+
+  /**
+   * Synchronous mirror of `isPersistingStatus`. A re-entrant call must observe
+   * the in-flight write immediately, before React commits the state update.
+   */
+  const isPersistingStatusRef = useRef(false);
+
+  /**
+   * Bumped by {@link retryContractLoad} to force a fresh load. A counter (not a
+   * boolean) so every retry invalidates the effect, including repeats.
+   */
+  const [loadAttempt, setLoadAttempt] = useState(0);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const { showError, showSuccess } = useToast();
   const isOnline = useOnlineStatus();
 
@@ -347,20 +371,6 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
         }
       }
 
-      setIsPersistingStatus(true);
-      setErrorMessage(null);
-
-      const result = persistStatus(nextStatus);
-
-      if (!result.ok) {
-        setErrorMessage(result.error);
-        showError({
-          title: 'Unable to update contract',
-          description: transition.message,
-        });
-        return;
-      }
-
       // Duplicate-submission guard: ignore re-entrant calls while a status
       // write is already in flight. Without this, a double-invocation could
       // issue two repository writes for one user action.
@@ -372,8 +382,8 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
       isPersistingStatusRef.current = true;
       setErrorMessage(null);
 
-      const persistStatus = persistStatusRef.current;
-      const result = persistStatus(nextStatus);
+      try {
+        const result = persistStatus(nextStatus);
 
         if (!result.ok) {
           setErrorMessage(result.error);
@@ -393,16 +403,7 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
         inFlightStatusMutations.delete(id);
         setIsPersistingStatus(false);
         isPersistingStatusRef.current = false;
-        return;
       }
-
-      setErrorMessage(null);
-      showSuccess({
-        title: successTitle,
-        description: successDescription,
-      });
-      setIsPersistingStatus(false);
-      isPersistingStatusRef.current = false;
     },
     [persistStatus, showError, showSuccess, isOnline, isUsingCachedData, isDataStale, contractData],
   );
@@ -472,8 +473,32 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
           return;
         }
 
-        // Online — fetch fresh data from the network
-        const data = await resolveContractData(id);
+        // Online — fetch fresh data from the network. Transient failures are
+        // retried a bounded number of times with exponential backoff; terminal
+        // failures (invalid id, not found, unauthorised) surface immediately so
+        // a validation or authorisation invariant is never masked.
+        let data: ContractData | undefined;
+        while (data === undefined) {
+          try {
+            data = await resolveContractData(id);
+          } catch (error) {
+            if (
+              isAborted() ||
+              !isRetryableLoadError(error) ||
+              loadAttemptRef.current >= MAX_LOAD_RETRIES
+            ) {
+              throw error;
+            }
+
+            loadAttemptRef.current += 1;
+            const delay = LOAD_RETRY_BASE_DELAY_MS * 2 ** (loadAttemptRef.current - 1);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+
+            if (isAborted()) {
+              throw error;
+            }
+          }
+        }
 
         if (isCurrentRequest) {
           setContractData(data);
@@ -509,7 +534,9 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
           );
         }
       } finally {
-        if (isCurrentRequest) {
+        // Only the newest request may clear the loading flag: an older request
+        // that settles late must not toggle the skeleton for a newer load.
+        if (isCurrentRequest && requestId === loadRequestIdRef.current) {
           setIsLoading(false);
         }
       }
@@ -607,44 +634,77 @@ const ContractDetailPageContent = ({ id }: { id: string }) => {
       return false;
     }
 
-    // Capture the current list before the optimistic update for rollback
+    // Guard 3: duplicate concurrent PATCHES for the same contract. The first
+    // caller acquires the lock; overlapping callers are rejected
+    // deterministically instead of snapshotting the same baseline and then
+    // clobbering each other on rollback.
+    if (inFlightMilestoneMutations.has(id)) {
+      /* istanbul ignore next -- toast side effect */
+      showError({
+        title: 'Update already in progress',
+        description: 'Please wait for the current milestone update to finish.',
+      });
+      return false;
+    }
+
+    // Re-validate the patch at this boundary: identity fields (`id`,
+    // `contractId`, `version`, timestamps) are rejected outright and text is
+    // normalised, so no invalid value can reach storage.
+    const validation = validateMilestonePatch(milestoneId, patch);
+
+    if (!validation.ok) {
+      /* istanbul ignore next -- toast side effect */
+      showError({
+        title: 'Cannot update milestone',
+        description:
+          validation.errors[0]?.message ?? 'The milestone update was rejected.',
+      });
+      return false;
+    }
+
+    const sanitizedPatch = validation.sanitized;
+
+    inFlightMilestoneMutations.add(id);
+
+    // Capture the current list before the optimistic update so a failed write
+    // can roll back to the exact pre-mutation baseline.
     const snapshot = milestonesRef.current;
 
     // Apply the optimistic update synchronously so the UI responds immediately
     setMilestones((current) =>
-      current.map((item) => (item.id === milestoneId ? { ...item, ...patch } : item)),
+      current.map((item) =>
+        item.id === milestoneId ? { ...item, ...sanitizedPatch } : item,
+      ),
     );
 
-    // Persist to the repository
-    const persisted = updateMilestone(milestoneId, patch);
-
-    if (!persisted) {
-      // Roll back to the pre-mutation snapshot
-      setMilestones(snapshot);
-      return false;
-    }
-
-    const snapshot = milestonesRef.current;
-
-    // Apply optimistic update synchronously so the UI reflects intent.
-    setMilestones((current) =>
-      current.map((item) => (item.id === id ? { ...item, ...sanitizedPatch } : item)),
-    );
-
-    // Persist synchronously; on failure, roll back to the exact snapshot so
-    // partial failure cannot leave the UI in an inconsistent state.
-    const persisted = updateMilestone(id, patch);
+    try {
+      // Persist synchronously; on failure, roll back to the exact snapshot so
+      // a partial failure cannot leave the UI in an inconsistent state.
+      const persisted = updateMilestone(milestoneId, sanitizedPatch);
 
       if (!persisted) {
         setMilestones(snapshot);
+        /* istanbul ignore next -- toast side effect */
+        showError({
+          title: 'Unable to update milestone',
+          description: 'The milestone could not be saved. Please try again.',
+        });
         return false;
       }
 
       return true;
+    } catch {
+      setMilestones(snapshot);
+      /* istanbul ignore next -- toast side effect */
+      showError({
+        title: 'Unable to update milestone',
+        description: 'The milestone could not be saved. Please try again.',
+      });
+      return false;
     } finally {
       inFlightMilestoneMutations.delete(id);
     }
-  }, [isOnline, isUsingCachedData, isDataStale, showError]);
+  }, [id, isOnline, isUsingCachedData, isDataStale, showError]);
 
   const status = contractData?.status || 'Active';
 

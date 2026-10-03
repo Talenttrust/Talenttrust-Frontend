@@ -59,7 +59,7 @@ async function resolveContractDataOnce(
   }
 
   if (simulateError) {
-    throw new Error(`Failed to load contract #${id}. Please try again.`);
+    throw new Error('Failed to load contract. Please try again.');
   }
 
   // Mock data for the given contract ID

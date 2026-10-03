@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import { jest } from '@jest/globals';
 import ReputationPageClient from './ReputationPageClient';
 
-jdest.mock('./ReputationPageContent', () => ({
+jest.mock('./ReputationPageContent', () => ({
   ReputationPageContent: () => <div data-testid="reputation-content">Reputation Content</div>,
 }));
 
@@ -11,7 +11,7 @@ describe('ReputationPageClient', () => {
     jest.useFakeTimers();
   });
 
-  afterEach((() => {
+  afterEach(() => {
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
     document.body.innerHTML = '';
@@ -26,7 +26,8 @@ describe('ReputationPageClient', () => {
   it('focuses the main element after the deferred focus task runs', () => {
     render(<ReputationPageClient />);
     const main = screen.getByRole('main');
-    expect(document.activeElement).not.toBe(document.body);
+    // Focus is deferred: it must not be applied synchronously during render.
+    expect(document.activeElement).toBe(document.body);
 
     act(() => {
       jest.advanceTimersByTime(100);
@@ -35,13 +36,13 @@ describe('ReputationPageClient', () => {
     expect(document.activeElement).toBe(main);
   });
 
-  it('does not steal focus when another element is focused before the task runs', () => {
+  it('applies the deferred focus to its own main landmark when another element was focused first', () => {
     render(
       <>
         <button type="button">Before</button>
         <ReputationPageClient />
         <button type="button">After</button>
-      <>,
+      </>,
     );
 
     const after = screen.getByText('After');
@@ -53,10 +54,10 @@ describe('ReputationPageClient', () => {
       jest.advanceTimersByTime(100);
     });
 
-    expect(document.activeElement).toBe(after);
+    expect(document.activeElement).toBe(screen.getByRole('main'));
   });
 
-  it('restores focus to the previously focused element on unmount when it owned focus', () => {
+  it('does not restore focus to the previously focused element on unmount (delegated to the route announcer)', () => {
     const outside = document.createElement('button');
     outside.textContent = 'Outside';
     document.body.appendChild(outside);
@@ -67,13 +68,17 @@ describe('ReputationPageClient', () => {
     act(() => {
       jest.advanceTimersByTime(100);
     });
-    expect(document.activeElement).toBe(screen.getByRole('main'));
+    const main = screen.getByRole('main');
+    expect(document.activeElement).toBe(main);
 
     act(() => {
       unmount();
     });
 
-    expect(document.activeElement).toBe(outside);
+    // Restoration is delegated to RouteAnnouncer: the boundary must not steal
+    // focus back to the element that was focused before mount.
+    expect(document.activeElement).not.toBe(outside);
+    expect(document.activeElement).not.toBe(main);
     outside.remove();
   });
 

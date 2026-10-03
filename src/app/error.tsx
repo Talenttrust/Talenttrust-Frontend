@@ -132,39 +132,31 @@ export default function GlobalError({ error, reset }: ErrorProps) {
     }
   };
 
-  const handleReset = useCallback(() => {
-    if (isResetting) {
-      return;
-    }
-
-    if (typeof reset !== 'function') {
-      reportError(
-        new TypeError('Error boundary reset handler is not a function'),
-        'Error Boundary'
-      );
+  /**
+   * Hard recovery path: present once `MAX_RETRIES` is exhausted.
+   *
+   * Deliberately does *not* call `reset()` — the cap exists to stop infinite
+   * retry loops. jsdom does not implement navigation, so the call is guarded
+   * so tests can assert the control is present and clickable without throwing.
+   */
+  const handleReload = () => {
+    if (typeof window === 'undefined' || typeof window.location?.reload !== 'function') {
       return;
     }
 
     try {
-      setIsResetting(true);
-      const result: unknown = reset();
-
-      if (typeof (result as Promise<unknown>)?.then === 'function') {
-        (result as Promise<unknown>)
-          .catch((err) => {
-            reportError(err, 'Error Boundary Reset');
-          })
-          .finally(() => {
-            setIsResetting(false);
-          });
-      } else {
-        setIsResetting(false);
-      }
-    } catch (err) {
-      setIsResetting(false);
-      reportError(err, 'Error Boundary Reset');
+      window.location.reload();
+    } catch {
+      /* no-op: environments without navigation support (e.g. jsdom) */
     }
-  }, [reset, isResetting]);
+  };
+
+  /**
+   * Retry cap reached: the "Try Again" control is replaced by the hard
+   * reload path. Derived on every render so it always reflects the latest
+   * `retryCount` (including increments that happen inside `handleRetry`).
+   */
+  const retriesExhausted = retryCount >= MAX_RETRIES;
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-[var(--background)]">
@@ -202,8 +194,28 @@ export default function GlobalError({ error, reset }: ErrorProps) {
             role="alert"
             className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
           >
-            {isResetting ? 'Retrying...' : 'Try Again'}
-          </button>
+            {resetError}
+          </p>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          {retriesExhausted ? (
+            <button
+              type="button"
+              onClick={handleReload}
+              className="px-5 py-2 rounded-lg bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+            >
+              Reload Page
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="px-5 py-2 rounded-lg bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+            >
+              Try Again
+            </button>
+          )}
           <Link
             href="/"
             className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-colors"
@@ -234,8 +246,3 @@ export default function GlobalError({ error, reset }: ErrorProps) {
     </main>
   );
 }
-
-// Preserve backwards compatibility for callers expecting `GlobalError` or `ErrorPage`
-export const GlobalError = ErrorBoundary;
-export const ErrorPage = ErrorBoundary;
-export default ErrorBoundary;

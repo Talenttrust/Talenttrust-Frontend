@@ -44,7 +44,7 @@ describe("src/app/manifest.ts", () => {
   it("declares a theme_color as a hex color", () => {
     const match = source.match(/theme_color:\s*['\"]([^'\"]+)['\"]/);
     expect(match).toBeTruthy();
-    expect(match![1]).toMatch(/^#[0-9A-Fa-f]{6­6}$|^#[0-9A-Fa-f]{3}$/);
+    expect(match![1]).toMatch(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$/);
   });
 
   it("does not contain placeholder or unresolved template literals", () => {

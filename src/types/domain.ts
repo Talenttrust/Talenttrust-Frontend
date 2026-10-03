@@ -18,6 +18,28 @@ export type {
   ReputationProfileProps,
 };
 
+/**
+ * Canonical workflow status of a milestone.
+ *
+ * Narrowed from {@link StatusType} so contract-only states (`Active`,
+ * `Archived`) cannot leak into the milestone state machine. Expressed as an
+ * `Extract` so it stays in lockstep with the source union — if a milestone
+ * status is ever added to `Milestone`, this type tracks it automatically.
+ */
+export type MilestoneStatus = Extract<
+  Milestone['status'],
+  'Pending' | 'Completed' | 'Paid' | 'Disputed'
+>;
+
+/**
+ * Canonical lifecycle status of a contract.
+ *
+ * Deliberately narrower than {@link StatusType}: it is exactly the set of
+ * states the contract status machine knows how to transition between, so it
+ * stays in lockstep with `CONTRACT_STATUS_TRANSITIONS` in `@/lib/contracts`.
+ */
+export type ContractStatus = 'Active' | 'Complete' | 'Dispute';
+
 /** Canonical contract shape aligned with ContractSummary props. */
 export type Contract = ContractSummaryProps & { id: string };
 

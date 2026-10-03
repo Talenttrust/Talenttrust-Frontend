@@ -4,6 +4,12 @@ import { usePathname, useRouter } from 'next/navigation';
 import NotFound from './not-found';
 import { setErrorReporter } from '@/lib/errorReporter';
 import { MAX_DISPLAY_PATH_LENGTH } from '@/lib/notFoundRecovery';
+import {
+  DEFAULT_NOT_FOUND_QUICK_LINKS,
+  getNotFoundQuickLinks,
+  NOT_FOUND_HOME_HREF,
+  NOT_FOUND_SUPPORT_HREF,
+} from '@/lib/notFoundContent';
 
 jest.mock('next/navigation', () => ({
   usePathname: jest.fn(),

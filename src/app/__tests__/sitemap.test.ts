@@ -46,6 +46,9 @@ const expectOnlyAbsoluteHttpUrls = (result: MetadataRoute.Sitemap) => {
 
 const originalEnv = process.env;
 
+/** Warnings captured from the injected reporter for the current test. */
+let warnings: string[] = [];
+
 beforeEach(() => {
   process.env = { ...originalEnv };
   delete process.env.NEXT_PUBLIC_SITE_URL;

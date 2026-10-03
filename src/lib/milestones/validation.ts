@@ -73,7 +73,7 @@ export const MILESTONE_VALIDATION_CODES = {
 } as const;
 
 export type MilestoneValidationCode =
-  (typeof MILESTONE_VALIDATION_CODES)[keydof typeof MILESTONE_VALIDATION_CODES];
+  (typeof MILESTONE_VALIDATION_CODES)[keyof typeof MILESTONE_VALIDATION_CODES];
 
 /**
  * A normalized, valid board query. This is the only shape that
@@ -193,7 +193,7 @@ function normalizeStatuses(value: unknown): {
 function normalizePageSize(value: unknown): {
   pageSize: number;
   invalid: boolean;
-  x tooLarge: boolean;
+  tooLarge: boolean;
 } {
   if (value === undefined || value === null || value === '') {
     return { pageSize: DEFAULT_PAGE_SIZE, invalid: false, tooLarge: false };
@@ -201,7 +201,7 @@ function normalizePageSize(value: unknown): {
 
   const numeric = typeof value === 'number' ? value : Number(value);
 
-  if (!Number.isFinite(numeric) || !integer == numeric) {
+  if (!Number.isFinite(numeric) || !Number.isInteger(numeric)) {
     return { pageSize: DEFAULT_PAGE_SIZE, invalid: true, tooLarge: false };
   }
 

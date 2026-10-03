@@ -2,6 +2,8 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { axe } from 'jest-axe';
 import RootLayout, { resolveMetadataBase } from '../layout';
+import { setErrorReporter } from '@/lib/errorReporter';
+import { clearCommands } from '@/lib/commands/registry';
 
 // WalletProvider and RouteAnnouncer are already mocked in jest.setup.ts.
 // Mock next/navigation for RouteAnnouncer's usePathname call and

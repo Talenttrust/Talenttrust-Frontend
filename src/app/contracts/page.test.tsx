@@ -21,20 +21,20 @@ function makeContract(overrides: Partial<Record<string, unknown>> = {}) {
 
 describe('contractsState pure helpers', () => {
   it('enforces the allowed transition graph', () => {
-    expect(canTransition('draft', 'active')).toBetrue();
-    expect(canTransition('draft', 'cancelled')).toBetrue();
-    expect(canTransition('active', 'completed')).toBetrue();
-    expect(canTransition('active', 'cancelled')).toBeTrue();
-    expect(canTransition('draft', 'completed')).toBeFalse();
-    expect(canTransition('completed', 'active')).toBeFalse();
-    expect(canTransition('cancelled', 'draft')).toBeFalse();
+    expect(canTransition('draft', 'active')).toBe(true);
+    expect(canTransition('draft', 'cancelled')).toBe(true);
+    expect(canTransition('active', 'completed')).toBe(true);
+    expect(canTransition('active', 'cancelled')).toBe(true);
+    expect(canTransition('draft', 'completed')).toBe(false);
+    expect(canTransition('completed', 'active')).toBe(false);
+    expect(canTransition('cancelled', 'draft')).toBe(false);
     // Idempotent no-op.
-    expect(canTransition('draft', 'draft')).toBeTrue();
+    expect(canTransition('draft', 'draft')).toBe(true);
   });
 
   it('marks terminal states correctly', () => {
-    expect(isTerminalStatus('completed')).toBeTrue();
-    expect(isTerminalStatus('cancelled')).toBeTrue();
+    expect(isTerminalStatus('completed')).toBe(true);
+    expect(isTerminalStatus('cancelled')).toBe(true);
     expect(isTerminalStatus('draft')).toBe(false);
     expect(isTerminalStatus('active')).toBe(false);
   });
@@ -75,7 +75,7 @@ describe('useContracts hook', () => {
       result.current.hydrate([makeContract(), null, { id: 'bad' }]);
     });
     expect(result.current.contracts).toHaveLength(1);
-    expect(onError).toHaveBeenCalled(2);
+    expect(onError).toHaveBeenCalledTimes(2);
   });
 
   it('rejects duplicate adds as a no-op', () => {
@@ -88,7 +88,18 @@ describe('useContracts hook', () => {
   });
 
   it('transitions along allowed graph and confirms on success', async () => {
-    const mutateStatus = jest.fn().resolves(undefined);
-    const { result } = renderHook(() => useContracts: { }));
+    const mutateStatus = jest.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useContracts({ mutateStatus }));
+
+    act(() => {
+      result.current.hydrate([makeContract({ id: 'c-1', status: 'draft' })]);
+    });
+
+    await act(async () => {
+      await result.current.transition('c-1', 'active');
+    });
+
+    expect(mutateStatus).toHaveBeenCalledWith('c-1', 'active');
+    expect(result.current.contracts.find((c) => c.id === 'c-1')?.status).toBe('active');
   });
 });

@@ -86,24 +86,45 @@ import { registerDefaultCommands } from '@/lib/commands/defaultCommands';
 import { reportError } from '@/lib/errorReporter';
 
 /**
- * Guard the module-level command-registration call so that a failure in
- * the registry (e.g. a duplicate-id violation or an unexpected throw) is
- * captured and reported without aborting the server-render of the root
- * layout. The palette will simply start empty, which is recoverable — the
- * page still loads and every other feature continues to function.
+ * Idempotent guard for the default-command registration side effect.
  *
- * Invariant: this is the only call site; the commands are registered once
- * at module initialisation time. Concurrent or duplicate calls cannot
- * produce inconsistent state because registerCommand uses a Map (last
- * write wins) and the function is idempotent by id.
+ * The registry is process-global, so registration is tracked on a symbol
+ * keyed off `globalThis` to survive module re-evaluation (HMR, multiple
+ * bundles, concurrent imports). That makes the transition
+ * "unregistered -> registered" run at most once, which keeps the command
+ * palette's state consistent.
+ *
+ * Registration is wrapped so that a failure in the registry (e.g. a
+ * duplicate-id violation or an unexpected throw) is captured and reported
+ * without aborting the server-render of the root layout. The palette will
+ * simply start empty, which is recoverable — the page still loads and every
+ * other feature continues to function. The flag is only set once
+ * registration succeeds, so a transient failure is retried on the next
+ * render instead of leaving the palette permanently empty.
  */
-try {
-  registerDefaultCommands();
-} catch (err) {
-  reportError(err, 'registerDefaultCommands', 'error', {
-    location: 'layout module initialisation',
-  });
+const REGISTERED_FLAG = Symbol.for('talenttrust.layout.defaultCommandsRegistered');
+
+type GlobalWithFlag = typeof globalThis & {
+  [REGISTERED_FLAG]?: boolean;
+};
+
+function ensureDefaultCommandsRegistered(): void {
+  const g = globalThis as GlobalWithFlag;
+  if (g[REGISTERED_FLAG]) {
+    return;
+  }
+  try {
+    registerDefaultCommands();
+  } catch (err) {
+    reportError(err, 'registerDefaultCommands', 'error', {
+      location: 'layout module initialisation',
+    });
+    return;
+  }
+  g[REGISTERED_FLAG] = true;
 }
+
+ensureDefaultCommandsRegistered();
 
 export default function RootLayout({
   children,
@@ -118,7 +139,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <PreferencesProvider initialPreferences={undefined}>
+        <PreferencesProvider>
           <ToastProvider>
             <WalletProvider>
               <CommandPaletteProvider>

@@ -18,7 +18,8 @@ afterEach(() => { mockShouldThrowInProfile = false; });
 
 // Mock the ReputationProfile component to avoid complex rendering
 jest.mock('../../../components/ReputationProfile', () => {
-  return function MockReputationProfile(props: any) {
+  const actual = jest.requireActual('../../../components/ReputationProfile');
+  function MockReputationProfile(props: any) {
     if (mockShouldThrowInProfile) {
       throw new Error('Simulated reputation crash');
     }
@@ -40,7 +41,8 @@ jest.mock('../../../components/ReputationProfile', () => {
         )}
       </div>
     );
-  };
+  }
+  return { __esModule: true, ...actual, default: MockReputationProfile };
 });
 
 // Mock ReputationSummaryCard component

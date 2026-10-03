@@ -42,14 +42,13 @@ describe('ContractProgressSkeleton', () => {
       expect(region).not.toHaveAttribute('aria-labelledby');
     });
 
-    it('falls back to aria-label when the aria-labelledby target is absent', () => {
-      // INV-2: while loading the referenced id does not exist in the DOM, so the
-      // accessible name must fall back to aria-label (accname spec). This keeps
-      // the region name stable and non-empty across the loading → loaded swap.
+    it('falls back to aria-label while the live heading is absent', () => {
+      // The skeleton is rendered before `ContractProgress`, so the heading the
+      // accessible name would otherwise reference does not exist yet. The
+      // region must therefore carry a stable, non-empty aria-label.
       render(<ContractProgressSkeleton />);
       const region = screen.getByRole('region', { name: /loading escrow progress/i });
-      // If accname did not fall back, getByRole(name=...) would throw above.
-      expect(region.getAttribute('aria-labelledby')).toBe('contract-progress-title');
+      expect(region).not.toHaveAttribute('aria-labelledby');
       expect(region.getAttribute('aria-label')).toBe('Loading escrow progress');
     });
   });

@@ -132,10 +132,14 @@ export function ReputationPageContent({
   userName = 'User',
   children = null,
 }: ReputationPageContentProps) {
-  const score = reputationData?.score;
+  // Validate and normalize the untrusted input once; every value rendered below
+  // is read from the validated result only.
+  const normalized = normalizeReputationPageInput(reputationData, userName);
+  const safeReputationData = normalized.reputationData;
+  const score = safeReputationData?.score;
   const hasReputation =
     typeof score === 'number' && Number.isFinite(score) && score >= 0;
-  const suppliedMaxScore = reputationData?.maxScore;
+  const suppliedMaxScore = safeReputationData?.maxScore;
   const maxScore =
     typeof suppliedMaxScore === 'number' &&
     Number.isFinite(suppliedMaxScore) &&
@@ -163,17 +167,17 @@ export function ReputationPageContent({
             name={normalized.userName}
             score={score}
             maxScore={maxScore}
-            level={reputationData.level}
-            history={reputationData.history}
+            level={safeReputationData.level}
+            history={safeReputationData.history}
           />
           <Suspense fallback={null}>
             <ReputationProfile
               name={normalized.userName}
               score={score}
               maxScore={maxScore}
-              level={reputationData.level}
-              history={reputationData.history}
-              lastUpdated={reputationData.lastUpdated}
+              level={safeReputationData.level}
+              history={safeReputationData.history}
+              lastUpdated={safeReputationData.lastUpdated}
             />
           </Suspense>
         </main>
