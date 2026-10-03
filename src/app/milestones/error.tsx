@@ -3,9 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useMilestonesRouteError } from '@/hooks/useMilestonesRouteError';
+import { ensureValidError, getErrorIdentity } from '@/lib/milestonesErrorUtils';
+import { reportError } from '@/lib/errorReporter';
+import { MILESTONES_RESET_FAILURE_NOTICE } from '@/hooks/useMilestonesRouteError';
+import { MILESTONES_ROUTE_ERROR_CODE } from '@/lib/milestonesRouteError';
 
 type MilestonesErrorProps = {
-  error: Error & { digest?: string };
+  error: unknown;
   reset: () => void;
 };
 
@@ -25,31 +29,36 @@ type MilestonesErrorProps = {
  *    exposed for correlation with server logs.
  */
 
-function getErrorIdentity(error: Error & { digest?: string }): string {
-  if (typeof error.digest === 'string' && error.digest.length > 0) {
-    return `digest:${error.digest}`;
-  }
-
-  // Fall back to a stable identity derived from the error object itself
-  // so re-renders of the same instance do not re-report.
-  return 'object:' + (error.name || 'Error') + ':' + (error.message || '');
-}
-
 export default function MilestonesError({ error, reset }: MilestonesErrorProps) {
   const [isRetrying, setIsRetrying] = useState(false);
+  const [resetFailed, setResetFailed] = useState(false);
   const reportedError = useRef<Error | null>(null);
+  const retryInFlightRef = useRef<boolean>(false);
+  const retryCountRef = useRef<number>(0);
 
   useEffect(() => {
-    if (reportedError.current === error) return;
-    reportedError.current = error;
+    const validError = ensureValidError(error);
+    const errorId = getErrorIdentity(validError);
+    if (reportedError.current === errorId) return;
+    reportedError.current = errorId;
     setIsRetrying(false);
-    reportError(error, 'Milestones page');
+    setResetFailed(false);
+    reportError(validError, 'Milestones page', 'error', {
+      code: MILESTONES_ROUTE_ERROR_CODE,
+      name: 'Error',
+    });
   }, [error]);
 
   const handleRetry = () => {
-    if (isRetrying) return;
+    if (retryInFlightRef.current) return;
+    retryInFlightRef.current = true;
     setIsRetrying(true);
-    reset();
+    try {
+      reset();
+    } catch (e) {
+      setResetFailed(true);
+      setIsRetrying(false);
+    }
   };
 
   return (
@@ -61,7 +70,11 @@ export default function MilestonesError({ error, reset }: MilestonesErrorProps) 
         <p className="mt-3 text-slate-600">
           Please try again. Contact support if the problem continues.
         </p>
-        {retryCountRef.current > 0 ? (
+        {resetFailed ? (
+          <p className="mt-2 text-sm text-slate-500" role="status">
+            {MILESTONES_RESET_FAILURE_NOTICE}
+          </p>
+        ) : retryCountRef.current > 0 ? (
           <p className="mt-2 text-sm text-slate-500" role="status">
             Retry attempts: {retryCountRef.current}
           </p>
@@ -71,6 +84,7 @@ export default function MilestonesError({ error, reset }: MilestonesErrorProps) 
             type="button"
             onClick={handleRetry}
             disabled={isRetrying}
+            aria-disabled={isRetrying}
             aria-describedby="milestones-retry-status"
             className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
