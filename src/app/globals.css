@@ -167,13 +167,29 @@ tr:last-child td { border-bottom: 0; }
 .muted { color: var(--muted); }
 .small { font-size: 0.87rem; }
 .stack { display: grid; gap: 14px; }
+.contract-status { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 28px; min-width: 190px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+.contract-status-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.contract-status-operational { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); border-color: transparent; }
+.contract-status-paused { color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); border-color: transparent; }
+.contract-status-loading, .contract-status-unknown { color: var(--muted); }
+.contract-status-retry { border: 0; background: none; color: var(--brand); font: inherit; font-weight: 700; padding: 0 2px; cursor: pointer; text-decoration: underline; }
+.contract-status-retry:focus-visible { outline: 2px solid color-mix(in srgb, var(--brand) 55%, transparent); outline-offset: 2px; border-radius: 4px; }
+
+/* Contract pause banner */
+.paused-banner { background: color-mix(in srgb, var(--warn) 13%, var(--surface)); border-bottom: 1px solid color-mix(in srgb, var(--warn) 38%, var(--border)); }
+.paused-banner-inner { display: flex; align-items: center; gap: 4px 12px; padding: 10px 20px; flex-wrap: wrap; }
+.paused-banner-inner p { flex: 1 1 320px; margin: 0; font-size: 0.92rem; color: var(--text); }
+.paused-banner-inner a { font-weight: 600; white-space: nowrap; }
+.paused-banner-icon { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--warn); color: #fff; font-weight: 800; font-size: 0.85rem; }
+
 .milestones { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 6px; }
 .milestones li { display: flex; justify-content: space-between; gap: 10px; font-size: 0.92rem; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Footer */
 .footer { border-top: 1px solid var(--border); padding: 36px 0; color: var(--muted); font-size: 0.92rem; }
-.footer-inner { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.footer-inner { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+.footer-brand { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; min-width: 0; }
 .footer-links { display: flex; gap: 18px; flex-wrap: wrap; }
 .footer a { color: var(--muted); }
 .footer a:hover { color: var(--text); }

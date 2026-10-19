@@ -2,10 +2,14 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, EscrowContract } from '@/lib/api';
+import { useContractStatus } from '@/components/ContractStatusProvider';
+import { assertNotPaused } from '@/lib/stellar/status';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
 export function EscrowDashboard() {
+  const { status } = useContractStatus();
+  const paused = status === 'paused';
   const [contracts, setContracts] = useState<EscrowContract[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | 'new' | null>(null);
@@ -32,6 +36,13 @@ export function EscrowDashboard() {
   }, [load]);
 
   const act = async (id: number | 'new', fn: () => Promise<unknown>) => {
+    try {
+      assertNotPaused({ status });
+    } catch (e) {
+      setError((e as Error).message);
+      return;
+    }
+
     setBusy(id);
     setError(null);
     try {
@@ -83,7 +94,7 @@ export function EscrowDashboard() {
           <input id="milestones" className="input" value={form.milestones} onChange={(e) => setForm({ ...form, milestones: e.target.value })} required />
           <span className="small muted">Comma separated, as Title: amount</span>
         </div>
-        <button className="btn btn-primary" type="submit" disabled={busy === 'new'}>
+        <button className="btn btn-primary" type="submit" disabled={paused || busy === 'new'}>
           {busy === 'new' ? 'Creating...' : 'Create escrow'}
         </button>
       </form>
@@ -135,7 +146,7 @@ export function EscrowDashboard() {
                 {active && c.fundedAmount < c.totalAmount && (
                   <button
                     className="btn btn-primary btn-sm"
-                    disabled={busy === c.id}
+                    disabled={paused || busy === c.id}
                     onClick={() =>
                       act(c.id, () =>
                         api(`/api/v1/contracts/${c.id}/deposit`, { method: 'POST', body: { amount: c.totalAmount - c.fundedAmount } }),
@@ -148,7 +159,7 @@ export function EscrowDashboard() {
                 {active && next && c.fundedAmount - c.releasedAmount >= next.amount && (
                   <button
                     className="btn btn-primary btn-sm"
-                    disabled={busy === c.id}
+                    disabled={paused || busy === c.id}
                     onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/milestones/${next.index}/release`, { method: 'POST' }))}
                   >
                     Release next
@@ -158,7 +169,7 @@ export function EscrowDashboard() {
                   <>
                     <button
                       className="btn btn-secondary btn-sm"
-                      disabled={busy === c.id}
+                      disabled={paused || busy === c.id}
                       onClick={() =>
                         act(c.id, () =>
                           api(`/api/v1/contracts/${c.id}/dispute`, { method: 'POST', body: { raisedBy: c.client, reason: 'Raised from dashboard' } }),
@@ -169,7 +180,7 @@ export function EscrowDashboard() {
                     </button>
                     <button
                       className="btn btn-secondary btn-sm"
-                      disabled={busy === c.id}
+                      disabled={paused || busy === c.id}
                       onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/cancel`, { method: 'POST' }))}
                     >
                       Cancel
@@ -179,7 +190,7 @@ export function EscrowDashboard() {
                 {c.status === 'Disputed' && (
                   <button
                     className="btn btn-primary btn-sm"
-                    disabled={busy === c.id}
+                    disabled={paused || busy === c.id}
                     onClick={() =>
                       act(c.id, () => api(`/api/v1/contracts/${c.id}/resolve`, { method: 'POST', body: { freelancerBps: 5000 } }))
                     }
@@ -194,7 +205,7 @@ export function EscrowDashboard() {
                       <button
                         key={r}
                         className="btn btn-secondary btn-sm"
-                        disabled={busy === c.id}
+                        disabled={paused || busy === c.id}
                         onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/reputation`, { method: 'POST', body: { rating: r } }))}
                       >
                         {r}
