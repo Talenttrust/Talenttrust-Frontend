@@ -1,7 +1,9 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { api, EscrowContract } from '@/lib/api';
+import { normalizeAddress } from '@/lib/stellar/address';
+import { AddressInput, type AddressInputHandle } from '@/components/forms/AddressInput';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
@@ -9,10 +11,13 @@ export function EscrowDashboard() {
   const [contracts, setContracts] = useState<EscrowContract[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | 'new' | null>(null);
+  const [crossFieldError, setCrossFieldError] = useState<string | null>(null);
+  const clientRef = useRef<AddressInputHandle>(null);
+  const freelancerRef = useRef<AddressInputHandle>(null);
   const [form, setForm] = useState({
     title: 'Website redesign',
-    client: 'GCLIENT' + 'X'.repeat(49),
-    freelancer: 'GFREELANCER' + 'Y'.repeat(45),
+    client: '',
+    freelancer: '',
     milestones: 'Design: 300, Build: 700',
   });
 
@@ -46,6 +51,27 @@ export function EscrowDashboard() {
 
   const create = (e: FormEvent) => {
     e.preventDefault();
+    setCrossFieldError(null);
+
+    const clientOk = clientRef.current?.validate() ?? false;
+    const freelancerOk = freelancerRef.current?.validate() ?? false;
+    if (!clientOk) {
+      clientRef.current?.focus();
+      return;
+    }
+    if (!freelancerOk) {
+      freelancerRef.current?.focus();
+      return;
+    }
+
+    const client = normalizeAddress(form.client);
+    const freelancer = normalizeAddress(form.freelancer);
+    if (client === freelancer) {
+      setCrossFieldError('Client and freelancer must be different addresses.');
+      freelancerRef.current?.focus();
+      return;
+    }
+
     const milestones = form.milestones
       .split(',')
       .map((part) => part.trim())
@@ -57,7 +83,7 @@ export function EscrowDashboard() {
     act('new', () =>
       api('/api/v1/contracts', {
         method: 'POST',
-        body: { title: form.title, client: form.client, freelancer: form.freelancer, milestones },
+        body: { title: form.title, client, freelancer, milestones },
       }),
     );
   };
@@ -70,14 +96,28 @@ export function EscrowDashboard() {
           <label htmlFor="title">Title</label>
           <input id="title" className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
         </div>
-        <div className="field">
-          <label htmlFor="client">Client address</label>
-          <input id="client" className="input mono" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} required />
-        </div>
-        <div className="field">
-          <label htmlFor="freelancer">Freelancer address</label>
-          <input id="freelancer" className="input mono" value={form.freelancer} onChange={(e) => setForm({ ...form, freelancer: e.target.value })} required />
-        </div>
+        <AddressInput
+          ref={clientRef}
+          id="client"
+          label="Client address"
+          value={form.client}
+          onChange={(client) => setForm((current) => ({ ...current, client }))}
+          placeholder="G... Stellar account address"
+          description="56 characters, starting with G. Checksum is verified before submitting."
+        />
+        <AddressInput
+          ref={freelancerRef}
+          id="freelancer"
+          label="Freelancer address"
+          value={form.freelancer}
+          onChange={(freelancer) => {
+            setCrossFieldError(null);
+            setForm((current) => ({ ...current, freelancer }));
+          }}
+          placeholder="G... Stellar account address"
+          description="Must be a different account from the client."
+          error={crossFieldError}
+        />
         <div className="field">
           <label htmlFor="milestones">Milestones</label>
           <input id="milestones" className="input" value={form.milestones} onChange={(e) => setForm({ ...form, milestones: e.target.value })} required />
