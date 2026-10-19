@@ -80,7 +80,23 @@ h1, h2, h3 { line-height: 1.2; letter-spacing: -0.02em; }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 .btn-primary { background: var(--brand); color: var(--brand-ink); }
 .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+.btn-danger { background: var(--bad); color: #ffffff; }
+.btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .btn-sm { padding: 7px 12px; font-size: 0.85rem; border-radius: 8px; }
+
+/* Confirm dialog */
+.confirm { border: 0; padding: 0; margin: auto; width: min(460px, calc(100vw - 32px)); max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: auto; background: var(--surface); color: var(--text); border-radius: var(--radius); box-shadow: var(--shadow); }
+.confirm::backdrop { background: color-mix(in srgb, var(--bg) 65%, #000); }
+.confirm-body { padding: 24px; display: grid; gap: 14px; }
+.confirm-title { margin: 0; font-size: 1.15rem; }
+.confirm-description { color: var(--muted); font-size: 0.95rem; }
+.confirm-description strong { color: var(--text); }
+.confirm-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+@media (max-width: 420px) {
+  .confirm-body { padding: 18px; }
+  .confirm-actions { flex-direction: column-reverse; }
+  .confirm-actions .btn { width: 100%; }
+}
 
 /* Hero */
 .hero { position: relative; overflow: hidden; padding: 88px 0 72px; }
