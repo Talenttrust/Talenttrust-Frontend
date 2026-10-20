@@ -35,6 +35,10 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+button:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
 body {
   background: var(--bg);
   color: var(--text);
@@ -167,6 +171,27 @@ tr:last-child td { border-bottom: 0; }
 .muted { color: var(--muted); }
 .small { font-size: 0.87rem; }
 .stack { display: grid; gap: 14px; }
+.resolve-form { display: grid; gap: 14px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); min-width: 0; }
+.resolve-form h4 { margin: 0; }
+.resolve-share { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; }
+.resolve-share > label { font-weight: 600; }
+.resolve-number { display: flex; align-items: center; gap: 8px; }
+.resolve-number .input { width: 110px; }
+.resolve-slider { grid-column: 1 / -1; width: 100%; accent-color: var(--brand); }
+.resolve-share > .small { grid-column: 1 / -1; }
+.resolve-presets .btn { min-width: 56px; }
+.resolve-preview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.resolve-preview > div { min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.resolve-preview dt { color: var(--muted); font-size: 0.87rem; }
+.resolve-preview dd { margin: 4px 0 0; font-weight: 700; overflow-wrap: anywhere; }
+.resolve-confirm { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; }
+.resolve-confirm p { margin: 0; }
+.resolve-waiting { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 14px 0 0; }
+@media (max-width: 420px) {
+  .resolve-preview { grid-template-columns: 1fr; }
+  .resolve-presets { gap: 6px; }
+  .resolve-presets .btn { flex: 1 1 48px; padding-inline: 8px; }
+}
 .milestones { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 6px; }
 .milestones li { display: flex; justify-content: space-between; gap: 10px; font-size: 0.92rem; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

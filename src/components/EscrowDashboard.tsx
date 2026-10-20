@@ -2,6 +2,8 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, EscrowContract } from '@/lib/api';
+import { ResolveDisputeForm } from '@/components/disputes/ResolveDisputeForm';
+import { useIsArbiter } from '@/lib/stellar/useIsArbiter';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
@@ -9,6 +11,7 @@ export function EscrowDashboard() {
   const [contracts, setContracts] = useState<EscrowContract[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | 'new' | null>(null);
+  const isArbiter = useIsArbiter();
   const [form, setForm] = useState({
     title: 'Website redesign',
     client: 'GCLIENT' + 'X'.repeat(49),
@@ -100,6 +103,8 @@ export function EscrowDashboard() {
           const next = c.milestones.find((m) => !m.released);
           const active = c.status === 'Created' || c.status === 'Funded';
           const pct = c.totalAmount ? Math.round((c.releasedAmount / c.totalAmount) * 100) : 0;
+          const disputeOpenedAt = c.disputeOpenedAt || c.disputedAt;
+          const validDisputeDate = disputeOpenedAt && !Number.isNaN(Date.parse(disputeOpenedAt));
           return (
             <article className="card" key={c.id}>
               <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -176,17 +181,6 @@ export function EscrowDashboard() {
                     </button>
                   </>
                 )}
-                {c.status === 'Disputed' && (
-                  <button
-                    className="btn btn-primary btn-sm"
-                    disabled={busy === c.id}
-                    onClick={() =>
-                      act(c.id, () => api(`/api/v1/contracts/${c.id}/resolve`, { method: 'POST', body: { freelancerBps: 5000 } }))
-                    }
-                  >
-                    Resolve 50/50
-                  </button>
-                )}
                 {c.status === 'Completed' && !c.reputationIssued && (
                   <>
                     <span className="small muted">Rate freelancer:</span>
@@ -204,6 +198,39 @@ export function EscrowDashboard() {
                 )}
                 {c.status === 'Completed' && c.reputationIssued && <span className="small muted">Rated. Thanks!</span>}
               </div>
+              {c.status === 'Disputed' && (
+                isArbiter === true ? (
+                  <ResolveDisputeForm
+                    id={c.id}
+                    held={c.fundedAmount - c.releasedAmount}
+                    token={c.token}
+                    busy={busy === c.id}
+                    onResolve={async (freelancerBps) => {
+                      setBusy(c.id);
+                      try {
+                        await api(`/api/v1/contracts/${c.id}/resolve`, {
+                          method: 'POST',
+                          body: { freelancerBps },
+                        });
+                        await load();
+                      } finally {
+                        setBusy(null);
+                      }
+                    }}
+                  />
+                ) : (
+                  <p className="small muted resolve-waiting">
+                    <span className="badge" role="status">
+                      {isArbiter === false ? 'Awaiting arbiter decision' : 'Checking arbiter access'}
+                    </span>
+                    {validDisputeDate && (
+                      <time dateTime={disputeOpenedAt} aria-label="Dispute opened">
+                        Opened {new Date(disputeOpenedAt).toLocaleString()}
+                      </time>
+                    )}
+                  </p>
+                )
+              )}
             </article>
           );
         })}
