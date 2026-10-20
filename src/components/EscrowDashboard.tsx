@@ -1,13 +1,15 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { api, EscrowContract } from '@/lib/api';
+import { api, ApiSchemaError, EscrowContract } from '@/lib/api';
+import { ContractListSchema, EscrowContractSchema } from '@/lib/schemas';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
 export function EscrowDashboard() {
   const [contracts, setContracts] = useState<EscrowContract[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [schemaError, setSchemaError] = useState<ApiSchemaError | null>(null);
   const [busy, setBusy] = useState<number | 'new' | null>(null);
   const [form, setForm] = useState({
     title: 'Website redesign',
@@ -18,11 +20,17 @@ export function EscrowDashboard() {
 
   const load = useCallback(async () => {
     try {
-      const res = await api<{ data: EscrowContract[] }>('/api/v1/contracts');
+      const res = await api('/api/v1/contracts', ContractListSchema);
       setContracts(res.data.sort((a, b) => b.id - a.id));
       setError(null);
+      setSchemaError(null);
     } catch (e) {
-      setError(`Could not reach the API: ${(e as Error).message}`);
+      if (e instanceof ApiSchemaError) {
+        setSchemaError(e);
+        setError(null);
+      } else {
+        setError(`Could not reach the API: ${(e as Error).message}`);
+      }
       setContracts([]);
     }
   }, []);
@@ -34,11 +42,16 @@ export function EscrowDashboard() {
   const act = async (id: number | 'new', fn: () => Promise<unknown>) => {
     setBusy(id);
     setError(null);
+    setSchemaError(null);
     try {
       await fn();
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      if (e instanceof ApiSchemaError) {
+        setSchemaError(e);
+      } else {
+        setError((e as Error).message);
+      }
     } finally {
       setBusy(null);
     }
@@ -55,7 +68,7 @@ export function EscrowDashboard() {
         return { title: title.trim(), amount: Number(amount) };
       });
     act('new', () =>
-      api('/api/v1/contracts', {
+      api('/api/v1/contracts', EscrowContractSchema, {
         method: 'POST',
         body: { title: form.title, client: form.client, freelancer: form.freelancer, milestones },
       }),
@@ -94,8 +107,19 @@ export function EscrowDashboard() {
             {error}
           </div>
         )}
+        {schemaError && (
+          <div className="alert alert-error" role="alert">
+            <p style={{ margin: 0 }}>The API returned data in an unexpected format</p>
+            <details>
+              <summary className="small">Details</summary>
+              <pre className="small mono" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                {schemaError.message}
+              </pre>
+            </details>
+          </div>
+        )}
         {contracts === null && <div className="card muted">Loading escrows...</div>}
-        {contracts?.length === 0 && !error && <div className="card muted">No escrows yet. Create the first one.</div>}
+        {contracts?.length === 0 && !error && !schemaError && <div className="card muted">No escrows yet. Create the first one.</div>}
         {contracts?.map((c) => {
           const next = c.milestones.find((m) => !m.released);
           const active = c.status === 'Created' || c.status === 'Funded';
@@ -138,7 +162,7 @@ export function EscrowDashboard() {
                     disabled={busy === c.id}
                     onClick={() =>
                       act(c.id, () =>
-                        api(`/api/v1/contracts/${c.id}/deposit`, { method: 'POST', body: { amount: c.totalAmount - c.fundedAmount } }),
+                        api(`/api/v1/contracts/${c.id}/deposit`, EscrowContractSchema, { method: 'POST', body: { amount: c.totalAmount - c.fundedAmount } }),
                       )
                     }
                   >
@@ -149,7 +173,7 @@ export function EscrowDashboard() {
                   <button
                     className="btn btn-primary btn-sm"
                     disabled={busy === c.id}
-                    onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/milestones/${next.index}/release`, { method: 'POST' }))}
+                    onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/milestones/${next.index}/release`, EscrowContractSchema, { method: 'POST' }))}
                   >
                     Release next
                   </button>
@@ -161,7 +185,7 @@ export function EscrowDashboard() {
                       disabled={busy === c.id}
                       onClick={() =>
                         act(c.id, () =>
-                          api(`/api/v1/contracts/${c.id}/dispute`, { method: 'POST', body: { raisedBy: c.client, reason: 'Raised from dashboard' } }),
+                          api(`/api/v1/contracts/${c.id}/dispute`, EscrowContractSchema, { method: 'POST', body: { raisedBy: c.client, reason: 'Raised from dashboard' } }),
                         )
                       }
                     >
@@ -170,7 +194,7 @@ export function EscrowDashboard() {
                     <button
                       className="btn btn-secondary btn-sm"
                       disabled={busy === c.id}
-                      onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/cancel`, { method: 'POST' }))}
+                      onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/cancel`, EscrowContractSchema, { method: 'POST' }))}
                     >
                       Cancel
                     </button>
@@ -181,7 +205,7 @@ export function EscrowDashboard() {
                     className="btn btn-primary btn-sm"
                     disabled={busy === c.id}
                     onClick={() =>
-                      act(c.id, () => api(`/api/v1/contracts/${c.id}/resolve`, { method: 'POST', body: { freelancerBps: 5000 } }))
+                      act(c.id, () => api(`/api/v1/contracts/${c.id}/resolve`, EscrowContractSchema, { method: 'POST', body: { freelancerBps: 5000 } }))
                     }
                   >
                     Resolve 50/50
@@ -195,7 +219,7 @@ export function EscrowDashboard() {
                         key={r}
                         className="btn btn-secondary btn-sm"
                         disabled={busy === c.id}
-                        onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/reputation`, { method: 'POST', body: { rating: r } }))}
+                        onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/reputation`, EscrowContractSchema, { method: 'POST', body: { rating: r } }))}
                       >
                         {r}
                       </button>
