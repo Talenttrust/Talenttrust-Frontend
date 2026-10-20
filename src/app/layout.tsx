@@ -52,6 +52,8 @@ import { WalletProvider } from '@/contexts/WalletContext';
 import RouteAnnouncer from '@/components/RouteAnnouncer';
 import Navbar from '@/components/Navbar';
 import HeaderActions from '@/components/HeaderActions';
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
+import OfflineIndicator from '@/components/OfflineIndicator';
 
 export default function RootLayout({
   children,
@@ -79,6 +81,7 @@ export default function RootLayout({
                     <span className="text-xl font-bold tracking-tight text-slate-900">
                       TalentTrust
                     </span>
+                    <OfflineIndicator />
                   </div>
                   <Navbar />
                   <HeaderActions />
@@ -88,6 +91,7 @@ export default function RootLayout({
                 </main>
               </div>
               <SettingsTrigger />
+              <ServiceWorkerRegister />
             </WalletProvider>
           </ToastProvider>
         </PreferencesProvider>

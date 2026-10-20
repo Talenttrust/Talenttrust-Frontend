@@ -74,6 +74,15 @@ const nextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },
+      {
+        // The service worker file must always be fetched fresh so users
+        // receive updates immediately rather than serving a stale SW from
+        // the HTTP cache.
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        ],
+      },
     ];
   },
 };

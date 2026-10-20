@@ -19,12 +19,13 @@ describe('sitemap.ts', () => {
     delete process.env.NEXT_PUBLIC_SITE_URL;
     const result = sitemap();
 
-    expect(result).toHaveLength(4);
+    expect(result).toHaveLength(5);
     expect(result.map(entry => entry.url)).toEqual([
       'http://localhost:3000',
       'http://localhost:3000/contracts',
       'http://localhost:3000/milestones',
       'http://localhost:3000/reputation',
+      'http://localhost:3000/offline',
     ]);
 
     result.forEach(entry => {

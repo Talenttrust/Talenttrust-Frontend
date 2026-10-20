@@ -27,5 +27,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${siteUrl}/reputation`,
       lastModified,
     },
+    {
+      url: `${siteUrl}/offline`,
+      lastModified,
+    },
   ];
 }
