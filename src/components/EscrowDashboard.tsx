@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, EscrowContract } from '@/lib/api';
+import Link from 'next/link';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
@@ -104,12 +105,14 @@ export function EscrowDashboard() {
             <article className="card" key={c.id}>
               <div className="row" style={{ justifyContent: 'space-between' }}>
                 <h3 style={{ margin: 0 }}>
-                  #{c.id} {c.title}
+                  <Link href={`/contracts/${c.id}`} className="card-title-link">
+                    #{c.id} {c.title}
+                  </Link>
                 </h3>
                 <span className={`badge badge-${c.status}`}>{c.status}</span>
               </div>
               <p className="small muted" style={{ margin: '6px 0 12px' }}>
-                Client <span className="mono">{short(c.client)}</span> &rarr; Freelancer{' '}
+                Client <span className="mono">{short(c.client)}</span> &rrr; Freelancer{' '}
                 <span className="mono">{short(c.freelancer)}</span>
               </p>
               <div className="progress" aria-label={`${pct}% released`}>
