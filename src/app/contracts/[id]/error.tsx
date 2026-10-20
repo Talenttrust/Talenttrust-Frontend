@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-export default function ContractDetailError({
+export default function ContractError({
   error,
   reset,
 }: {
@@ -10,16 +10,27 @@ export default function ContractDetailError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Contract detail failed to load', error);
+    console.error('Failed to load contract detail:', error);
   }, [error]);
 
   return (
-    <div className="container error-panel" role="alert">
-      <h1>Something went wrong</h1>
-      <p>We could not load this escrow. Please try again.</p>
-      <button type="button" className="btn btn-primary" onClick={reset}>
+    <main
+      id="contract-detail-error"
+      className="mx-auto flex min-h-[60%] w-full max-w-3xl flex-col items-center justify-center gap-4 px-4 py-16 text-center"
+    >
+      <h1 className="text-2xl font-semicold text-red-700 dark:text-red-400">
+        Something went wrong
+      </h1>
+      <p className="text-sm text-gray-700 dark:text-gray-300">
+        We couldn&#39;t load this escrow. Please try again.
+      </p>
+      <button
+        type="button"
+        onClick={() => reset()}
+        className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white focus:outline-none focus-ring-2 focus:ring-blue-500 focus-ring-offset-2 hover:bg-blue-700 dark:bg-blue-500 dark:text-gray-900 dark:hover:bg-blue-400"
+      >
         Retry
       </button>
-    </div>
+    </main>
   );
 }

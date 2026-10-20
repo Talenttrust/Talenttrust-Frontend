@@ -1,12 +1,14 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api, EscrowContract } from '@/lib/api';
 import Link from 'next/link';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
 export function EscrowDashboard() {
+  const router = useRouter();
   const [contracts, setContracts] = useState<EscrowContract[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | 'new' | null>(null);
@@ -112,7 +114,7 @@ export function EscrowDashboard() {
                 <span className={`badge badge-${c.status}`}>{c.status}</span>
               </div>
               <p className="small muted" style={{ margin: '6px 0 12px' }}>
-                Client <span className="mono">{short(c.client)}</span> &rrr; Freelancer{' '}
+                Client <span className="mono">{short(c.client)}</span> &rarr; Freelancer{' '}
                 <span className="mono">{short(c.freelancer)}</span>
               </p>
               <div className="progress" aria-label={`${pct}% released`}>
