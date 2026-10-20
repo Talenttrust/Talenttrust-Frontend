@@ -1,7 +1,8 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { api, Reputation } from '@/lib/api';
+import { api, ApiSchemaError, Reputation } from '@/lib/api';
+import { ReputationSchema } from '@/lib/schemas';
 
 export function ReputationLookup() {
   const [address, setAddress] = useState('GFREELANCERDEMOBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB');
@@ -14,9 +15,13 @@ export function ReputationLookup() {
     setLoading(true);
     setError(null);
     try {
-      setResult(await api<Reputation>(`/api/v1/reputation/${encodeURIComponent(address.trim())}`));
+      setResult(await api(`/api/v1/reputation/${encodeURIComponent(address.trim())}`, ReputationSchema));
     } catch (err) {
-      setError((err as Error).message);
+      if (err instanceof ApiSchemaError) {
+        setError('The API returned data in an unexpected format');
+      } else {
+        setError((err as Error).message);
+      }
       setResult(null);
     } finally {
       setLoading(false);
@@ -37,7 +42,7 @@ export function ReputationLookup() {
         </div>
       </form>
       {error && (
-        <div className="alert alert-error" role="alert">
+        <div className="alert alert-error" role="alert" data-testid="schema-error">
           {error}
         </div>
       )}

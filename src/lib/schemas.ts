@@ -1,87 +1,68 @@
-import { z } from "zod";
-
-/**
- * Runtime schemas for the TalentTrust API responses.
- *
- * These are the single source of truth for the API response types: the exported
- * TypeScript types in `src/lib/api.ts` are inferred from these schemas.
- *
- * Schemas are permissive about extra fields (zod strips them by default) but
- * strict about required ones, so backend additions do not break the client
- * while renames/removals are surfaced as `ApiSchemaError`.
- */
-
-export const MilestoneStatusSchema = z.enum([
-  "pending",
-  "approved",
-  "released",
-  "rejected",
-]);
+import { z } from 'zod';
 
 export const MilestoneSchema = z.object({
-  id: z.string(),
+  index: z.number(),
   title: z.string(),
   amount: z.number(),
-  status: MilestoneStatusSchema,
-});
+  released: z.boolean(),
+}).passthrough();
 
 export const DisputeSchema = z.object({
-  id: z.string(),
   reason: z.string(),
-  status: z.enum(["open", "resolved"]),
   raisedBy: z.string(),
-  createdAt: z.string(),
-});
+  resolved: z.boolean(),
+}).passthrough();
+
+export const EscrowContractStatusSchema = z.enum([
+  'Created',
+  'Funded',
+  'Completed',
+  'Disputed',
+  'Resolved',
+  'Cancelled',
+]);
 
 export const EscrowContractSchema = z.object({
-  id: z.string(),
+  id: z.number(),
   title: z.string(),
   client: z.string(),
   freelancer: z.string(),
+  token: z.string(),
+  milestones: z.array(MilestoneSchema),
   totalAmount: z.number(),
   fundedAmount: z.number(),
   releasedAmount: z.number(),
-  status: z.enum([
-    "draft",
-    "funded",
-    "in_progress",
-    "completed",
-    "disputed",
-    "cancelled",
-  ]),
-  milestones: z.array(MilestoneSchema),
-  dispute: DisputeSchema.nullable().optional(),
+  status: EscrowContractStatusSchema,
+  reputationIssued: z.boolean(),
+  dispute: DisputeSchema.optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
-});
+}).passthrough();
 
 export const ContractListSchema = z.object({
   data: z.array(EscrowContractSchema),
-});
+}).passthrough();
 
 export const ReputationSchema = z.object({
   address: z.string(),
-  score: z.number(),
   completedContracts: z.number(),
-  disputes: z.number(),
-});
+  totalRating: z.number(),
+  averageRating: z.number(),
+}).passthrough();
 
 export const StatsSchema = z.object({
   totalContracts: z.number(),
   totalVolume: z.number(),
   activeContracts: z.number(),
   completedContracts: z.number(),
-});
+}).passthrough();
 
 export const ChainSchema = z.object({
   network: z.string(),
-  chainId: z.number(),
+  contractId: z.string(),
   latestLedger: z.number(),
-});
+}).passthrough();
 
 export const ApiErrorBodySchema = z.object({
-  error: z.string(),
-  message: z.string().optional(),
-});
-
-export type MilestoneStatus = z.infer<typeof MilestoneStatusSchema>;
+  message: z.string(),
+}).passthrough();
