@@ -1,12 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { api, EscrowContract } from '@/lib/api';
-import { site, XLM_SAC_ID } from '@/lib/site';
-import { stroopsFromXlm, xlmFromStroops, StroopConversionError } from '@/lib/stellar/stroops';
-import { getWalletAddress, getWalletNetworkDetails } from '@/lib/stellar/freighter';
-import { buildCreateContractTx, TESTNET_PASSPHRASE } from '@/lib/stellar/escrow';
-import { simulateSignSubmit } from '@/lib/stellar/submit';
+import { api, ApiError, EscrowContract } from '@/lib/api';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
@@ -28,13 +23,9 @@ interface OnchainResult {
 
 export function EscrowDashboard() {
   const [contracts, setContracts] = useState<EscrowContract[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
   const [busy, setBusy] = useState<number | 'new' | null>(null);
-
-  // ── Mode toggle ──────────────────────────────────────────────────────────
-  const [mode, setMode] = useState<CreateMode>('demo');
-
-  // ── Demo API form state ──────────────────────────────────────────────────
+  const loadController = useRef<AbortController | null>(null);
   const [form, setForm] = useState({
     title: 'Website redesign',
     client: 'GCLIENT' + 'X'.repeat(49),
@@ -60,18 +51,24 @@ export function EscrowDashboard() {
 
   // ── Load contracts list ──────────────────────────────────────────────────
   const load = useCallback(async () => {
+    loadController.current?.abort();
+    const controller = new AbortController();
+    loadController.current = controller;
     try {
-      const res = await api<{ data: EscrowContract[] }>('/api/v1/contracts');
+      const res = await api<{ data: EscrowContract[] }>('/api/v1/contracts', { signal: controller.signal });
       setContracts(res.data.sort((a, b) => b.id - a.id));
       setError(null);
     } catch (e) {
-      setError(`Could not reach the API: ${(e as Error).message}`);
+      if (e instanceof ApiError && e.kind === 'aborted') return;
+      const detail = e instanceof ApiError ? e.message : (e as Error).message;
+      setError({ message: e instanceof ApiError ? e.userMessage : `Could not reach the API: ${detail}`, detail });
       setContracts([]);
     }
   }, []);
 
   useEffect(() => {
     load();
+    return () => loadController.current?.abort();
   }, [load]);
 
   // ── Connect wallet when switching to on-chain mode ───────────────────────
@@ -119,7 +116,9 @@ export function EscrowDashboard() {
       await fn();
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      if (e instanceof ApiError && e.kind === 'aborted') return;
+      const detail = e instanceof ApiError ? e.message : (e as Error).message;
+      setError({ message: e instanceof ApiError ? e.userMessage : detail, detail });
     } finally {
       setBusy(null);
     }
@@ -436,8 +435,8 @@ export function EscrowDashboard() {
       {/* ── Contracts list ────────────────────────────────────────────────── */}
       <div className="stack" style={{ minWidth: 0 }}>
         {error && (
-          <div className="alert alert-error" role="alert">
-            {error}
+          <div className="alert alert-error" role="alert" title={error.detail}>
+            {error.message}
           </div>
         )}
         {contracts === null && <div className="card muted">Loading escrows...</div>}

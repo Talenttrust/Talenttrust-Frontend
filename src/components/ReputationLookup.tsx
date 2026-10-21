@@ -1,25 +1,38 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
-import { api, Reputation } from '@/lib/api';
+import { FormEvent, useRef, useState } from 'react';
+import { api, ApiError, Reputation } from '@/lib/api';
 
 export function ReputationLookup() {
   const [address, setAddress] = useState('GFREELANCERDEMOBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB');
   const [result, setResult] = useState<Reputation | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const requestId = useRef(0);
+  const controller = useRef<AbortController | null>(null);
 
   const lookup = async (e: FormEvent) => {
     e.preventDefault();
+    const id = ++requestId.current;
+    controller.current?.abort();
+    const ctrl = new AbortController();
+    controller.current = ctrl;
     setLoading(true);
     setError(null);
     try {
-      setResult(await api<Reputation>(`/api/v1/reputation/${encodeURIComponent(address.trim())}`));
+      const res = await api<Reputation>(`/api/v1/reputation/${encodeURIComponent(address.trim())}`, {
+        signal: ctrl.signal,
+      });
+      if (id !== requestId.current) return;
+      setResult(res);
     } catch (err) {
-      setError((err as Error).message);
+      if (err instanceof ApiError && err.kind === 'aborted') return;
+      if (id !== requestId.current) return;
+      const detail = err instanceof ApiError ? err.message : (err as Error).message;
+      setError({ message: err instanceof ApiError ? err.userMessage : detail, detail });
       setResult(null);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   };
 
@@ -37,8 +50,8 @@ export function ReputationLookup() {
         </div>
       </form>
       {error && (
-        <div className="alert alert-error" role="alert">
-          {error}
+        <div className="alert alert-error" role="alert" title={error.detail}>
+          {error.message}
         </div>
       )}
       {result && (
