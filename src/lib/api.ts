@@ -19,6 +19,17 @@ export interface EscrowContract {
   releasedAmount: number;
   status: 'Created' | 'Funded' | 'Completed' | 'Disputed' | 'Resolved' | 'Cancelled';
   reputationIssued: boolean;
+  dispute?: Dispute;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Dispute {
+  raisedBy: string;
+  reason: string;
+  openedAt: string;
+  freelancerBps?: number;
+  resolvedAt?: string;
 }
 
 export interface Reputation {
