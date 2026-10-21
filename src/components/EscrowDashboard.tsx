@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { api, ApiError, EscrowContract } from "@/lib/api";
+import { api, ApiError, EscrowContract, listContracts, ViewFilter } from "@/lib/api";
 import {
   applyQuery,
   ContractQuery,
@@ -18,6 +18,7 @@ import {
   parseQuery,
   toSearchParams,
 } from "@/lib/contractQuery";
+import { getAddress } from "@/lib/stellar/freighter";
 import { EscrowToolbar } from "./escrow/EscrowToolbar";
 import { Pagination } from "./escrow/Pagination";
 import { ExportMenu } from "./escrow/ExportMenu";
@@ -27,23 +28,55 @@ import { useOptionalContractStatus } from "@/components/ContractStatusProvider";
 import { assertNotPaused } from "@/lib/stellar/status";
 import { normalizeAddress } from "@/lib/stellar/address";
 import { AddressInput, type AddressInputHandle } from "@/components/forms/AddressInput";
+import { ViewFilterControl } from "./ViewFilterControl";
+import { RoleChip } from "./RoleChip";
 
 const short = (a: string) =>
   a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a;
+
+/** Coerce any string from the URL into a valid ViewFilter, defaulting to 'all'. */
+function toViewFilter(raw: string | null): ViewFilter {
+  if (raw === "client" || raw === "freelancer") return raw;
+  return "all";
+}
 
 export function EscrowDashboard() {
   const confirm = useConfirm();
   const contractStatus = useOptionalContractStatus()?.status;
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // ── wallet ──────────────────────────────────────────────────────────────────
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  useEffect(() => {
+    getAddress().then(setWalletAddress).catch(() => setWalletAddress(null));
+  }, []);
+
+  // ── view filter (URL-persisted) ──────────────────────────────────────────
+  const view = toViewFilter(searchParams.get("view"));
+
+  const handleViewChange = useCallback(
+    (next: ViewFilter) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === "all") {
+        params.delete("view");
+      } else {
+        params.set("view", next);
+      }
+      router.replace(`/contracts${params.toString() ? `?${params.toString()}` : ""}`);
+    },
+    [router, searchParams],
+  );
+
+  // ── search/sort/status filter (URL-persisted) ──────────────────────────────
   const query = useMemo(() => parseQuery(searchParams), [searchParams]);
   const [search, setSearch] = useState(query.q);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const disputeTriggerRef = useRef<HTMLButtonElement>(null);
-  const [disputeContract, setDisputeContract] = useState<EscrowContract | null>(
-    null,
-  );
+  const [disputeContract, setDisputeContract] = useState<EscrowContract | null>(null);
+
+  // ── contract list ────────────────────────────────────────────────────────
   const [contracts, setContracts] = useState<EscrowContract[] | null>(null);
   const [error, setError] = useState<{
     message: string;
@@ -55,17 +88,26 @@ export function EscrowDashboard() {
   const clientRef = useRef<AddressInputHandle>(null);
   const freelancerRef = useRef<AddressInputHandle>(null);
   const [form, setForm] = useState({
-    title: 'Website redesign',
-    client: '',
-    freelancer: '',
-    milestones: 'Design: 300, Build: 700',
+    title: "Website redesign",
+    client: "",
+    freelancer: "",
+    milestones: "Design: 300, Build: 700",
   });
+
+  const latestView = useRef(view);
+  latestView.current = view;
 
   // Status is filtered by the API, the rest is done client-side
   const load = useCallback(async () => {
     loadController.current?.abort();
     const controller = new AbortController();
     loadController.current = controller;
+
+    // When a wallet-role view is selected, pass ?party= so the backend
+    // pre-filters. Client-side we then tighten by exact role match.
+    const party =
+      view !== "all" && walletAddress ? walletAddress : undefined;
+
     try {
       const qs = query.status
         ? `?status=${encodeURIComponent(query.status)}`
@@ -74,9 +116,27 @@ export function EscrowDashboard() {
         `/api/v1/contracts${qs}`,
         { signal: controller.signal },
       );
-      setContracts(Array.isArray(res.data) ? res.data : []);
+      let data = Array.isArray(res.data) ? res.data : [];
+
+      // If the view changed while this fetch was in-flight, discard.
+      if (latestView.current !== view) return;
+      if (controller.signal.aborted) return;
+
+      // Client-side tighten: party matches either role; we keep only the one
+      // matching the selected view.
+      const filtered =
+        view === "all" || !walletAddress
+          ? data
+          : data.filter((c) =>
+              view === "client"
+                ? c.client === walletAddress
+                : c.freelancer === walletAddress,
+            );
+
+      setContracts(filtered.sort((a, b) => b.id - a.id));
       setError(null);
     } catch (e) {
+      if (latestView.current !== view) return;
       if (e instanceof ApiError && e.kind === "aborted") return;
       const detail = e instanceof ApiError ? e.message : (e as Error).message;
       setError({
@@ -88,9 +148,11 @@ export function EscrowDashboard() {
       });
       setContracts([]);
     }
-  }, [query.status]);
+  }, [query.status, view, walletAddress]);
 
   useEffect(() => {
+    // Reset the list on every view/wallet change so we never flash stale data.
+    setContracts(null);
     load();
     return () => loadController.current?.abort();
   }, [load]);
@@ -158,6 +220,8 @@ export function EscrowDashboard() {
     }
   };
 
+  // ── form ──────────────────────────────────────────────────────────────────
+
   const create = (e: FormEvent) => {
     e.preventDefault();
     setCrossFieldError(null);
@@ -176,7 +240,7 @@ export function EscrowDashboard() {
     const client = normalizeAddress(form.client);
     const freelancer = normalizeAddress(form.freelancer);
     if (client === freelancer) {
-      setCrossFieldError('Client and freelancer must be different addresses.');
+      setCrossFieldError("Client and freelancer must be different addresses.");
       freelancerRef.current?.focus();
       return;
     }
@@ -191,12 +255,28 @@ export function EscrowDashboard() {
           : [`Milestone ${i + 1}`, part];
         return { title: title.trim(), amount: Number(amount) };
       });
-    act('new', () =>
-      api('/api/v1/contracts', {
-        method: 'POST',
+    act("new", () =>
+      api("/api/v1/contracts", {
+        method: "POST",
         body: { title: form.title, client, freelancer, milestones },
       }),
     );
+  };
+
+  // ── empty-state copy per view ────────────────────────────────────────────
+  const emptyMessage =
+    view === "client"
+      ? "You have no escrows as client yet."
+      : view === "freelancer"
+      ? "You have no escrows as freelancer yet."
+      : "No escrows yet. Create the first one.";
+
+  // ── role helper ───────────────────────────────────────────────────────────
+  const roleFor = (c: EscrowContract): "client" | "freelancer" | null => {
+    if (!walletAddress) return null;
+    if (c.client === walletAddress) return "client";
+    if (c.freelancer === walletAddress) return "freelancer";
+    return null;
   };
 
   return (
@@ -258,15 +338,26 @@ export function EscrowDashboard() {
         </button>
       </form>
 
+      {/* ── contract list ── */}
       <div className="stack" style={{ minWidth: 0 }}>
         <div className="row list-actions">
           <ExportMenu contracts={visible} />
         </div>
+
+        {/* View filter */}
+        <ViewFilterControl
+          value={view}
+          onChange={handleViewChange}
+          walletConnected={Boolean(walletAddress)}
+        />
+
+        {/* Error banner */}
         {error && (
           <div className="alert alert-error" role="alert" title={error.detail}>
             {error.message}
           </div>
         )}
+
         <h2
           id="escrow-list"
           className="list-heading"
@@ -314,8 +405,8 @@ export function EscrowDashboard() {
               </button>
             </div>
           ) : (
-            <div className="card muted">
-              No escrows yet. Create the first one.
+            <div className="card muted" data-testid="empty-state">
+              {emptyMessage}
             </div>
           ))}
         {result.items.map((c) => {
@@ -324,13 +415,18 @@ export function EscrowDashboard() {
           const pct = c.totalAmount
             ? Math.round((c.releasedAmount / c.totalAmount) * 100)
             : 0;
+          const role = roleFor(c);
+
           return (
             <article className="card" key={c.id}>
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <h3 style={{ margin: 0 }}>
                   #{c.id} {c.title}
                 </h3>
-                <span className={`badge badge-${c.status}`}>{c.status}</span>
+                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  {role && <RoleChip role={role} />}
+                  <span className={`badge badge-${c.status}`}>{c.status}</span>
+                </div>
               </div>
               <p className="small muted" style={{ margin: "6px 0 12px" }}>
                 Client <span className="mono">{short(c.client)}</span> &rarr;
@@ -410,13 +506,13 @@ export function EscrowDashboard() {
                         const confirmed = await confirm({
                           title: `Cancel escrow #${c.id}?`,
                           description: `Refund ${held} ${c.token} to the client and close escrow #${c.id}. This cannot be undone.`,
-                          tone: 'danger',
-                          confirmLabel: 'Cancel escrow',
-                          cancelLabel: 'Keep escrow',
+                          tone: "danger",
+                          confirmLabel: "Cancel escrow",
+                          cancelLabel: "Keep escrow",
                           requireText: held > 0 ? String(c.id) : undefined,
                         });
                         if (confirmed) {
-                          act(c.id, () => api(`/api/v1/contracts/${c.id}/cancel`, { method: 'POST' }));
+                          act(c.id, () => api(`/api/v1/contracts/${c.id}/cancel`, { method: "POST" }));
                         }
                       }}
                     >
