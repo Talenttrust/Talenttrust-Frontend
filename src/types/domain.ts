@@ -2,6 +2,7 @@ import type { StatusType } from '@/components/StatusBadge';
 import type { Milestone } from '@/components/MilestonesList';
 import type {
   ContractParty,
+  ContractMilestone,
   ContractSummaryProps,
 } from '@/components/ContractSummary';
 import type {
@@ -13,6 +14,7 @@ export type {
   StatusType,
   Milestone,
   ContractParty,
+  ContractMilestone,
   ContractSummaryProps,
   ReputationEvent,
   ReputationProfileProps,

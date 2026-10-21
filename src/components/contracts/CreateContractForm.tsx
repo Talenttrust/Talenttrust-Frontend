@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { FormField } from '@/components/FormField';
 import { ErrorSummary } from '@/components/ErrorSummary';
 import { WalletAddressInput } from '@/components/WalletAddressInput';
+import { MilestoneBuilder, type MilestoneInput } from '@/components/MilestoneBuilder';
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
 import { useToast } from '@/components/toast/toast-provider';
 import { saveContract } from '@/lib/repository';
@@ -68,7 +69,9 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
 
   const [contractName, setContractName] = useState('');
   const [freelancerAddress, setFreelancerAddress] = useState('');
-  const [totalValue, setTotalValue] = useState('');
+  const [milestones, setMilestones] = useState<MilestoneInput[]>([
+    { id: crypto.randomUUID(), title: '', amount: '' },
+  ]);
   const [currency, setCurrency] = useState<string>(CURRENCY_OPTIONS[0]);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -86,6 +89,41 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
   const validateCurrencyField = combineValidators([
     validateRequired('Currency'),
   ]);
+
+  /**
+   * Validates all milestones and returns error if any are invalid
+   */
+  const validateMilestones = useCallback((): ValidationError | null => {
+    if (milestones.length === 0) {
+      return { fieldId: 'milestones', message: 'At least one milestone is required' };
+    }
+
+    for (let i = 0; i < milestones.length; i++) {
+      const m = milestones[i];
+      if (!m.title.trim()) {
+        return { fieldId: `milestone-title-${i}`, message: `Milestone ${i + 1} title is required` };
+      }
+      if (!m.amount.trim()) {
+        return { fieldId: `milestone-amount-${i}`, message: `Milestone ${i + 1} amount is required` };
+      }
+      const amount = parseFloat(m.amount);
+      if (isNaN(amount) || amount <= 0) {
+        return { fieldId: `milestone-amount-${i}`, message: `Milestone ${i + 1} amount must be a positive number` };
+      }
+    }
+
+    return null;
+  }, [milestones]);
+
+  /**
+   * Calculates total value from milestones
+   */
+  const calculateTotalFromMilestones = useCallback((): number => {
+    return milestones.reduce((sum, m) => {
+      const amount = parseFloat(m.amount);
+      return isNaN(amount) ? sum : sum + amount;
+    }, 0);
+  }, [milestones]);
 
   /**
    * Called by WalletAddressInput on blur to update the parent's errors
@@ -108,12 +146,19 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
     e.preventDefault();
     setHasSubmitted(true);
 
+    const totalValue = calculateTotalFromMilestones().toString();
+
     const validationErrors = validateContract({
       contractName,
       freelancerAddress,
       totalValue,
       currency,
     });
+
+    const milestoneError = validateMilestones();
+    if (milestoneError) {
+      validationErrors.push(milestoneError);
+    }
 
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
@@ -130,7 +175,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
         { label: 'Client', address: 'TalentTrust Client' },
         { label: 'Freelancer', address: normalizeStellarAddress(freelancerAddress) },
       ],
-      totalValue: parseFloat(totalValue),
+      totalValue: calculateTotalFromMilestones(),
       currency,
       status: 'Pending',
       createdAt: new Date().toLocaleDateString('en-US', {
@@ -139,7 +184,7 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
         day: 'numeric',
       }),
       updatedAt: new Date().toISOString(),
-      milestoneCount: 0,
+      milestoneCount: milestones.length,
     };
 
     saveContract(contract);
@@ -151,12 +196,18 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
   const hasErrors = () => {
     if (!hasSubmitted) return false;
     
+    const totalValue = calculateTotalFromMilestones().toString();
     const allErrors = validateContract({
       contractName,
       freelancerAddress,
       totalValue,
       currency,
     });
+    
+    const milestoneError = validateMilestones();
+    if (milestoneError) {
+      allErrors.push(milestoneError);
+    }
     
     return allErrors.length > 0;
   };
@@ -220,26 +271,12 @@ const CreateContractForm: React.FC<CreateContractFormProps> = ({ onSuccess, onCa
             onValidation={handleWalletValidation}
           />
 
-          <FormField
-            id="totalValue"
-            label="Total value"
-            error={errors.find((e) => e.fieldId === 'totalValue')?.message}
-            validate={validateTotalValueField}
-            required
-          >
-            <input
-              type="number"
-              value={totalValue}
-              onChange={(e) => {
-                setTotalValue(e.target.value);
-                setErrors((prev) => prev.filter((err) => err.fieldId !== 'totalValue'));
-              }}
-              placeholder="0.00"
-              min="0.01"
-              step="any"
-              className={inputClass}
-            />
-          </FormField>
+          <MilestoneBuilder
+            milestones={milestones}
+            onChange={setMilestones}
+            currencySymbol={currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : ''}
+            error={errors.find((e) => e.fieldId === 'milestones')?.message}
+          />
 
           <FormField
             id="currency"

@@ -30,6 +30,11 @@ export type ContractParty = {
   address: string;
 };
 
+export type ContractMilestone = {
+  title: string;
+  amount: number;
+};
+
 export type ContractSummaryProps = {
   contractName: string;
   /**
@@ -50,6 +55,11 @@ export type ContractSummaryProps = {
   updatedAt?: string;
   milestoneCount: number;
   /**
+   * Structured milestones array with title and amount for each milestone.
+   * Used during contract creation to define payment schedule.
+   */
+  milestones?: ContractMilestone[];
+  /**
    * Monotonically incrementing version used by the persistence layer to guard
    * against stale overwrites. Consumers should treat this as opaque.
    */
@@ -65,6 +75,7 @@ const ContractSummary = ({
   createdAt,
   updatedAt,
   milestoneCount,
+  milestones,
 }: ContractSummaryProps) => {
   const { formatAmount } = usePreferences();
   const { showSuccess, showError } = useToast();

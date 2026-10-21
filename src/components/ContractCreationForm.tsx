@@ -6,6 +6,7 @@ import { ErrorSummary } from './ErrorSummary';
 import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
 import { isValidStellarAddress } from '@/lib/stellarAddress';
 import { sanitizeUserText } from '@/lib/sanitizeUserText';
+import { MilestoneBuilder, type MilestoneInput } from '@/components/MilestoneBuilder';
 import {
   combineValidators,
   validateRequired,
@@ -21,7 +22,7 @@ export const MAX_PARTY_LABEL_LENGTH = 100;
 export interface ContractFormData {
   contractName: string;
   parties: Array<{ label: string; address: string }>;
-  totalValue: string;
+  milestones: MilestoneInput[];
   currency: string;
 }
 
@@ -59,8 +60,10 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
   });
 
   const [contractName, setContractName] = useState('');
-  const [totalValue, setTotalValue] = useState('');
   const [currency, setCurrency] = useState('USD');
+  const [milestones, setMilestones] = useState<MilestoneInput[]>([
+    { id: crypto.randomUUID(), title: '', amount: '' },
+  ]);
   const [parties, setParties] = useState<Array<{ label: string; address: string }>>([
     { label: '', address: '' },
     { label: '', address: '' },
@@ -94,6 +97,56 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
   ]);
 
   /**
+   * Validates all milestones and returns error if any are invalid
+   */
+  const validateMilestones = useCallback((): Array<{ fieldId: string; message: string }> => {
+    const validationErrors: Array<{ fieldId: string; message: string }> = [];
+
+    if (milestones.length === 0) {
+      validationErrors.push({
+        fieldId: 'milestones',
+        message: 'At least one milestone is required',
+      });
+      return validationErrors;
+    }
+
+    milestones.forEach((m, i) => {
+      if (!m.title.trim()) {
+        validationErrors.push({
+          fieldId: `milestone-title-${i}`,
+          message: `Milestone ${i + 1} title is required`,
+        });
+      }
+      if (!m.amount.trim()) {
+        validationErrors.push({
+          fieldId: `milestone-amount-${i}`,
+          message: `Milestone ${i + 1} amount is required`,
+        });
+      } else {
+        const amount = parseFloat(m.amount);
+        if (isNaN(amount) || amount <= 0) {
+          validationErrors.push({
+            fieldId: `milestone-amount-${i}`,
+            message: `Milestone ${i + 1} amount must be a positive number`,
+          });
+        }
+      }
+    });
+
+    return validationErrors;
+  }, [milestones]);
+
+  /**
+   * Calculates total value from milestones
+   */
+  const calculateTotalFromMilestones = useCallback((): number => {
+    return milestones.reduce((sum, m) => {
+      const amount = parseFloat(m.amount);
+      return isNaN(amount) ? sum : sum + amount;
+    }, 0);
+  }, [milestones]);
+
+  /**
    * Validates the form data and returns an array of error objects.
    */
   const validateForm = useCallback((): Array<{ fieldId: string; message: string }> => {
@@ -114,17 +167,12 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
       });
     }
 
-    // Validate total value
-    const numericValue = parseFloat(totalValue);
-    if (!totalValue.trim()) {
+    // Validate total value from milestones
+    const totalValue = calculateTotalFromMilestones();
+    if (isNaN(totalValue) || totalValue <= 0) {
       validationErrors.push({
-        fieldId: 'totalValue',
-        message: 'Total value is required',
-      });
-    } else if (isNaN(numericValue) || numericValue <= 0) {
-      validationErrors.push({
-        fieldId: 'totalValue',
-        message: 'Total value must be a positive number',
+        fieldId: 'milestones',
+        message: 'Total milestone value must be a positive number',
       });
     }
 
@@ -184,7 +232,7 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
     });
 
     return validationErrors;
-  }, [contractName, totalValue, currency, parties]);
+  }, [contractName, currency, parties, calculateTotalFromMilestones]);
 
   /**
    * Handles form submission, validates input, and calls onSubmit if valid.
@@ -195,9 +243,10 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
       setHasSubmitted(true);
 
       const validationErrors = validateForm();
-      setErrors(validationErrors);
+      const milestoneErrors = validateMilestones();
+      setErrors([...validationErrors, ...milestoneErrors]);
 
-      if (validationErrors.length > 0) {
+      if (validationErrors.length > 0 || milestoneErrors.length > 0) {
         return;
       }
 
@@ -213,7 +262,7 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
         id: crypto.randomUUID(),
         contractName: sanitizeUserText(contractName, MAX_CONTRACT_NAME_LENGTH),
         parties: validParties,
-        totalValue: parseFloat(totalValue),
+        totalValue: calculateTotalFromMilestones(),
         currency: currency.trim(),
         status: 'Pending',
         createdAt: new Date().toLocaleDateString('en-US', {
@@ -222,19 +271,20 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
           day: 'numeric',
         }),
         updatedAt: new Date().toISOString(),
-        milestoneCount: 0,
+        milestoneCount: milestones.length,
       };
 
       onSubmit(contract);
     },
-    [contractName, totalValue, currency, parties, validateForm, onSubmit]
+    [contractName, currency, parties, validateForm, validateMilestones, calculateTotalFromMilestones, milestones, onSubmit]
   );
 
   // Check if the form has validation errors to disable submit button
   const hasErrors = () => {
     if (!hasSubmitted) return false;
     const validationErrors = validateForm();
-    return validationErrors.length > 0;
+    const milestoneErrors = validateMilestones();
+    return validationErrors.length > 0 || milestoneErrors.length > 0;
   };
 
   /**
@@ -300,21 +350,14 @@ export const ContractCreationForm: React.FC<ContractCreationFormProps> = ({
           </FormField>
 
           <div className="grid grid-cols-2 gap-4">
-            <FormField
-              label="Total Value"
-              id="totalValue"
-              error={getFieldError('totalValue')}
-              validate={validateTotalValueField}
-              required
-            >
-              <input
-                type="text"
-                value={totalValue}
-                onChange={e => setTotalValue(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., 5000"
+            <div className="col-span-2">
+              <MilestoneBuilder
+                milestones={milestones}
+                onChange={setMilestones}
+                currencySymbol={currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : ''}
+                error={getFieldError('milestones')}
               />
-            </FormField>
+            </div>
 
             <FormField
               label="Currency"
