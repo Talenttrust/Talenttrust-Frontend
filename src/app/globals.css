@@ -281,3 +281,9 @@ tr:last-child td { border-bottom: 0; }
 .toolbar .input:focus-visible, .pager .btn:focus-visible, .empty .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 @media (max-width: 560px) { .toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .toolbar-search { grid-column: 1 / -1; } }
+.list-actions { justify-content: flex-end; }
+.export { position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.export > .btn:focus-visible, .export-menu button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.export-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: flex; flex-direction: column; min-width: 220px; max-width: calc(100vw - 32px); padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
+.export-menu button { padding: 9px 12px; border: 0; border-radius: 8px; background: none; color: var(--text); font: inherit; font-size: 0.93rem; text-align: left; cursor: pointer; }
+.export-menu button:hover, .export-menu button:focus-visible { background: var(--surface-2); }

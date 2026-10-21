@@ -3,9 +3,10 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError, EscrowContract } from '@/lib/api';
-import { applyQuery, ContractQuery, DEFAULT_QUERY, parseQuery, toSearchParams } from '@/lib/contractQuery';
+import { applyQuery, ContractQuery, DEFAULT_QUERY, filterContracts, parseQuery, toSearchParams } from '@/lib/contractQuery';
 import { EscrowToolbar } from './escrow/EscrowToolbar';
 import { Pagination } from './escrow/Pagination';
+import { ExportMenu } from './escrow/ExportMenu';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
@@ -69,6 +70,7 @@ export function EscrowDashboard() {
   }, [search, query.q, update]);
 
   const result = useMemo(() => applyQuery(contracts ?? [], query), [contracts, query]);
+  const visible = useMemo(() => (contracts ? filterContracts(contracts, query) : null), [contracts, query]);
   const filtered = query.status !== '' || query.q !== '';
 
   const goToPage = (page: number) => {
@@ -141,6 +143,9 @@ export function EscrowDashboard() {
       </form>
 
       <div className="stack" style={{ minWidth: 0 }}>
+        <div className="row list-actions">
+          <ExportMenu contracts={visible} />
+        </div>
         {error && (
           <div className="alert alert-error" role="alert" title={error.detail}>
             {error.message}
