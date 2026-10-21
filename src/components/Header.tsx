@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import nav from '@/lib/nav.json';
+import { WalletButton } from './wallet/WalletButton';
 import { useDisclosure } from '@/hooks/useDisclosure';
 
 export function Header() {
@@ -76,7 +77,21 @@ export function Header() {
           >
             Launch app
           </Link>
+          <WalletButton />
         </nav>
+        <details className="menu" ref={menu}>
+          <summary aria-label="Open menu">Menu</summary>
+          <div className="menu-panel">
+            {nav.map((item) => (
+              <Link key={item.href} href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>
+                {item.label}
+              </Link>
+            ))}
+            <div style={{ padding: '8px 16px', borderTop: '1px solid var(--border)' }}>
+              <WalletButton />
+            </div>
+          </div>
+        </details>
 
         {/* Mobile trigger */}
         <button
