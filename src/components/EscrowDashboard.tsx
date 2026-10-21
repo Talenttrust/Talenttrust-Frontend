@@ -1,8 +1,8 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, EscrowContract } from '@/lib/api';
+import { api, ApiError, EscrowContract } from '@/lib/api';
 import Link from 'next/link';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
@@ -10,8 +10,9 @@ const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}
 export function EscrowDashboard() {
   const router = useRouter();
   const [contracts, setContracts] = useState<EscrowContract[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
   const [busy, setBusy] = useState<number | 'new' | null>(null);
+  const loadController = useRef<AbortController | null>(null);
   const [form, setForm] = useState({
     title: 'Website redesign',
     client: 'GCLIENT' + 'X'.repeat(49),
@@ -20,18 +21,24 @@ export function EscrowDashboard() {
   });
 
   const load = useCallback(async () => {
+    loadController.current?.abort();
+    const controller = new AbortController();
+    loadController.current = controller;
     try {
-      const res = await api<{ data: EscrowContract[] }>('/api/v1/contracts');
+      const res = await api<{ data: EscrowContract[] }>('/api/v1/contracts', { signal: controller.signal });
       setContracts(res.data.sort((a, b) => b.id - a.id));
       setError(null);
     } catch (e) {
-      setError(`Could not reach the API: ${(e as Error).message}`);
+      if (e instanceof ApiError && e.kind === 'aborted') return;
+      const detail = e instanceof ApiError ? e.message : (e as Error).message;
+      setError({ message: e instanceof ApiError ? e.userMessage : `Could not reach the API: ${detail}`, detail });
       setContracts([]);
     }
   }, []);
 
   useEffect(() => {
     load();
+    return () => loadController.current?.abort();
   }, [load]);
 
   const act = async (id: number | 'new', fn: () => Promise<unknown>) => {
@@ -41,7 +48,9 @@ export function EscrowDashboard() {
       await fn();
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      if (e instanceof ApiError && e.kind === 'aborted') return;
+      const detail = e instanceof ApiError ? e.message : (e as Error).message;
+      setError({ message: e instanceof ApiError ? e.userMessage : detail, detail });
     } finally {
       setBusy(null);
     }
@@ -93,8 +102,8 @@ export function EscrowDashboard() {
 
       <div className="stack" style={{ minWidth: 0 }}>
         {error && (
-          <div className="alert alert-error" role="alert">
-            {error}
+          <div className="alert alert-error" role="alert" title={error.detail}>
+            {error.message}
           </div>
         )}
         {contracts === null && <div className="card muted">Loading escrows...</div>}
