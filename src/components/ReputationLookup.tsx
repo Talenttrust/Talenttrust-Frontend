@@ -1,30 +1,44 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
-import { api, ApiSchemaError, Reputation } from '@/lib/api';
+import { FormEvent, useRef, useState } from 'react';
+import { api, ApiError, ApiSchemaError, Reputation } from '@/lib/api';
 import { ReputationSchema } from '@/lib/schemas';
 
 export function ReputationLookup() {
   const [address, setAddress] = useState('GFREELANCERDEMOBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB');
   const [result, setResult] = useState<Reputation | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const requestId = useRef(0);
+  const controller = useRef<AbortController | null>(null);
 
   const lookup = async (e: FormEvent) => {
     e.preventDefault();
+    const id = ++requestId.current;
+    controller.current?.abort();
+    const ctrl = new AbortController();
+    controller.current = ctrl;
     setLoading(true);
     setError(null);
     try {
-      setResult(await api(`/api/v1/reputation/${encodeURIComponent(address.trim())}`, ReputationSchema));
+      const res = await api<Reputation>(`/api/v1/reputation/${encodeURIComponent(address.trim())}`, {
+        signal: ctrl.signal,
+        schema: ReputationSchema,
+      });
+      if (id !== requestId.current) return;
+      setResult(res);
     } catch (err) {
+      if (err instanceof ApiError && err.kind === 'aborted') return;
+      if (id !== requestId.current) return;
       if (err instanceof ApiSchemaError) {
-        setError('The API returned data in an unexpected format');
+        setError({ message: 'The API returned data in an unexpected format' });
       } else {
-        setError((err as Error).message);
+        const detail = err instanceof ApiError ? err.message : (err as Error).message;
+        setError({ message: err instanceof ApiError ? err.userMessage : detail, detail });
       }
       setResult(null);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   };
 
@@ -42,8 +56,8 @@ export function ReputationLookup() {
         </div>
       </form>
       {error && (
-        <div className="alert alert-error" role="alert" data-testid="schema-error">
-          {error}
+        <div className="alert alert-error" role="alert" title={error.detail} data-testid="schema-error">
+          {error.message}
         </div>
       )}
       {result && (

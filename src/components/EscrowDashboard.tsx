@@ -1,16 +1,17 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { api, ApiSchemaError, EscrowContract } from '@/lib/api';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { api, ApiError, ApiSchemaError, EscrowContract } from '@/lib/api';
 import { ContractListSchema, EscrowContractSchema } from '@/lib/schemas';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
 export function EscrowDashboard() {
   const [contracts, setContracts] = useState<EscrowContract[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
   const [schemaError, setSchemaError] = useState<ApiSchemaError | null>(null);
   const [busy, setBusy] = useState<number | 'new' | null>(null);
+  const loadController = useRef<AbortController | null>(null);
   const [form, setForm] = useState({
     title: 'Website redesign',
     client: 'GCLIENT' + 'X'.repeat(49),
@@ -19,8 +20,11 @@ export function EscrowDashboard() {
   });
 
   const load = useCallback(async () => {
+    loadController.current?.abort();
+    const controller = new AbortController();
+    loadController.current = controller;
     try {
-      const res = await api('/api/v1/contracts', ContractListSchema);
+      const res = await api('/api/v1/contracts', ContractListSchema, { signal: controller.signal });
       setContracts(res.data.sort((a, b) => b.id - a.id));
       setError(null);
       setSchemaError(null);
@@ -28,8 +32,11 @@ export function EscrowDashboard() {
       if (e instanceof ApiSchemaError) {
         setSchemaError(e);
         setError(null);
+      } else if (e instanceof ApiError && e.kind === 'aborted') {
+        return;
       } else {
-        setError(`Could not reach the API: ${(e as Error).message}`);
+        const detail = e instanceof ApiError ? e.message : (e as Error).message;
+        setError({ message: e instanceof ApiError ? e.userMessage : `Could not reach the API: ${detail}`, detail });
       }
       setContracts([]);
     }
@@ -37,6 +44,7 @@ export function EscrowDashboard() {
 
   useEffect(() => {
     load();
+    return () => loadController.current?.abort();
   }, [load]);
 
   const act = async (id: number | 'new', fn: () => Promise<unknown>) => {
@@ -49,8 +57,11 @@ export function EscrowDashboard() {
     } catch (e) {
       if (e instanceof ApiSchemaError) {
         setSchemaError(e);
+      } else if (e instanceof ApiError && e.kind === 'aborted') {
+        return;
       } else {
-        setError((e as Error).message);
+        const detail = e instanceof ApiError ? e.message : (e as Error).message;
+        setError({ message: e instanceof ApiError ? e.userMessage : detail, detail });
       }
     } finally {
       setBusy(null);
@@ -103,8 +114,8 @@ export function EscrowDashboard() {
 
       <div className="stack" style={{ minWidth: 0 }}>
         {error && (
-          <div className="alert alert-error" role="alert">
-            {error}
+          <div className="alert alert-error" role="alert" title={error.detail}>
+            {error.message}
           </div>
         )}
         {schemaError && (
