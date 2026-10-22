@@ -1,11 +1,8 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { api, ApiError, EscrowContract } from '@/lib/api';
-import { applyQuery, ContractQuery, DEFAULT_QUERY, parseQuery, toSearchParams } from '@/lib/contractQuery';
-import { EscrowToolbar } from './escrow/EscrowToolbar';
-import { Pagination } from './escrow/Pagination';
+import Link from 'next/link';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { api, EscrowContract } from '@/lib/api';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
@@ -142,8 +139,11 @@ export function EscrowDashboard() {
 
       <div className="stack" style={{ minWidth: 0 }}>
         {error && (
-          <div className="alert alert-error" role="alert" title={error.detail}>
-            {error.message}
+          <div className="alert alert-error" role="alert">
+            {error}{' '}
+            <Link href="/status" className="alert-link">
+              See system status
+            </Link>
           </div>
         )}
         <h2 id="escrow-list" className="list-heading" ref={headingRef} tabIndex={-1}>
