@@ -281,3 +281,80 @@ tr:last-child td { border-bottom: 0; }
 .toolbar .input:focus-visible, .pager .btn:focus-visible, .empty .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 @media (max-width: 560px) { .toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .toolbar-search { grid-column: 1 / -1; } }
+
+/* Toasts */
+.toast-region {
+  position: fixed;
+  z-index: 200;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.toast-region--raised {
+  bottom: auto;
+  top: calc(12px + env(safe-area-inset-top));
+}
+.toast-stack { display: flex; flex-direction: column; gap: 10px; }
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 10px 12px 14px;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 0.93rem;
+  animation: toast-in 0.22s ease;
+}
+.toast-success { border-left-color: var(--ok); }
+.toast-error { border-left-color: var(--bad); }
+.toast-info { border-left-color: var(--brand); }
+.toast-body { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.toast-icon { flex: none; font-weight: 800; font-size: 0.85rem; }
+.toast-success .toast-icon { color: var(--ok); }
+.toast-error .toast-icon { color: var(--bad); }
+.toast-info .toast-icon { color: var(--brand); }
+.toast-message { min-width: 0; overflow-wrap: anywhere; }
+.toast-action { flex: none; }
+.toast-close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+}
+.toast-close:hover { background: var(--surface-2); color: var(--text); }
+.btn:focus-visible, .toast-close:focus-visible, .toast-action:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
+@media (max-width: 480px) {
+  .toast-region {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: calc(100vw - 24px);
+    max-width: 420px;
+  }
+}
