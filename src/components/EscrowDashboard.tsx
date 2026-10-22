@@ -6,8 +6,31 @@ import { api, ApiError, EscrowContract } from '@/lib/api';
 import { applyQuery, ContractQuery, DEFAULT_QUERY, parseQuery, toSearchParams } from '@/lib/contractQuery';
 import { EscrowToolbar } from './escrow/EscrowToolbar';
 import { Pagination } from './escrow/Pagination';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
+
+function EscrowCardSkeleton() {
+  return (
+    <div className="card skeleton-card">
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <Skeleton width="55%" height="1.2em" />
+        <Skeleton width={84} height={22} radius={999} />
+      </div>
+      <Skeleton width="75%" />
+      <Skeleton variant="block" width="100%" height={8} radius={999} />
+      <Skeleton width="60%" />
+      <div className="stack" style={{ gap: 8, margin: '12px 0' }}>
+        <Skeleton width="80%" />
+        <Skeleton width="65%" />
+      </div>
+      <div className="row">
+        <Skeleton variant="block" width={110} height={34} />
+        <Skeleton variant="block" width={110} height={34} />
+      </div>
+    </div>
+  );
+}
 
 export function EscrowDashboard() {
   const router = useRouter();
@@ -160,7 +183,14 @@ export function EscrowDashboard() {
         <p className="small muted" role="status" aria-live="polite" style={{ margin: 0 }}>
           {contracts !== null && !error && result.total > 0 && `Showing ${result.from}–${result.to} of ${result.total} escrows`}
         </p>
-        {contracts === null && <div className="card muted">Loading escrows...</div>}
+        {contracts === null && (
+          <div className="skeleton-cards" role="status" aria-live="polite">
+            <span className="sr-only">Loading…</span>
+            {[0, 1, 2].map((i) => (
+              <EscrowCardSkeleton key={i} />
+            ))}
+          </div>
+        )}
         {contracts !== null && result.total === 0 && !error &&
           (filtered ? (
             <div className="card row empty" style={{ justifyContent: 'space-between' }}>
