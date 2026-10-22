@@ -2,7 +2,8 @@
 
 import { FormEvent, useCallback, useState } from 'react';
 import { StrKey } from '@stellar/stellar-sdk';
-import { api, Reputation } from '@/lib/api';
+import { Reputation } from '@/lib/api';
+import { useReputation } from '@/hooks/useContracts';
 import { OnChainReputation, readOnChainReputation } from '@/lib/stellar/reputation';
 import { site } from '@/lib/site';
 
@@ -11,28 +12,27 @@ const DEMO_ADDRESS = 'GFREELANCERDEMOBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
 export function ReputationLookup() {
   const [address, setAddress] = useState(DEMO_ADDRESS);
   const [addressError, setAddressError] = useState<string | null>(null);
+  const [queried, setQueried] = useState<string | null>(null);
+  const { reputation, error: apiError, mutate: revalidateApi, isLoading: apiIsLoading } = useReputation(queried);
 
-  const [busy, setBusy] = useState(false);
-  const [apiResult, setApiResult] = useState<Reputation | null>(null);
-  const [apiError, setApiError] = useState<string | null>(null);
   const [chainResult, setChainResult] = useState<OnChainReputation | null>(null);
   const [chainError, setChainError] = useState<string | null>(null);
+  const [chainBusy, setChainBusy] = useState(false);
 
   const clearResults = useCallback(() => {
-    setApiResult(null);
-    setApiError(null);
+    setQueried(null);
     setChainResult(null);
     setChainError(null);
   }, []);
 
   const mismatch =
-    apiResult &&
+    reputation &&
     chainResult &&
-    (apiResult.averageRating !== chainResult.averageRating ||
-      apiResult.completedContracts !== chainResult.completedContracts ||
-      apiResult.totalRating !== chainResult.totalRating);
+    (reputation.averageRating !== chainResult.averageRating ||
+      reputation.completedContracts !== chainResult.completedContracts ||
+      reputation.totalRating !== chainResult.totalRating);
 
-  const lookup = async (e: FormEvent) => {
+  const lookup = (e: FormEvent) => {
     e.preventDefault();
     const value = address.trim();
     setAddressError(null);
@@ -43,44 +43,28 @@ export function ReputationLookup() {
       return;
     }
 
-    setBusy(true);
-    try {
-      const [apiSettled, chainSettled] = await Promise.allSettled([
-        api<Reputation>(`/api/v1/reputation/${encodeURIComponent(value)}`),
-        readOnChainReputation(value),
-      ]);
-      if (apiSettled.status === 'fulfilled') {
-        setApiResult(apiSettled.value);
-      } else {
-        setApiError((apiSettled.reason as Error).message);
-      }
-      if (chainSettled.status === 'fulfilled') {
-        setChainResult(chainSettled.value);
-      } else {
-        setChainError((chainSettled.reason as Error).message);
-      }
-    } finally {
-      setBusy(false);
-    }
+    setQueried(value);
+    setChainBusy(true);
+    readOnChainReputation(value)
+      .then(setChainResult)
+      .catch((err) => setChainError((err as Error).message))
+      .finally(() => setChainBusy(false));
   };
 
-  const retryApi = async () => {
-    const value = address.trim();
-    setApiError(null);
-    try {
-      setApiResult(await api<Reputation>(`/api/v1/reputation/${encodeURIComponent(value)}`));
-    } catch (err) {
-      setApiError((err as Error).message);
-    }
+  const retryApi = () => {
+    revalidateApi();
   };
 
   const retryChain = async () => {
     const value = address.trim();
     setChainError(null);
+    setChainBusy(true);
     try {
       setChainResult(await readOnChainReputation(value));
     } catch (err) {
       setChainError((err as Error).message);
+    } finally {
+      setChainBusy(false);
     }
   };
 
@@ -90,6 +74,13 @@ export function ReputationLookup() {
       <dd aria-labelledby={id}>{value}</dd>
     </div>
   );
+
+  const displayError = apiError
+    ? {
+        message: apiError.message,
+        detail: apiError.userMessage,
+      }
+    : null;
 
   return (
     <div className="stack" style={{ maxWidth: 720, paddingBottom: 64 }}>
@@ -106,8 +97,8 @@ export function ReputationLookup() {
               aria-describedby={addressError ? 'address-error' : undefined}
               required
             />
-            <button className="btn btn-primary" type="submit" disabled={busy}>
-              {busy ? 'Looking up...' : 'Look up'}
+            <button className="btn btn-primary" type="submit" disabled={apiIsLoading || chainBusy}>
+              {apiIsLoading || chainBusy ? 'Looking up...' : 'Look up'}
             </button>
           </div>
           {addressError && (
@@ -118,7 +109,7 @@ export function ReputationLookup() {
         </div>
       </form>
 
-      {(apiResult || chainResult || apiError || chainError) && (
+      {(reputation || chainResult || apiError || chainError) && (
         <div className="results" role="region" aria-label="Reputation results" aria-live="polite">
           {mismatch && (
             <div className="notice notice-info" role="status">
@@ -172,13 +163,15 @@ export function ReputationLookup() {
                 )}
               </div>
             ) : null}
-            {apiResult || apiError ? (
+            {reputation || apiError ? (
               <div className="card">
                 <h3 id="api-heading">TalentTrust API (demo)</h3>
                 <p className="small muted">In-memory demo data; may reset.</p>
                 {apiError ? (
                   <>
-                    <div className="alert alert-error">{apiError}</div>
+                    <div className="alert alert-error" role="alert" title={displayError!.detail}>
+                      {displayError!.message}
+                    </div>
                     <button
                       className="btn btn-secondary btn-sm"
                       type="button"
@@ -188,15 +181,15 @@ export function ReputationLookup() {
                       Retry API
                     </button>
                   </>
-              ) : (
-                apiResult && (
-                  <dl className="stats" aria-labelledby="api-heading">
-                    {statRow('Completed contracts', apiResult.completedContracts, 'api-contracts')}
-                    {statRow('Total rating points', apiResult.totalRating, 'api-total')}
-                    {statRow('Average rating', `${(apiResult.averageRating ?? 0).toFixed(2)} / 5`, 'api-average')}
-                  </dl>
-                )
-              )}
+                ) : (
+                  reputation && (
+                    <dl className="stats" aria-labelledby="api-heading">
+                      {statRow('Completed contracts', reputation.completedContracts, 'api-contracts')}
+                      {statRow('Total rating points', reputation.totalRating, 'api-total')}
+                      {statRow('Average rating', `${(reputation.averageRating ?? 0).toFixed(2)} / 5`, 'api-average')}
+                    </dl>
+                  )
+                )}
               </div>
             ) : null}
           </div>

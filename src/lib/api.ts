@@ -198,3 +198,12 @@ export async function api<T>(path: string, init: ApiOptions = {}): Promise<T> {
     return data as T;
   }
 }
+
+/** Unwrap the EscrowContract that mutation endpoints return, if present. */
+export function unwrapContract(payload: unknown): EscrowContract | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const obj = payload as { data?: EscrowContract; id?: number };
+  if (obj.data && typeof obj.data.id === 'number') return obj.data;
+  if (typeof obj.id === 'number' && 'status' in obj) return payload as EscrowContract;
+  return null;
+}

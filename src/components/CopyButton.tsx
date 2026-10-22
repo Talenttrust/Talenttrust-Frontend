@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useToast } from '@/components/toast/ToastProvider';
 
 export function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
+  const toast = useToast();
   return (
     <button
       type="button"
@@ -15,7 +17,7 @@ export function CopyButton({ value }: { value: string }) {
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
         } catch {
-          /* clipboard unavailable */
+          toast.error('Could not copy to the clipboard');
         }
       }}
     >
