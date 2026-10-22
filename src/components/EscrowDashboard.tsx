@@ -1,11 +1,8 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { api, ApiError, EscrowContract } from '@/lib/api';
-import { applyQuery, ContractQuery, DEFAULT_QUERY, parseQuery, toSearchParams } from '@/lib/contractQuery';
-import { EscrowToolbar } from './escrow/EscrowToolbar';
-import { Pagination } from './escrow/Pagination';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { api, EscrowContract } from '@/lib/api';
+import { MilestoneTimeline } from './milestones/MilestoneTimeline';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
@@ -161,19 +158,8 @@ export function EscrowDashboard() {
           {contracts !== null && !error && result.total > 0 && `Showing ${result.from}–${result.to} of ${result.total} escrows`}
         </p>
         {contracts === null && <div className="card muted">Loading escrows...</div>}
-        {contracts !== null && result.total === 0 && !error &&
-          (filtered ? (
-            <div className="card row empty" style={{ justifyContent: 'space-between' }}>
-              <span className="muted">No escrows match these filters.</span>
-              <button className="btn btn-secondary btn-sm" onClick={clearFilters}>
-                Clear filters
-              </button>
-            </div>
-          ) : (
-            <div className="card muted">No escrows yet. Create the first one.</div>
-          ))}
-        {result.items.map((c) => {
-          const next = c.milestones.find((m) => !m.released);
+        {contracts?.length === 0 && !error && <div className="card muted">No escrows yet. Create the first one.</div>}
+        {contracts?.map((c) => {
           const active = c.status === 'Created' || c.status === 'Funded';
           const pct = c.totalAmount ? Math.round((c.releasedAmount / c.totalAmount) * 100) : 0;
           return (
@@ -195,18 +181,15 @@ export function EscrowDashboard() {
                 Released {c.releasedAmount} / {c.totalAmount} {c.token} &middot; In escrow{' '}
                 {c.fundedAmount - c.releasedAmount} {c.token}
               </p>
-              <ul className="milestones">
-                {c.milestones.map((m) => (
-                  <li key={m.index}>
-                    <span className="truncate">
-                      {m.released ? '[x]' : '[ ]'} {m.title}
-                    </span>
-                    <span className="mono">
-                      {m.amount} {c.token}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <MilestoneTimeline
+                contract={c}
+                onRelease={(index) =>
+                  act(c.id, () =>
+                    api(`/api/v1/contracts/${c.id}/milestones/${index}/release`, { method: 'POST' }),
+                  )
+                }
+                busy={busy === c.id}
+              />
               <div className="row">
                 {active && c.fundedAmount < c.totalAmount && (
                   <button
@@ -219,15 +202,6 @@ export function EscrowDashboard() {
                     }
                   >
                     Fund {c.totalAmount - c.fundedAmount} {c.token}
-                  </button>
-                )}
-                {active && next && c.fundedAmount - c.releasedAmount >= next.amount && (
-                  <button
-                    className="btn btn-primary btn-sm"
-                    disabled={busy === c.id}
-                    onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/milestones/${next.index}/release`, { method: 'POST' }))}
-                  >
-                    Release next
                   </button>
                 )}
                 {active && (
