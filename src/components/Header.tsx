@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import nav from '@/lib/nav.json';
 import { useDisclosure } from '@/hooks/useDisclosure';
+import { NotificationBell } from '@/components/NotificationBell';
 
 export function Header() {
   const pathname = usePathname();
@@ -77,6 +78,9 @@ export function Header() {
             Launch app
           </Link>
         </nav>
+        <div className="header-actions">
+          <NotificationBell />
+        </div>
 
         {/* Mobile trigger */}
         <button
