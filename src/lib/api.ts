@@ -7,6 +7,13 @@ export interface Milestone {
   released: boolean;
 }
 
+export interface Dispute {
+  raisedBy: string;
+  reason: string;
+  freelancerBps: number | null;
+  resolvedAt: string | null;
+}
+
 export interface EscrowContract {
   id: number;
   title: string;
@@ -19,6 +26,9 @@ export interface EscrowContract {
   releasedAmount: number;
   status: 'Created' | 'Funded' | 'Completed' | 'Disputed' | 'Resolved' | 'Cancelled';
   reputationIssued: boolean;
+  dispute?: Dispute | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Reputation {
