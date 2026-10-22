@@ -1,7 +1,11 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError, EscrowContract } from '@/lib/api';
+import { applyQuery, ContractQuery, DEFAULT_QUERY, parseQuery, toSearchParams } from '@/lib/contractQuery';
+import { EscrowToolbar } from './escrow/EscrowToolbar';
+import { Pagination } from './escrow/Pagination';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
@@ -22,6 +26,12 @@ interface OnchainResult {
 }
 
 export function EscrowDashboard() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const query = useMemo(() => parseQuery(searchParams), [searchParams]);
+  const [search, setSearch] = useState(query.q);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const [contracts, setContracts] = useState<EscrowContract[] | null>(null);
   const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
   const [busy, setBusy] = useState<number | 'new' | null>(null);
@@ -33,30 +43,15 @@ export function EscrowDashboard() {
     milestones: 'Design: 300, Build: 700',
   });
 
-  // ── On-chain form state ──────────────────────────────────────────────────
-  const [walletAddress, setWalletAddress] = useState<string>('');
-  const [walletError, setWalletError] = useState<string | null>(null);
-  const [onchainForm, setOnchainForm] = useState({
-    freelancer: '',
-    token: XLM_SAC_ID,
-    milestones: 'Design: 100, Build: 200',
-  });
-  const [onchainPhase, setOnchainPhase] = useState<OnchainPhase>('idle');
-  const [onchainError, setOnchainError] = useState<string | null>(null);
-  const [onchainResult, setOnchainResult] = useState<OnchainResult | null>(null);
-
-  // Focus target for accessibility: move focus to success message on confirm
-  const successRef = useRef<HTMLParagraphElement>(null);
-  const submitBtnRef = useRef<HTMLButtonElement>(null);
-
-  // ── Load contracts list ──────────────────────────────────────────────────
+  // Status is filtered by the API, the rest is done client-side
   const load = useCallback(async () => {
     loadController.current?.abort();
     const controller = new AbortController();
     loadController.current = controller;
     try {
-      const res = await api<{ data: EscrowContract[] }>('/api/v1/contracts', { signal: controller.signal });
-      setContracts(res.data.sort((a, b) => b.id - a.id));
+      const qs = query.status ? `?status=${encodeURIComponent(query.status)}` : '';
+      const res = await api<{ data: EscrowContract[] }>(`/api/v1/contracts${qs}`, { signal: controller.signal });
+      setContracts(Array.isArray(res.data) ? res.data : []);
       setError(null);
     } catch (e) {
       if (e instanceof ApiError && e.kind === 'aborted') return;
@@ -64,51 +59,44 @@ export function EscrowDashboard() {
       setError({ message: e instanceof ApiError ? e.userMessage : `Could not reach the API: ${detail}`, detail });
       setContracts([]);
     }
-  }, []);
+  }, [query.status]);
 
   useEffect(() => {
     load();
     return () => loadController.current?.abort();
   }, [load]);
 
-  // ── Connect wallet when switching to on-chain mode ───────────────────────
-  useEffect(() => {
-    if (mode !== 'onchain') return;
-    let cancelled = false;
-    (async () => {
-      setWalletError(null);
-      const { address, error: addrErr } = await getWalletAddress();
-      if (cancelled) return;
-      if (addrErr || !address) {
-        setWalletError('Wallet not connected. Open Freighter and connect to this site.');
-        return;
-      }
-      // Verify network
-      const { networkPassphrase, error: netErr } = await getWalletNetworkDetails();
-      if (cancelled) return;
-      if (netErr) {
-        setWalletError(`Could not read wallet network: ${netErr}`);
-        return;
-      }
-      if (networkPassphrase !== TESTNET_PASSPHRASE) {
-        setWalletError('Wrong network: switch Freighter to Stellar Testnet and try again.');
-        return;
-      }
-      setWalletAddress(address);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [mode]);
+  const update = useCallback(
+    (patch: Partial<ContractQuery>) => {
+      const qs = toSearchParams({ ...query, page: 1, ...patch }).toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [query, router, pathname],
+  );
 
-  // Move focus to success message after confirmation
   useEffect(() => {
-    if (onchainPhase === 'confirmed') {
-      successRef.current?.focus();
-    }
-  }, [onchainPhase]);
+    setSearch(query.q);
+  }, [query.q]);
 
-  // ── Demo API submit ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (search.trim() === query.q) return;
+    const t = setTimeout(() => update({ q: search.trim() }), 250);
+    return () => clearTimeout(t);
+  }, [search, query.q, update]);
+
+  const result = useMemo(() => applyQuery(contracts ?? [], query), [contracts, query]);
+  const filtered = query.status !== '' || query.q !== '';
+
+  const goToPage = (page: number) => {
+    update({ page });
+    headingRef.current?.focus();
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    update(DEFAULT_QUERY);
+  };
+
   const act = async (id: number | 'new', fn: () => Promise<unknown>) => {
     setBusy(id);
     setError(null);
@@ -439,9 +427,33 @@ export function EscrowDashboard() {
             {error.message}
           </div>
         )}
+        <h2 id="escrow-list" className="list-heading" ref={headingRef} tabIndex={-1}>
+          Escrows
+        </h2>
+        <EscrowToolbar
+          status={query.status}
+          sort={query.sort}
+          search={search}
+          onStatusChange={(status) => update({ status })}
+          onSortChange={(sort) => update({ sort })}
+          onSearchChange={setSearch}
+        />
+        <p className="small muted" role="status" aria-live="polite" style={{ margin: 0 }}>
+          {contracts !== null && !error && result.total > 0 && `Showing ${result.from}–${result.to} of ${result.total} escrows`}
+        </p>
         {contracts === null && <div className="card muted">Loading escrows...</div>}
-        {contracts?.length === 0 && !error && <div className="card muted">No escrows yet. Create the first one.</div>}
-        {contracts?.map((c) => {
+        {contracts !== null && result.total === 0 && !error &&
+          (filtered ? (
+            <div className="card row empty" style={{ justifyContent: 'space-between' }}>
+              <span className="muted">No escrows match these filters.</span>
+              <button className="btn btn-secondary btn-sm" onClick={clearFilters}>
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <div className="card muted">No escrows yet. Create the first one.</div>
+          ))}
+        {result.items.map((c) => {
           const next = c.milestones.find((m) => !m.released);
           const active = c.status === 'Created' || c.status === 'Funded';
           const pct = c.totalAmount ? Math.round((c.releasedAmount / c.totalAmount) * 100) : 0;
@@ -580,6 +592,7 @@ export function EscrowDashboard() {
             </article>
           );
         })}
+        <Pagination page={result.page} pageCount={result.pageCount} onPageChange={goToPage} />
       </div>
     </div>
   );
