@@ -154,6 +154,26 @@ h1, h2, h3 { line-height: 1.2; letter-spacing: -0.02em; }
   to   { opacity: 1; }
 }
 
+/* Header actions + notifications bell */
+.header-actions { display: flex; align-items: center; gap: 8px; }
+.bell { position: relative; }
+.bell-button { position: relative; }
+.bell-icon { font-size: 0.95rem; line-height: 1; }
+.bell-badge { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--bad); color: #fff; font-size: 0.7rem; font-weight: 700; display: grid; place-items: center; line-height: 1; }
+.bell-panel { position: absolute; right: 0; top: calc(100% + 10px); width: min(360px, calc(100vw - 24px)); max-height: 70vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); z-index: 60; }
+.bell-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); }
+.bell-list { list-style: none; margin: 0; padding: 0; }
+.bell-item { border-bottom: 1px solid var(--border); }
+.bell-item:last-child { border-bottom: 0; }
+.bell-item a { display: grid; gap: 2px; padding: 12px 14px; color: var(--text); }
+.bell-item a:hover { background: var(--surface-2); text-decoration: none; }
+.bell-item-unread a { border-left: 3px solid var(--brand); }
+.bell-item-title { font-weight: 600; font-size: 0.92rem; }
+.bell-empty { padding: 18px 16px; color: var(--muted); }
+@media (max-width: 480px) {
+  .bell-panel { position: fixed; left: 12px; right: 12px; width: auto; top: 72px; }
+}
+
 /* Buttons */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 18px; border-radius: 10px; font-weight: 600; font-size: 0.95rem; border: 1px solid transparent; cursor: pointer; transition: transform 0.08s ease, background 0.15s ease; font-family: inherit; }
 .btn:hover { text-decoration: none; transform: translateY(-1px); }

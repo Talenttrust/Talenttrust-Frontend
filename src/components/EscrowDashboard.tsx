@@ -6,6 +6,7 @@ import { api, ApiError, EscrowContract } from '@/lib/api';
 import { applyQuery, ContractQuery, DEFAULT_QUERY, parseQuery, toSearchParams } from '@/lib/contractQuery';
 import { EscrowToolbar } from './escrow/EscrowToolbar';
 import { Pagination } from './escrow/Pagination';
+import { WatchToggle } from '@/components/WatchToggle';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
@@ -182,7 +183,10 @@ export function EscrowDashboard() {
                 <h3 style={{ margin: 0 }}>
                   #{c.id} {c.title}
                 </h3>
-                <span className={`badge badge-${c.status}`}>{c.status}</span>
+                <div className="row" style={{ gap: 8 }}>
+                  <WatchToggle contract={c} />
+                  <span className={`badge badge-${c.status}`}>{c.status}</span>
+                </div>
               </div>
               <p className="small muted" style={{ margin: '6px 0 12px' }}>
                 Client <span className="mono">{short(c.client)}</span> &rarr; Freelancer{' '}
