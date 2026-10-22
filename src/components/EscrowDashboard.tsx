@@ -1,12 +1,22 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError, ApiSchemaError, EscrowContract } from '@/lib/api';
 import { ContractListSchema, EscrowContractSchema } from '@/lib/schemas';
+import { applyQuery, ContractQuery, DEFAULT_QUERY, parseQuery, toSearchParams } from '@/lib/contractQuery';
+import { EscrowToolbar } from './escrow/EscrowToolbar';
+import { Pagination } from './escrow/Pagination';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
 export function EscrowDashboard() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const query = useMemo(() => parseQuery(searchParams), [searchParams]);
+  const [search, setSearch] = useState(query.q);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const [contracts, setContracts] = useState<EscrowContract[] | null>(null);
   const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
   const [schemaError, setSchemaError] = useState<ApiSchemaError | null>(null);
@@ -19,12 +29,14 @@ export function EscrowDashboard() {
     milestones: 'Design: 300, Build: 700',
   });
 
+  // Status is filtered by the API, the rest is done client-side
   const load = useCallback(async () => {
     loadController.current?.abort();
     const controller = new AbortController();
     loadController.current = controller;
     try {
-      const res = await api('/api/v1/contracts', ContractListSchema, { signal: controller.signal });
+      const qs = query.status ? `?status=${encodeURIComponent(query.status)}` : '';
+      const res = await api(`/api/v1/contracts${qs}`, ContractListSchema, { signal: controller.signal });
       setContracts(res.data.sort((a, b) => b.id - a.id));
       setError(null);
       setSchemaError(null);
@@ -40,12 +52,43 @@ export function EscrowDashboard() {
       }
       setContracts([]);
     }
-  }, []);
+  }, [query.status]);
 
   useEffect(() => {
     load();
     return () => loadController.current?.abort();
   }, [load]);
+
+  const update = useCallback(
+    (patch: Partial<ContractQuery>) => {
+      const qs = toSearchParams({ ...query, page: 1, ...patch }).toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [query, router, pathname],
+  );
+
+  useEffect(() => {
+    setSearch(query.q);
+  }, [query.q]);
+
+  useEffect(() => {
+    if (search.trim() === query.q) return;
+    const t = setTimeout(() => update({ q: search.trim() }), 250);
+    return () => clearTimeout(t);
+  }, [search, query.q, update]);
+
+  const result = useMemo(() => applyQuery(contracts ?? [], query), [contracts, query]);
+  const filtered = query.status !== '' || query.q !== '';
+
+  const goToPage = (page: number) => {
+    update({ page });
+    headingRef.current?.focus();
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    update(DEFAULT_QUERY);
+  };
 
   const act = async (id: number | 'new', fn: () => Promise<unknown>) => {
     setBusy(id);
@@ -129,9 +172,33 @@ export function EscrowDashboard() {
             </details>
           </div>
         )}
+        <h2 id="escrow-list" className="list-heading" ref={headingRef} tabIndex={-1}>
+          Escrows
+        </h2>
+        <EscrowToolbar
+          status={query.status}
+          sort={query.sort}
+          search={search}
+          onStatusChange={(status) => update({ status })}
+          onSortChange={(sort) => update({ sort })}
+          onSearchChange={setSearch}
+        />
+        <p className="small muted" role="status" aria-live="polite" style={{ margin: 0 }}>
+          {contracts !== null && !error && result.total > 0 && `Showing ${result.from}–${result.to} of ${result.total} escrows`}
+        </p>
         {contracts === null && <div className="card muted">Loading escrows...</div>}
-        {contracts?.length === 0 && !error && !schemaError && <div className="card muted">No escrows yet. Create the first one.</div>}
-        {contracts?.map((c) => {
+        {contracts !== null && result.total === 0 && !error && !schemaError &&
+          (filtered ? (
+            <div className="card row empty" style={{ justifyContent: 'space-between' }}>
+              <span className="muted">No escrows match these filters.</span>
+              <button className="btn btn-secondary btn-sm" onClick={clearFilters}>
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <div className="card muted">No escrows yet. Create the first one.</div>
+          ))}
+        {result.items.map((c) => {
           const next = c.milestones.find((m) => !m.released);
           const active = c.status === 'Created' || c.status === 'Funded';
           const pct = c.totalAmount ? Math.round((c.releasedAmount / c.totalAmount) * 100) : 0;
@@ -242,6 +309,7 @@ export function EscrowDashboard() {
             </article>
           );
         })}
+        <Pagination page={result.page} pageCount={result.pageCount} onPageChange={goToPage} />
       </div>
     </div>
   );
