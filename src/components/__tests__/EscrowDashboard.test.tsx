@@ -1,9 +1,19 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EscrowDashboard } from '@/components/EscrowDashboard';
 import { escrow } from '@/test/fixtures';
+
+vi.mock('@/components/toast/ToastProvider', () => ({
+  ToastProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  useToast: () => ({
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+  }),
+}));
 
 // Minimal stand-in for the App Router: replace() updates useSearchParams()
 const nav = vi.hoisted(() => {
@@ -187,7 +197,7 @@ describe('EscrowDashboard list', () => {
     nav.set('');
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
     render(<EscrowDashboard />);
-    expect(await screen.findByRole('alert', {}, { timeout: 3000 })).toHaveTextContent('We could not reach the TalentTrust API');
+    expect(await screen.findByRole('alert', {}, { timeout: 3000 })).toHaveTextContent('Could not reach the API: Failed to fetch');
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
@@ -196,7 +206,7 @@ describe('EscrowDashboard list', () => {
     nav.set('status=Funded');
     fetchMock.mockImplementation(() => reply({ message: 'Internal error' }, 500));
     render(<EscrowDashboard />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('The TalentTrust API returned an error.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach the API: Internal error');
     expect(screen.queryByText('No escrows match these filters.')).not.toBeInTheDocument();
   });
 

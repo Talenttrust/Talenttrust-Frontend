@@ -2,12 +2,23 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { api, ApiError, EscrowContract } from '@/lib/api';
+import Link from 'next/link';
+import { api, ApiError, EscrowContract, Reputation, unwrapReputation } from '@/lib/api';
 import { applyQuery, ContractQuery, DEFAULT_QUERY, parseQuery, toSearchParams } from '@/lib/contractQuery';
 import { EscrowToolbar } from './escrow/EscrowToolbar';
 import { Pagination } from './escrow/Pagination';
+import { useToast } from '@/components/toast/ToastProvider';
+import { StarRating } from '@/components/reputation/StarRating';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
+
+const asContract = (payload: unknown): EscrowContract | null => {
+  if (!payload || typeof payload !== 'object') return null;
+  const obj = payload as { data?: EscrowContract; id?: number };
+  if (obj.data && typeof obj.data.id === 'number') return obj.data;
+  if (typeof obj.id === 'number') return payload as EscrowContract;
+  return null;
+};
 
 export function EscrowDashboard() {
   const router = useRouter();
@@ -20,6 +31,9 @@ export function EscrowDashboard() {
   const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
   const [busy, setBusy] = useState<number | 'new' | null>(null);
   const loadController = useRef<AbortController | null>(null);
+  const [rated, setRated] = useState<Record<number, Reputation>>({});
+  const [ratingErrors, setRatingErrors] = useState<Record<number, string>>({});
+  const toast = useToast();
   const [form, setForm] = useState({
     title: 'Website redesign',
     client: 'GCLIENT' + 'X'.repeat(49),
@@ -40,7 +54,7 @@ export function EscrowDashboard() {
     } catch (e) {
       if (e instanceof ApiError && e.kind === 'aborted') return;
       const detail = e instanceof ApiError ? e.message : (e as Error).message;
-      setError({ message: e instanceof ApiError ? e.userMessage : `Could not reach the API: ${detail}`, detail });
+      setError({ message: `Could not reach the API: ${detail}`, detail });
       setContracts([]);
     }
   }, [query.status]);
@@ -81,19 +95,62 @@ export function EscrowDashboard() {
     update(DEFAULT_QUERY);
   };
 
-  const act = async (id: number | 'new', fn: () => Promise<unknown>) => {
+  const act = async (id: number | 'new', fn: () => Promise<unknown>, onSuccess?: (result: unknown) => void) => {
     setBusy(id);
-    setError(null);
     try {
-      await fn();
-      await load();
+      const result = await fn();
+      const updated = asContract(result);
+      if (updated) {
+        setContracts((prev) => {
+          if (!prev) return [updated];
+          const exists = prev.some((c) => c.id === updated.id);
+          const next = exists
+            ? prev.map((c) => (c.id === updated.id ? updated : c))
+            : [updated, ...prev];
+          return next.sort((a, b) => b.id - a.id);
+        });
+      } else {
+        await load();
+      }
+      onSuccess?.(result);
     } catch (e) {
       if (e instanceof ApiError && e.kind === 'aborted') return;
-      const detail = e instanceof ApiError ? e.message : (e as Error).message;
-      setError({ message: e instanceof ApiError ? e.userMessage : detail, detail });
+      toast.error((e as Error).message);
     } finally {
       setBusy(null);
     }
+  };
+
+  const rate = async (c: EscrowContract, rating: number) => {
+    setBusy(c.id);
+    setRatingErrors((prev) => {
+      const next = { ...prev };
+      delete next[c.id];
+      return next;
+    });
+    try {
+      const reputation = await api<Reputation>(`/api/v1/contracts/${c.id}/reputation`, {
+        method: 'POST',
+        body: { rating },
+      }).then(unwrapReputation);
+      if (reputation) {
+        setRated((prev) => ({ ...prev, [c.id]: reputation }));
+        await load();
+      }
+      toast.success(`Rating submitted for escrow #${c.id}`);
+    } catch (e) {
+      // already_rated / invalid_status: show inline and refresh the list.
+      setRatingErrors((prev) => ({ ...prev, [c.id]: (e as Error).message }));
+      await load();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const viewEscrow = (id: number) => {
+    const el = document.getElementById(`escrow-${id}`);
+    el?.scrollIntoView({ block: 'center' });
+    el?.focus({ preventScroll: true });
   };
 
   const create = (e: FormEvent) => {
@@ -106,11 +163,23 @@ export function EscrowDashboard() {
         const [title, amount] = part.includes(':') ? part.split(':') : [`Milestone ${i + 1}`, part];
         return { title: title.trim(), amount: Number(amount) };
       });
-    act('new', () =>
-      api('/api/v1/contracts', {
-        method: 'POST',
-        body: { title: form.title, client: form.client, freelancer: form.freelancer, milestones },
-      }),
+    act(
+      'new',
+      () =>
+        api('/api/v1/contracts', {
+          method: 'POST',
+          body: { title: form.title, client: form.client, freelancer: form.freelancer, milestones },
+        }),
+      (result) => {
+        const created = asContract(result);
+        if (created?.id) {
+          toast.success(`Escrow #${created.id} created`, {
+            action: { label: 'View escrow', onClick: () => viewEscrow(created.id) },
+          });
+        } else {
+          toast.success('Escrow created');
+        }
+      },
     );
   };
 
@@ -142,8 +211,8 @@ export function EscrowDashboard() {
 
       <div className="stack" style={{ minWidth: 0 }}>
         {error && (
-          <div className="alert alert-error" role="alert" title={error.detail}>
-            {error.message}
+          <div className="alert alert-error" role="alert">
+            {`Could not reach the API: ${error.message}`}
           </div>
         )}
         <h2 id="escrow-list" className="list-heading" ref={headingRef} tabIndex={-1}>
@@ -177,7 +246,7 @@ export function EscrowDashboard() {
           const active = c.status === 'Created' || c.status === 'Funded';
           const pct = c.totalAmount ? Math.round((c.releasedAmount / c.totalAmount) * 100) : 0;
           return (
-            <article className="card" key={c.id}>
+            <article className="card" key={c.id} id={`escrow-${c.id}`} tabIndex={-1} style={{ outline: 'none' }}>
               <div className="row" style={{ justifyContent: 'space-between' }}>
                 <h3 style={{ margin: 0 }}>
                   #{c.id} {c.title}
@@ -213,8 +282,14 @@ export function EscrowDashboard() {
                     className="btn btn-primary btn-sm"
                     disabled={busy === c.id}
                     onClick={() =>
-                      act(c.id, () =>
-                        api(`/api/v1/contracts/${c.id}/deposit`, { method: 'POST', body: { amount: c.totalAmount - c.fundedAmount } }),
+                      act(
+                        c.id,
+                        () =>
+                          api(`/api/v1/contracts/${c.id}/deposit`, {
+                            method: 'POST',
+                            body: { amount: c.totalAmount - c.fundedAmount },
+                          }),
+                        () => toast.success(`Escrow #${c.id} funded`),
                       )
                     }
                   >
@@ -225,7 +300,14 @@ export function EscrowDashboard() {
                   <button
                     className="btn btn-primary btn-sm"
                     disabled={busy === c.id}
-                    onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/milestones/${next.index}/release`, { method: 'POST' }))}
+                    onClick={() =>
+                      act(
+                        c.id,
+                        () =>
+                          api(`/api/v1/contracts/${c.id}/milestones/${next.index}/release`, { method: 'POST' }),
+                        () => toast.success(`Escrow #${c.id}: milestone released`),
+                      )
+                    }
                   >
                     Release next
                   </button>
@@ -236,9 +318,15 @@ export function EscrowDashboard() {
                       className="btn btn-secondary btn-sm"
                       disabled={busy === c.id}
                       onClick={() =>
-                        act(c.id, () =>
-                          api(`/api/v1/contracts/${c.id}/dispute`, { method: 'POST', body: { raisedBy: c.client, reason: 'Raised from dashboard' } }),
-                        )
+                      act(
+                        c.id,
+                        () =>
+                          api(`/api/v1/contracts/${c.id}/dispute`, {
+                            method: 'POST',
+                            body: { raisedBy: c.client, reason: 'Raised from dashboard' },
+                          }),
+                        () => toast.success(`Escrow #${c.id} disputed`),
+                      )
                       }
                     >
                       Dispute
@@ -246,7 +334,13 @@ export function EscrowDashboard() {
                     <button
                       className="btn btn-secondary btn-sm"
                       disabled={busy === c.id}
-                      onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/cancel`, { method: 'POST' }))}
+                      onClick={() =>
+                      act(
+                        c.id,
+                        () => api(`/api/v1/contracts/${c.id}/cancel`, { method: 'POST' }),
+                        () => toast.success(`Escrow #${c.id} cancelled`),
+                      )
+                      }
                     >
                       Cancel
                     </button>
@@ -257,28 +351,32 @@ export function EscrowDashboard() {
                     className="btn btn-primary btn-sm"
                     disabled={busy === c.id}
                     onClick={() =>
-                      act(c.id, () => api(`/api/v1/contracts/${c.id}/resolve`, { method: 'POST', body: { freelancerBps: 5000 } }))
+                      act(
+                        c.id,
+                        () =>
+                          api(`/api/v1/contracts/${c.id}/resolve`, { method: 'POST', body: { freelancerBps: 5000 } }),
+                        () => toast.success(`Escrow #${c.id} resolved`),
+                      )
                     }
                   >
                     Resolve 50/50
                   </button>
                 )}
-                {c.status === 'Completed' && !c.reputationIssued && (
-                  <>
-                    <span className="small muted">Rate freelancer:</span>
-                    {[1, 2, 3, 4, 5].map((r) => (
-                      <button
-                        key={r}
-                        className="btn btn-secondary btn-sm"
-                        disabled={busy === c.id}
-                        onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/reputation`, { method: 'POST', body: { rating: r } }))}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </>
+                {c.status === 'Completed' && !c.reputationIssued && !rated[c.id] && (
+                  <StarRating onSubmit={(rating) => rate(c, rating)} disabled={busy === c.id} />
                 )}
-                {c.status === 'Completed' && c.reputationIssued && <span className="small muted">Rated. Thanks!</span>}
+                {c.status === 'Completed' && rated[c.id] && (
+                  <p className="small" style={{ margin: 0, flex: '1 1 100%' }}>
+                    New average: {rated[c.id].averageRating} / 5 across {rated[c.id].completedContracts}{' '}
+                    <Link href={`/reputation?address=${c.freelancer}`}>View reputation</Link>
+                  </p>
+                )}
+                {c.status === 'Completed' && c.reputationIssued && !rated[c.id] && <span className="small muted">Rated. Thanks!</span>}
+                {c.status === 'Completed' && ratingErrors[c.id] && (
+                  <div className="alert alert-error small" role="alert" style={{ flex: '1 1 100%', margin: 0 }}>
+                    {ratingErrors[c.id]}
+                  </div>
+                )}
               </div>
             </article>
           );
