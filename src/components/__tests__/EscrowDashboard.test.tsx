@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useSyncExternalStore } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EscrowDashboard } from '@/components/EscrowDashboard';
+import { NotificationsProvider } from '@/components/NotificationsProvider';
 import { escrow } from '@/test/fixtures';
 
 // Minimal stand-in for the App Router: replace() updates useSearchParams()
@@ -44,7 +45,11 @@ const many = Array.from({ length: 23 }, (_, i) =>
 const renderAt = async (search = '', data: unknown = many) => {
   nav.set(search);
   fetchMock.mockImplementation(() => reply({ data }));
-  render(<EscrowDashboard />);
+  render(
+    <NotificationsProvider>
+      <EscrowDashboard />
+    </NotificationsProvider>,
+  );
   await screen.findByRole('heading', { name: 'Escrows' });
   await waitFor(() => expect(screen.queryByText('Loading escrows...')).not.toBeInTheDocument());
 };
@@ -186,7 +191,11 @@ describe('EscrowDashboard list', () => {
   it('shows an error on a network failure', async () => {
     nav.set('');
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
-    render(<EscrowDashboard />);
+    render(
+      <NotificationsProvider>
+        <EscrowDashboard />
+      </NotificationsProvider>,
+    );
     expect(await screen.findByRole('alert', {}, { timeout: 3000 })).toHaveTextContent('We could not reach the TalentTrust API');
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
@@ -195,7 +204,11 @@ describe('EscrowDashboard list', () => {
   it('shows the API message on a non-2xx response', async () => {
     nav.set('status=Funded');
     fetchMock.mockImplementation(() => reply({ message: 'Internal error' }, 500));
-    render(<EscrowDashboard />);
+    render(
+      <NotificationsProvider>
+        <EscrowDashboard />
+      </NotificationsProvider>,
+    );
     expect(await screen.findByRole('alert')).toHaveTextContent('The TalentTrust API returned an error.');
     expect(screen.queryByText('No escrows match these filters.')).not.toBeInTheDocument();
   });
@@ -213,7 +226,11 @@ describe('EscrowDashboard list', () => {
         );
       })
       .mockImplementation(() => reply({ data: [escrow(7, { title: 'Disputed one', status: 'Disputed' })] }));
-    render(<EscrowDashboard />);
+    render(
+      <NotificationsProvider>
+        <EscrowDashboard />
+      </NotificationsProvider>,
+    );
     await user.selectOptions(screen.getByLabelText('Status'), 'Disputed');
     expect(await screen.findByText('#7 Disputed one')).toBeInTheDocument();
     expect(firstSignal?.aborted).toBe(true);

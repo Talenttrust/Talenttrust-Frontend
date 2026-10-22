@@ -5,7 +5,11 @@ import { NotificationsProvider } from '@/components/NotificationsProvider';
 import { EscrowDashboard } from '@/components/EscrowDashboard';
 import type { EscrowContract } from '@/lib/api';
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/contracts' }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/contracts',
+  useRouter: () => ({ replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
