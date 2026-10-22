@@ -8,6 +8,21 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/contracts',
 }));
 
+// jsdom does not implement window.matchMedia; Header uses it in a useEffect.
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  configurable: true,
+  value: () =>
+    ({
+      matches: false,
+      media: '',
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList,
+});
+
 class Boundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
   static getDerivedStateFromError(error: Error) {
