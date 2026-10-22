@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { api, ApiError, EscrowContract } from '@/lib/api';
 import { applyQuery, ContractQuery, DEFAULT_QUERY, parseQuery, toSearchParams } from '@/lib/contractQuery';
 import { EscrowToolbar } from './escrow/EscrowToolbar';
@@ -279,6 +280,11 @@ export function EscrowDashboard() {
                   </>
                 )}
                 {c.status === 'Completed' && c.reputationIssued && <span className="small muted">Rated. Thanks!</span>}
+                {(c.status === 'Completed' || c.status === 'Resolved' || c.status === 'Cancelled') && (
+                  <Link href={`/contracts/${c.id}/statement`} className="btn btn-secondary btn-sm">
+                    Statement
+                  </Link>
+                )}
               </div>
             </article>
           );
