@@ -13,8 +13,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mock next/navigation ──────────────────────────────────────────────────────
 const mockPathname = vi.fn(() => '/');
+const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname(),
+  useRouter: () => ({
+    push: mockPush,
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // ── Mock next/link → plain <a> ────────────────────────────────────────────────
