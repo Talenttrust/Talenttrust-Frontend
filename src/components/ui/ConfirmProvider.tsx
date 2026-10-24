@@ -57,8 +57,11 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Outside a ConfirmProvider (e.g. a component rendered on its own) fall back to
+// the browser's native confirm so destructive actions still ask first.
+const nativeConfirm: ConfirmFn = (options) =>
+  Promise.resolve(typeof window !== 'undefined' && typeof window.confirm === 'function' ? window.confirm(options.title) : false);
+
 export function useConfirm(): ConfirmFn {
-  const confirm = useContext(ConfirmContext);
-  if (!confirm) throw new Error('useConfirm must be used within a ConfirmProvider');
-  return confirm;
+  return useContext(ConfirmContext) ?? nativeConfirm;
 }
