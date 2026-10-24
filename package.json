@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node api.js && next dev",
-    "build": "node api.js && next build",
-    "start": "node api.js && next start",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "lint": "tsc --noEmit",
     "test": "node scripts/check-links.mjs && vitest run"
   },
