@@ -281,7 +281,6 @@ export function EscrowDashboard() {
                     ))}
                   </>
                 )}
-                {c.status === 'Completed' && c.reputationIssued && <span className="small muted">Rated. Thanks!</span>}
               </div>
             </article>
           );
