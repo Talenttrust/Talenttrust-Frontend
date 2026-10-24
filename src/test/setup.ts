@@ -5,13 +5,12 @@ import { afterEach, expect } from 'vitest';
 
 expect.extend(axeMatchers);
 
-interface CustomAxeMatchers {
-  toHaveNoViolations(): void;
-}
-
 declare module 'vitest' {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-empty-object-type, @typescript-eslint/no-unused-vars
-  interface Matchers<T = any> extends CustomAxeMatchers {}
+  // Same type parameters as Vitest 5's Matchers so the declarations merge.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface Matchers<R extends void | Promise<void> = void | Promise<void>, T = unknown> {
+    toHaveNoViolations(): R;
+  }
 }
 
 afterEach(() => {
