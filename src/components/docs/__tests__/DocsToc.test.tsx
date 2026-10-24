@@ -21,7 +21,8 @@ describe('DocsToc component', () => {
     window.location.hash = '';
 
     // Mock IntersectionObserver
-    window.IntersectionObserver = vi.fn().mockImplementation((callback) => {
+    // A regular function so the mock can be called with `new`.
+    window.IntersectionObserver = vi.fn().mockImplementation(function (callback: (entries: IntersectionObserverEntry[]) => void) {
       observerCallback = callback;
       return {
         observe: mockObserve,
@@ -54,7 +55,7 @@ describe('DocsToc component', () => {
           target: { id: 'architecture' } as HTMLElement,
           isIntersecting: true,
           boundingClientRect: { top: 100 } as DOMRectReadOnly,
-        } as IntersectionObserverEntry,
+        } as unknown as IntersectionObserverEntry,
       ]);
     });
 
