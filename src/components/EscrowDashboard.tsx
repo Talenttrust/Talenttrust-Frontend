@@ -6,6 +6,7 @@ import { api, ApiError, EscrowContract } from '@/lib/api';
 import { applyQuery, ContractQuery, DEFAULT_QUERY, parseQuery, toSearchParams } from '@/lib/contractQuery';
 import { EscrowToolbar } from './escrow/EscrowToolbar';
 import { Pagination } from './escrow/Pagination';
+import Link from 'next/link';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
@@ -180,7 +181,9 @@ export function EscrowDashboard() {
             <article className="card" key={c.id}>
               <div className="row" style={{ justifyContent: 'space-between' }}>
                 <h3 style={{ margin: 0 }}>
-                  #{c.id} {c.title}
+                  <Link href={`/contracts/${c.id}`} className="card-title-link">
+                    #{c.id} {c.title}
+                  </Link>
                 </h3>
                 <span className={`badge badge-${c.status}`}>{c.status}</span>
               </div>
@@ -278,7 +281,6 @@ export function EscrowDashboard() {
                     ))}
                   </>
                 )}
-                {c.status === 'Completed' && c.reputationIssued && <span className="small muted">Rated. Thanks!</span>}
               </div>
             </article>
           );
