@@ -1,31 +1,46 @@
+import { z, type ZodSchema } from 'zod';
 import { site } from './site';
+import {
+  ApiErrorBodySchema,
+  ChainSchema,
+  ContractListSchema,
+  DisputeSchema,
+  EscrowContractSchema,
+  MilestoneSchema,
+  ReputationSchema,
+  StatsSchema,
+} from './schemas';
 
-export interface Milestone {
-  index: number;
-  title: string;
-  amount: number;
-  released: boolean;
+export type Milestone = z.infer<typeof MilestoneSchema>;
+export type Dispute = z.infer<typeof DisputeSchema>;
+export type EscrowContract = z.infer<typeof EscrowContractSchema>;
+export type ContractList = z.infer<typeof ContractListSchema>;
+export type Reputation = z.infer<typeof ReputationSchema>;
+export type Stats = z.infer<typeof StatsSchema>;
+export type Chain = z.infer<typeof ChainSchema>;
+
+export class ApiSchemaError extends Error {
+  readonly path: string;
+  readonly issues: string[];
+
+  constructor(path: string, issues: string[]) {
+    super(`API response for ${path} did not match the expected schema`);
+    this.name = 'ApiSchemaError';
+    this.path = path;
+    this.issues = issues;
+  }
 }
 
-export interface EscrowContract {
-  id: number;
-  title: string;
-  client: string;
-  freelancer: string;
-  token: string;
-  milestones: Milestone[];
-  totalAmount: number;
-  fundedAmount: number;
-  releasedAmount: number;
-  status: 'Created' | 'Funded' | 'Completed' | 'Disputed' | 'Resolved' | 'Cancelled';
-  reputationIssued: boolean;
+function condenseIssues(error: z.ZodError): string[] {
+  return error.issues.slice(0, 3).map((issue) => {
+    const location = issue.path.length > 0 ? issue.path.join('.') : '(root)';
+    return `${location}: ${issue.message}`;
+  });
 }
 
-export interface Reputation {
-  address: string;
-  completedContracts: number;
-  totalRating: number;
-  averageRating: number;
+function isJsonContentType(res: Response): boolean {
+  const contentType = res.headers.get('content-type') ?? '';
+  return /\bapplication\/(?:[\w.-+]+\+)?json\b/i.test(contentType);
 }
 
 export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'aborted';
@@ -136,7 +151,11 @@ function isGet(method: string): boolean {
   return method.toUpperCase() === 'GET';
 }
 
-export async function api<T>(path: string, init: ApiOptions = {}): Promise<T> {
+export async function api<Schema extends ZodSchema<any>>(
+  path: string,
+  schema: Schema,
+  init: ApiOptions = {},
+): Promise<z.infer<Schema>> {
   const method = init.method ?? 'GET';
   const timeoutMs = init.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxRetries = isGet(method) ? init.retries ?? MAX_RETRIES : 0;
@@ -178,23 +197,46 @@ export async function api<T>(path: string, init: ApiOptions = {}): Promise<T> {
     }
     clearTimeout(timer);
 
-    const data = await res.json().catch(() => ({}));
+    const text = await res.text();
+    let parsed: unknown = undefined;
+    if (text.length > 0) {
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = undefined;
+      }
+    }
 
     if (!res.ok) {
-      const { code } = readError(data);
+      const { code } = readError(parsed);
       if (attempt < maxRetries && RETRY_STATUSES.has(res.status)) {
         attempt += 1;
         await sleep(backoffDelay(attempt - 1), init.signal ?? new AbortController().signal);
         continue;
       }
+      const errorBody = ApiErrorBodySchema.safeParse(parsed);
+      const message = errorBody.success ? errorBody.data.message : readError(parsed).message || `Request failed (${res.status})`;
       throw new ApiError({
         kind: 'http',
         status: res.status,
         code,
-        message: readError(data).message || `Request failed (${res.status})`,
+        message,
       });
     }
 
-    return data as T;
+    if (text.length === 0 || parsed === undefined) {
+      throw new ApiSchemaError(path, ['Response body was not valid JSON']);
+    }
+
+    if (!isJsonContentType(res)) {
+      throw new ApiSchemaError(path, [`Unexpected content-type: ${res.headers.get('content-type') ?? '(missing)'}`]);
+    }
+
+    const result = schema.safeParse(parsed);
+    if (!result.success) {
+      throw new ApiSchemaError(path, condenseIssues(result.error));
+    }
+
+    return result.data as z.infer<Schema>;
   }
 }

@@ -2,7 +2,8 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { api, ApiError, EscrowContract } from '@/lib/api';
+import { api, ApiError, ApiSchemaError, EscrowContract } from '@/lib/api';
+import { ContractListSchema, EscrowContractSchema } from '@/lib/schemas';
 import { applyQuery, ContractQuery, DEFAULT_QUERY, parseQuery, toSearchParams } from '@/lib/contractQuery';
 import { EscrowToolbar } from './escrow/EscrowToolbar';
 import { Pagination } from './escrow/Pagination';
@@ -18,6 +19,7 @@ export function EscrowDashboard() {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [contracts, setContracts] = useState<EscrowContract[] | null>(null);
   const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
+  const [schemaError, setSchemaError] = useState<ApiSchemaError | null>(null);
   const [busy, setBusy] = useState<number | 'new' | null>(null);
   const loadController = useRef<AbortController | null>(null);
   const [form, setForm] = useState({
@@ -34,13 +36,20 @@ export function EscrowDashboard() {
     loadController.current = controller;
     try {
       const qs = query.status ? `?status=${encodeURIComponent(query.status)}` : '';
-      const res = await api<{ data: EscrowContract[] }>(`/api/v1/contracts${qs}`, { signal: controller.signal });
-      setContracts(Array.isArray(res.data) ? res.data : []);
+      const res = await api(`/api/v1/contracts${qs}`, ContractListSchema, { signal: controller.signal });
+      setContracts(res.data.sort((a, b) => b.id - a.id));
       setError(null);
+      setSchemaError(null);
     } catch (e) {
-      if (e instanceof ApiError && e.kind === 'aborted') return;
-      const detail = e instanceof ApiError ? e.message : (e as Error).message;
-      setError({ message: e instanceof ApiError ? e.userMessage : `Could not reach the API: ${detail}`, detail });
+      if (e instanceof ApiSchemaError) {
+        setSchemaError(e);
+        setError(null);
+      } else if (e instanceof ApiError && e.kind === 'aborted') {
+        return;
+      } else {
+        const detail = e instanceof ApiError ? e.message : (e as Error).message;
+        setError({ message: e instanceof ApiError ? e.userMessage : `Could not reach the API: ${detail}`, detail });
+      }
       setContracts([]);
     }
   }, [query.status]);
@@ -84,13 +93,19 @@ export function EscrowDashboard() {
   const act = async (id: number | 'new', fn: () => Promise<unknown>) => {
     setBusy(id);
     setError(null);
+    setSchemaError(null);
     try {
       await fn();
       await load();
     } catch (e) {
-      if (e instanceof ApiError && e.kind === 'aborted') return;
-      const detail = e instanceof ApiError ? e.message : (e as Error).message;
-      setError({ message: e instanceof ApiError ? e.userMessage : detail, detail });
+      if (e instanceof ApiSchemaError) {
+        setSchemaError(e);
+      } else if (e instanceof ApiError && e.kind === 'aborted') {
+        return;
+      } else {
+        const detail = e instanceof ApiError ? e.message : (e as Error).message;
+        setError({ message: e instanceof ApiError ? e.userMessage : detail, detail });
+      }
     } finally {
       setBusy(null);
     }
@@ -107,7 +122,7 @@ export function EscrowDashboard() {
         return { title: title.trim(), amount: Number(amount) };
       });
     act('new', () =>
-      api('/api/v1/contracts', {
+      api('/api/v1/contracts', EscrowContractSchema, {
         method: 'POST',
         body: { title: form.title, client: form.client, freelancer: form.freelancer, milestones },
       }),
@@ -146,6 +161,17 @@ export function EscrowDashboard() {
             {error.message}
           </div>
         )}
+        {schemaError && (
+          <div className="alert alert-error" role="alert">
+            <p style={{ margin: 0 }}>The API returned data in an unexpected format</p>
+            <details>
+              <summary className="small">Details</summary>
+              <pre className="small mono" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                {schemaError.message}
+              </pre>
+            </details>
+          </div>
+        )}
         <h2 id="escrow-list" className="list-heading" ref={headingRef} tabIndex={-1}>
           Escrows
         </h2>
@@ -161,7 +187,7 @@ export function EscrowDashboard() {
           {contracts !== null && !error && result.total > 0 && `Showing ${result.from}–${result.to} of ${result.total} escrows`}
         </p>
         {contracts === null && <div className="card muted">Loading escrows...</div>}
-        {contracts !== null && result.total === 0 && !error &&
+        {contracts !== null && result.total === 0 && !error && !schemaError &&
           (filtered ? (
             <div className="card row empty" style={{ justifyContent: 'space-between' }}>
               <span className="muted">No escrows match these filters.</span>
@@ -214,7 +240,7 @@ export function EscrowDashboard() {
                     disabled={busy === c.id}
                     onClick={() =>
                       act(c.id, () =>
-                        api(`/api/v1/contracts/${c.id}/deposit`, { method: 'POST', body: { amount: c.totalAmount - c.fundedAmount } }),
+                        api(`/api/v1/contracts/${c.id}/deposit`, EscrowContractSchema, { method: 'POST', body: { amount: c.totalAmount - c.fundedAmount } }),
                       )
                     }
                   >
@@ -225,7 +251,7 @@ export function EscrowDashboard() {
                   <button
                     className="btn btn-primary btn-sm"
                     disabled={busy === c.id}
-                    onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/milestones/${next.index}/release`, { method: 'POST' }))}
+                    onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/milestones/${next.index}/release`, EscrowContractSchema, { method: 'POST' }))}
                   >
                     Release next
                   </button>
@@ -237,7 +263,7 @@ export function EscrowDashboard() {
                       disabled={busy === c.id}
                       onClick={() =>
                         act(c.id, () =>
-                          api(`/api/v1/contracts/${c.id}/dispute`, { method: 'POST', body: { raisedBy: c.client, reason: 'Raised from dashboard' } }),
+                          api(`/api/v1/contracts/${c.id}/dispute`, EscrowContractSchema, { method: 'POST', body: { raisedBy: c.client, reason: 'Raised from dashboard' } }),
                         )
                       }
                     >
@@ -246,7 +272,7 @@ export function EscrowDashboard() {
                     <button
                       className="btn btn-secondary btn-sm"
                       disabled={busy === c.id}
-                      onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/cancel`, { method: 'POST' }))}
+                      onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/cancel`, EscrowContractSchema, { method: 'POST' }))}
                     >
                       Cancel
                     </button>
@@ -256,35 +282,4 @@ export function EscrowDashboard() {
                   <button
                     className="btn btn-primary btn-sm"
                     disabled={busy === c.id}
-                    onClick={() =>
-                      act(c.id, () => api(`/api/v1/contracts/${c.id}/resolve`, { method: 'POST', body: { freelancerBps: 5000 } }))
-                    }
-                  >
-                    Resolve 50/50
-                  </button>
-                )}
-                {c.status === 'Completed' && !c.reputationIssued && (
-                  <>
-                    <span className="small muted">Rate freelancer:</span>
-                    {[1, 2, 3, 4, 5].map((r) => (
-                      <button
-                        key={r}
-                        className="btn btn-secondary btn-sm"
-                        disabled={busy === c.id}
-                        onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/reputation`, { method: 'POST', body: { rating: r } }))}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </>
-                )}
-                {c.status === 'Completed' && c.reputationIssued && <span className="small muted">Rated. Thanks!</span>}
-              </div>
-            </article>
-          );
-        })}
-        <Pagination page={result.page} pageCount={result.pageCount} onPageChange={goToPage} />
-      </div>
-    </div>
-  );
-}
+                    onClick={() => act
