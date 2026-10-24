@@ -112,3 +112,8 @@ export function useContractStatus(): ContractStatusContextValue {
   }
   return context;
 }
+
+/** Like useContractStatus, but returns null when rendered outside a provider. */
+export function useOptionalContractStatus(): ContractStatusContextValue | null {
+  return useContext(ContractStatusContext);
+}

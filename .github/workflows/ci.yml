@@ -36,6 +36,6 @@ jobs:
       - run: npm ci
       - name: Lint (type check)
         run: npm run lint
-      - name: Test (links + unit)
+      - name: Test (internal link check)
         run: npm test
       - run: npm run build
