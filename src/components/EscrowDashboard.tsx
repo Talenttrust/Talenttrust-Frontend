@@ -6,6 +6,7 @@ import { api, ApiError, EscrowContract } from '@/lib/api';
 import { applyQuery, ContractQuery, DEFAULT_QUERY, parseQuery, toSearchParams } from '@/lib/contractQuery';
 import { EscrowToolbar } from './escrow/EscrowToolbar';
 import { Pagination } from './escrow/Pagination';
+import FundControl from './escrow/FundControl';
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
 
@@ -209,17 +210,14 @@ export function EscrowDashboard() {
               </ul>
               <div className="row">
                 {active && c.fundedAmount < c.totalAmount && (
-                  <button
-                    className="btn btn-primary btn-sm"
-                    disabled={busy === c.id}
-                    onClick={() =>
+                  <FundControl
+                    contract={c}
+                    onDeposit={(amount: number) =>
                       act(c.id, () =>
-                        api(`/api/v1/contracts/${c.id}/deposit`, { method: 'POST', body: { amount: c.totalAmount - c.fundedAmount } }),
+                        api(`/api/v1/contracts/${c.id}/deposit`, { method: 'POST', body: { amount } }),
                       )
                     }
-                  >
-                    Fund {c.totalAmount - c.fundedAmount} {c.token}
-                  </button>
+                  />
                 )}
                 {active && next && c.fundedAmount - c.releasedAmount >= next.amount && (
                   <button
@@ -283,7 +281,6 @@ export function EscrowDashboard() {
             </article>
           );
         })}
-        <Pagination page={result.page} pageCount={result.pageCount} onPageChange={goToPage} />
       </div>
     </div>
   );
