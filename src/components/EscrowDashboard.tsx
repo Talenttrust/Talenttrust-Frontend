@@ -278,33 +278,6 @@ export function EscrowDashboard() {
                     </button>
                   </>
                 )}
-                {c.status === 'Disputed' && (
-                  <button
-                    className="btn btn-primary btn-sm"
-                    disabled={busy === c.id}
-                    onClick={() =>
-                      act(c.id, () => api(`/api/v1/contracts/${c.id}/resolve`, EscrowContractSchema, { method: 'POST', body: { freelancerBps: 5000 } }))
-                    }
-                  >
-                    Resolve 50/50
-                  </button>
-                )}
-                {c.status === 'Completed' && !c.reputationIssued && (
-                  <>
-                    <span className="small muted">Rate freelancer:</span>
-                    {[1, 2, 3, 4, 5].map((r) => (
-                      <button
-                        key={r}
-                        className="btn btn-secondary btn-sm"
-                        disabled={busy === c.id}
-                        onClick={() => act(c.id, () => api(`/api/v1/contracts/${c.id}/reputation`, EscrowContractSchema, { method: 'POST', body: { rating: r } }))}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </>
-                )}
-                {c.status === 'Completed' && c.reputationIssued && <span className="small muted">Rated. Thanks!</span>}
               </div>
             </article>
           );
