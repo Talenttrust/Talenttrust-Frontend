@@ -6,6 +6,9 @@ import { Header } from '@/components/Header';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/contracts',
+  // Header renders the command palette, which navigates with the router.
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // jsdom does not implement window.matchMedia; Header uses it in a useEffect.
