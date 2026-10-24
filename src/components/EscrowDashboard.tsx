@@ -181,7 +181,7 @@ export function EscrowDashboard() {
             <article className="card" key={c.id}>
               <div className="row" style={{ justifyContent: 'space-between' }}>
                 <h3 style={{ margin: 0 }}>
-                  <Link href={`/contracts/${c.id}`} className="card-title-link">
+                  <Link href={'/contracts/' + c.id} className="card-title-link">
                     #{c.id} {c.title}
                   </Link>
                 </h3>
@@ -281,7 +281,6 @@ export function EscrowDashboard() {
                     ))}
                   </>
                 )}
-                {c.status === 'Completed' && c.reputationIssued && <span className="small muted">Rated. Thanks!</span>}
               </div>
             </article>
           );

@@ -14,6 +14,10 @@ const segmentMatches = (fileSeg, requestSeg) => {
   return fileSeg === requestSeg;
 };
 
+// A request segment containing a template interpolation (e.g. `${c.id}`) is a dynamic value
+// that will be filled in at runtime, so it is treated as matching any dynamic folder.
+const isInterpolated = (seg) => /\$\{[^}]*\}/.test(seg);
+
 const routeExists = (href) => {
   const path = href.split('#')[0].split('?')[0];
   const requestSegs = path.split('/').filter(Boolean);
@@ -22,15 +26,21 @@ const routeExists = (href) => {
   const walk = (dir, idx) => {
     if (idx === requestSegs.length) return existsSync(join(dir, 'page.tsx'));
     const entries = readdirSync(dir);
+    const reqSeg = requestSegs[idx];
     for (const entry of entries) {
       const p = join(dir, entry);
       if (!statSync(p).isDirectory()) continue;
-      if (!segmentMatches(entry, requestSegs[idx])) continue;
-      if (walkDir(p, idx + 1)) return true;
+      const isDynamicFolder = entry.startsWith('[') && entry.endsWith(']');
+      if (isInterpolated(reqSeg)) {
+        if (!isDynamicFolder) continue;
+      } else if (!segmentMatches(entry, reqSeg)) {
+        continue;
+      }
+      if (walk(p, idx + 1)) return true;
     }
     return false;
   };
-  return walkDir(appDir, 0);
+  return walk(appDir, 0);
 };
 
 const walkFiles = (dir) =>
