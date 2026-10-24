@@ -204,15 +204,15 @@ export function ReputationLookup() {
                       Retry API
                     </button>
                   </>
-              ) : (
-                apiResult && (
-                  <dl className="stats" aria-labelledby="api-heading">
-                    {statRow('Completed contracts', apiResult.completedContracts, 'api-contracts')}
-                    {statRow('Total rating points', apiResult.totalRating, 'api-total')}
-                    {statRow('Average rating', `${(apiResult.averageRating ?? 0).toFixed(2)} / 5`, 'api-average')}
-                  </dl>
-                )
-              )}
+                ) : (
+                  apiResult && (
+                    <dl className="stats" aria-labelledby="api-heading">
+                      {statRow('Completed contracts', apiResult.completedContracts, 'api-contracts')}
+                      {statRow('Total rating points', apiResult.totalRating, 'api-total')}
+                      {statRow('Average rating', `${(apiResult.averageRating ?? 0).toFixed(2)} / 5`, 'api-average')}
+                    </dl>
+                  )
+                )}
               </div>
             ) : null}
           </div>

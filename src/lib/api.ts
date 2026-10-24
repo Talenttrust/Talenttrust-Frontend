@@ -5,7 +5,7 @@ import {
   ChainSchema,
   ContractListSchema,
   DisputeSchema,
-  EscowContractSchema,
+  EscrowContractSchema,
   MilestoneSchema,
   ReputationSchema,
   StatsSchema,
