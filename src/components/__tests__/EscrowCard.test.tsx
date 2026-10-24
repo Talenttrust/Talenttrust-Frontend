@@ -143,7 +143,7 @@ describe('EscrowCard Accessible Names for Action Buttons', () => {
 
     await user.click(disputeBtn);
     expect(onDispute).toHaveBeenCalledTimes(1);
-    expect(onDispute).toHaveBeenCalledWith(mockCreatedContract);
+    expect(onDispute).toHaveBeenCalledWith(mockCreatedContract, disputeBtn);
   });
 
   it('asserts contextual accessible name on fund button', async () => {

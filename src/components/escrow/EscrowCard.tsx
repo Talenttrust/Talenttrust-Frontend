@@ -9,7 +9,7 @@ export interface EscrowCardProps {
   busy?: boolean;
   onFund?: (contract: EscrowContract, amount: number) => void;
   onReleaseNext?: (contract: EscrowContract, milestoneIndex: number) => void;
-  onDispute?: (contract: EscrowContract) => void;
+  onDispute?: (contract: EscrowContract, trigger: HTMLButtonElement) => void;
   onCancel?: (contract: EscrowContract) => void;
   onResolve?: (contract: EscrowContract) => void;
   onRate?: (contract: EscrowContract, rating: number) => void;
@@ -114,13 +114,13 @@ export function EscrowCard({
               disabled={busy}
               aria-label={`Dispute escrow #${contract.id} ${contract.title}`}
               aria-describedby={headingId}
-              onClick={() => onDispute?.(contract)}
+              onClick={(event) => onDispute?.(contract, event.currentTarget)}
             >
               Dispute
             </button>
             <button
               type="button"
-              className="btn btn-secondary btn-sm"
+              className="btn btn-danger btn-sm"
               disabled={busy}
               aria-label={`Cancel escrow #${contract.id} ${contract.title}`}
               aria-describedby={headingId}
