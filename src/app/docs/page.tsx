@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { site, explorerUrl, apiDocsUrl } from '@/lib/site';
+import { DocsToc } from '@/components/docs/DocsToc';
+import { CodeBlock } from '@/components/docs/CodeBlock';
+import { DocHeading } from '@/components/docs/DocHeading';
 
 export const metadata: Metadata = { title: 'Docs' };
 
-const toc = [
+const toc: Array<[string, string]> = [
   ['overview', 'Overview'],
   ['architecture', 'Architecture'],
   ['lifecycle', 'Escrow lifecycle'],
@@ -22,16 +25,10 @@ export default function DocsPage() {
         <p>Everything you need to understand, use and integrate TalentTrust.</p>
       </div>
       <div className="docs">
-        <nav className="toc" aria-label="On this page">
-          {toc.map(([id, label]) => (
-            <a key={id} href={`#${id}`}>
-              {label}
-            </a>
-          ))}
-        </nav>
+        <DocsToc items={toc} />
         <div className="prose">
           <section id="overview">
-            <h2>Overview</h2>
+            <DocHeading id="overview" title="Overview" />
             <p>
               <strong>TalentTrust</strong> is a decentralized escrow protocol for freelance work on Stellar. A client locks
               the project budget into a Soroban smart contract, the work is split into milestones, and each milestone is
@@ -42,7 +39,7 @@ export default function DocsPage() {
           </section>
 
           <section id="architecture">
-            <h2>Architecture</h2>
+            <DocHeading id="architecture" title="Architecture" />
             <p>The system has three parts, each in its own repository:</p>
             <div className="arch">
               <div className="card">
@@ -66,7 +63,7 @@ export default function DocsPage() {
           </section>
 
           <section id="lifecycle">
-            <h2>Escrow lifecycle</h2>
+            <DocHeading id="lifecycle" title="Escrow lifecycle" />
             <div className="table-wrap">
               <table>
                 <thead>
@@ -89,7 +86,7 @@ export default function DocsPage() {
           </section>
 
           <section id="how-to">
-            <h2>How to use</h2>
+            <DocHeading id="how-to" title="How to use" />
             <h3>In the web app</h3>
             <ol>
               <li>
@@ -104,22 +101,20 @@ export default function DocsPage() {
               </li>
             </ol>
             <h3>From the command line</h3>
-            <pre>
-              <code>{`curl -X POST ${site.apiUrl}/api/v1/contracts \\
+            <CodeBlock>{`curl -X POST ${site.apiUrl}/api/v1/contracts \\
   -H 'content-type: application/json' \\
   -d '{"title":"Logo design","client":"GCLIENT...","freelancer":"GFREE...",
        "milestones":[{"title":"Concepts","amount":100},{"title":"Final","amount":200}]}'
 
 curl -X POST ${site.apiUrl}/api/v1/contracts/1/deposit -H 'content-type: application/json' -d '{"amount":300}'
-curl -X POST ${site.apiUrl}/api/v1/contracts/1/milestones/0/release`}</code>
-            </pre>
+curl -X POST ${site.apiUrl}/api/v1/contracts/1/milestones/0/release`}</CodeBlock>
             <p className="small">
               Note: the hosted API keeps data in memory for demo purposes, so records can reset between deployments.
             </p>
           </section>
 
           <section id="api">
-            <h2>API</h2>
+            <DocHeading id="api" title="API" />
             <p>
               Interactive Swagger documentation is served by the API itself at{' '}
               <a href={apiDocsUrl} target="_blank" rel="noreferrer">
@@ -156,23 +151,22 @@ curl -X POST ${site.apiUrl}/api/v1/contracts/1/milestones/0/release`}</code>
           </section>
 
           <section id="contract">
-            <h2>Smart contract</h2>
+            <DocHeading id="contract" title="Smart contract" />
             <p>
               The escrow is a Rust Soroban contract. Key functions: <code>initialize</code>, <code>create_contract</code>,{' '}
               <code>deposit_funds</code>, <code>release_milestone</code>, <code>open_dispute</code>,{' '}
               <code>resolve_dispute</code>, <code>cancel_contract</code>, <code>issue_reputation</code>,{' '}
               <code>get_contract</code> and <code>get_reputation</code>. Deposits and releases perform real token
               transfers through the Stellar Asset Contract interface, and an admin circuit breaker can pause all
-              mutations.
+              mutations. Dispute resolution is an admin-only arbiter decision enforced by the contract; any frontend
+              check is only a user-experience measure and does not replace on-chain authorization.
             </p>
-            <pre>
-              <code>{`stellar contract invoke --id ${site.contractId} \\
-  --source <your-key> --network ${site.network} -- get_admin`}</code>
-            </pre>
+            <CodeBlock>{`stellar contract invoke --id ${site.contractId} \\
+  --source <your-key> --network ${site.network} -- get_admin`}</CodeBlock>
           </section>
 
           <section id="deployments">
-            <h2>Deployments</h2>
+            <DocHeading id="deployments" title="Deployments" />
             <div className="table-wrap">
               <table>
                 <tbody>
