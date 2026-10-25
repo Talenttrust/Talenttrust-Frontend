@@ -1,17 +1,11 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { FormField } from '@/components/FormField';
-import {
-  combineValidators,
-  validateRequired,
-  validateMaxLength,
-  validatePositiveNumber,
-} from '@/lib/fieldValidators';
-import { sanitizeUserText } from '@/lib/sanitizeUserText';
+import { useId, useRef, useState } from 'react';
 
-export const MAX_MILESTONE_TITLE_LENGTH = 200;
+export const MAX_MILESTONE_TITLE_LENGTH = 80;
 export const MAX_MILESTONES = 20;
+/** Stellar amounts have at most 7 decimal places (1 stroop = 0.0000001). */
+export const MAX_AMOUNT_DECIMALS = 7;
 
 export interface MilestoneInput {
   id: string;
@@ -19,270 +13,241 @@ export interface MilestoneInput {
   amount: string;
 }
 
+export interface MilestoneRowErrors {
+  title?: string;
+  amount?: string;
+}
+
+export interface MilestoneValidation {
+  rows: MilestoneRowErrors[];
+  form?: string;
+  valid: boolean;
+}
+
+let nextId = 0;
+/** Creates a row with a stable id for React keys and focus management. */
+export function newMilestone(title = '', amount = ''): MilestoneInput {
+  nextId += 1;
+  return { id: `milestone-${nextId}`, title, amount };
+}
+
+const AMOUNT_RE = new RegExp(`^\\d+(?:\\.\\d{1,${MAX_AMOUNT_DECIMALS}})?$`);
+
+/** Parses a decimal amount into integer stroops; null when it is not a valid amount. */
+export function toStroops(amount: string): bigint | null {
+  const value = amount.trim();
+  if (!AMOUNT_RE.test(value)) return null;
+  const [whole, fraction = ''] = value.split('.');
+  return BigInt(whole) * 10_000_000n + BigInt(fraction.padEnd(MAX_AMOUNT_DECIMALS, '0'));
+}
+
+/** Formats integer stroops as a decimal string without float drift (e.g. 0.1 + 0.2 -> "0.3"). */
+export function formatStroops(stroops: bigint): string {
+  const whole = stroops / 10_000_000n;
+  const fraction = (stroops % 10_000_000n).toString().padStart(MAX_AMOUNT_DECIMALS, '0').replace(/0+$/, '');
+  return fraction ? `${whole}.${fraction}` : whole.toString();
+}
+
+/** Sum of all valid row amounts, in stroops. */
+export function totalStroops(rows: MilestoneInput[]): bigint {
+  return rows.reduce((sum, row) => sum + (toStroops(row.amount) ?? 0n), 0n);
+}
+
+/** Pure validation: per-row field errors plus a form-level error. */
+export function validateMilestones(rows: MilestoneInput[]): MilestoneValidation {
+  const errors = rows.map((row): MilestoneRowErrors => {
+    const out: MilestoneRowErrors = {};
+    const title = row.title.trim();
+    if (!title) out.title = 'Enter a milestone title.';
+    else if (title.length > MAX_MILESTONE_TITLE_LENGTH) {
+      out.title = `Titles can be at most ${MAX_MILESTONE_TITLE_LENGTH} characters.`;
+    }
+    const amount = row.amount.trim();
+    const stroops = toStroops(amount);
+    if (!amount) out.amount = 'Enter an amount.';
+    else if (/^\d+\.\d{8,}$/.test(amount)) out.amount = `Use at most ${MAX_AMOUNT_DECIMALS} decimal places.`;
+    else if (stroops === null) out.amount = 'Enter a number, for example 300 or 12.5.';
+    else if (stroops <= 0n) out.amount = 'The amount must be greater than 0.';
+    return out;
+  });
+  let form: string | undefined;
+  if (rows.length === 0) form = 'Add at least one milestone.';
+  else if (rows.length > MAX_MILESTONES) form = `An escrow can have at most ${MAX_MILESTONES} milestones.`;
+  const valid = !form && errors.every((e) => !e.title && !e.amount);
+  return { rows: errors, form, valid };
+}
+
 export interface MilestoneBuilderProps {
-  /** Current milestones array */
+  /** Current milestones (controlled). */
   milestones: MilestoneInput[];
-  /** Called when milestones change */
   onChange: (milestones: MilestoneInput[]) => void;
-  /** Currency symbol to display (e.g., '$', '€', '£') */
+  /** Token code shown next to amounts and in the total. */
   currencySymbol?: string;
-  /** Error message for the entire milestone builder */
-  error?: string;
+  /** Errors to show (usually from validateMilestones after a submit attempt). */
+  errors?: MilestoneValidation | null;
 }
 
 /**
- * MilestoneBuilder - A structured interface for entering multiple milestones
- * with title and amount fields, add/remove/reorder support, live total calculation,
- * and per-field validation.
- *
- * Features:
- * - One row per milestone with title and amount inputs
- * - Add milestone button (up to MAX_MILESTONES)
- * - Remove milestone button (minimum 1 milestone)
- * - Reorder milestones via drag handles (up/down arrows)
- * - Live total calculation displayed
- * - Per-field validation with inline errors
- * - 20-milestone cap enforcement
+ * Structured milestone entry: one row per milestone (title + amount) with
+ * add / remove / reorder, a live total and per-field errors.
  */
-export const MilestoneBuilder: React.FC<MilestoneBuilderProps> = ({
-  milestones,
-  onChange,
-  currencySymbol = '$',
-  error,
-}) => {
-  const validateTitleField = combineValidators([
-    validateRequired('Milestone title'),
-    validateMaxLength('Milestone title', MAX_MILESTONE_TITLE_LENGTH),
-  ]);
+export function MilestoneBuilder({ milestones, onChange, currencySymbol = 'XLM', errors }: MilestoneBuilderProps) {
+  const uid = useId();
+  const [announcement, setAnnouncement] = useState('');
+  const addRef = useRef<HTMLButtonElement>(null);
+  const rowsRef = useRef<HTMLDivElement>(null);
 
-  const validateAmountField = combineValidators([
-    validateRequired('Milestone amount'),
-    validatePositiveNumber('Milestone amount'),
-  ]);
+  const label = (row: MilestoneInput, index: number) =>
+    `milestone ${index + 1}${row.title.trim() ? `: ${row.title.trim()}` : ''}`;
 
-  /**
-   * Adds a new empty milestone to the list
-   */
-  const addMilestone = useCallback(() => {
+  const focusTitle = (index: number) => {
+    requestAnimationFrame(() => {
+      const inputs = rowsRef.current?.querySelectorAll<HTMLInputElement>('input[data-field="title"]');
+      const target = inputs?.[index];
+      if (target) target.focus();
+      else addRef.current?.focus();
+    });
+  };
+
+  const update = (index: number, field: 'title' | 'amount', value: string) => {
+    onChange(milestones.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+  };
+
+  const add = () => {
     if (milestones.length >= MAX_MILESTONES) return;
-    
-    const newMilestone: MilestoneInput = {
-      id: crypto.randomUUID(),
-      title: '',
-      amount: '',
-    };
-    onChange([...milestones, newMilestone]);
-  }, [milestones, onChange]);
+    onChange([...milestones, newMilestone()]);
+    setAnnouncement(`Milestone ${milestones.length + 1} added.`);
+    focusTitle(milestones.length);
+  };
 
-  /**
-   * Removes a milestone at the specified index
-   */
-  const removeMilestone = useCallback((index: number) => {
+  const remove = (index: number) => {
     if (milestones.length <= 1) return;
-    
-    const updated = milestones.filter((_, i) => i !== index);
-    onChange(updated);
-  }, [milestones, onChange]);
-
-  /**
-   * Moves a milestone up in the list
-   */
-  const moveMilestoneUp = useCallback((index: number) => {
-    if (index === 0) return;
-    
-    const updated = [...milestones];
-    [updated[index - 1], updated[index]] = [updated[index], updated[index - 1]];
-    onChange(updated);
-  }, [milestones, onChange]);
-
-  /**
-   * Moves a milestone down in the list
-   */
-  const moveMilestoneDown = useCallback((index: number) => {
-    if (index === milestones.length - 1) return;
-    
-    const updated = [...milestones];
-    [updated[index], updated[index + 1]] = [updated[index + 1], updated[index]];
-    onChange(updated);
-  }, [milestones, onChange]);
-
-  /**
-   * Updates a specific milestone's field
-   */
-  const updateMilestone = useCallback((index: number, field: 'title' | 'amount', value: string) => {
-    const updated = [...milestones];
-    updated[index] = { ...updated[index], [field]: value };
-    onChange(updated);
-  }, [milestones, onChange]);
-
-  /**
-   * Calculates the total of all milestone amounts
-   */
-  const calculateTotal = (): number => {
-    return milestones.reduce((sum, m) => {
-      const amount = parseFloat(m.amount);
-      return isNaN(amount) ? sum : sum + amount;
-    }, 0);
+    const removed = milestones[index];
+    onChange(milestones.filter((_, i) => i !== index));
+    setAnnouncement(`Removed ${label(removed, index)}.`);
+    // Focus the row that took its place, else the previous row, else Add.
+    focusTitle(index < milestones.length - 1 ? index : index - 1);
   };
 
-  /**
-   * Validates a specific milestone's title
-   */
-  const validateTitle = (title: string): string | undefined => {
-    const sanitized = sanitizeUserText(title, MAX_MILESTONE_TITLE_LENGTH);
-    if (!sanitized) {
-      return 'Milestone title is required';
-    }
-    if (sanitizeUserText(title, Number.MAX_SAFE_INTEGER).length > MAX_MILESTONE_TITLE_LENGTH) {
-      return `Title must be no more than ${MAX_MILESTONE_TITLE_LENGTH} characters`;
-    }
-    return undefined;
+  const move = (index: number, delta: -1 | 1) => {
+    const target = index + delta;
+    if (target < 0 || target >= milestones.length) return;
+    const next = [...milestones];
+    [next[index], next[target]] = [next[target], next[index]];
+    onChange(next);
+    setAnnouncement(`Moved ${label(milestones[index], index)} to position ${target + 1}.`);
+    focusTitle(target);
   };
 
-  /**
-   * Validates a specific milestone's amount
-   */
-  const validateAmount = (amount: string): string | undefined => {
-    if (!amount.trim()) {
-      return 'Milestone amount is required';
-    }
-    const num = parseFloat(amount);
-    if (isNaN(num) || num <= 0) {
-      return 'Amount must be a positive number';
-    }
-    return undefined;
-  };
-
-  const total = calculateTotal();
-  const canAddMore = milestones.length < MAX_MILESTONES;
+  const total = formatStroops(totalStroops(milestones));
+  const atLimit = milestones.length >= MAX_MILESTONES;
+  const limitId = `${uid}-limit`;
 
   return (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Milestones <span className="text-red-500 ml-1" aria-hidden="true">*</span>
-        </label>
-        {error && (
-          <p id="milestones-error" className="mb-2 text-sm text-red-600 font-medium" role="alert">
-            {error}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-3">
-        {milestones.map((milestone, index) => {
-          const titleError = validateTitle(milestone.title);
-          const amountError = validateAmount(milestone.amount);
-          
+    <fieldset className="milestone-builder">
+      <legend>Milestones</legend>
+      {errors?.form && (
+        <p className="field-error" role="alert">
+          {errors.form}
+        </p>
+      )}
+      <div className="milestone-rows" ref={rowsRef}>
+        {milestones.map((row, index) => {
+          const rowErrors = errors?.rows[index] ?? {};
+          const titleId = `${uid}-title-${row.id}`;
+          const amountId = `${uid}-amount-${row.id}`;
           return (
-            <div
-              key={milestone.id}
-              className="p-4 border border-slate-200 rounded-lg bg-white"
-            >
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-sm font-semibold text-slate-700">
-                  Milestone {index + 1}
-                </h3>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => moveMilestoneUp(index)}
-                    disabled={index === 0}
-                    className="text-slate-600 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-sm font-medium focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500 rounded"
-                    aria-label={`Move milestone ${index + 1} up`}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveMilestoneDown(index)}
-                    disabled={index === milestones.length - 1}
-                    className="text-slate-600 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-sm font-medium focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500 rounded"
-                    aria-label={`Move milestone ${index + 1} down`}
-                  >
-                    ↓
-                  </button>
-                  {milestones.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeMilestone(index)}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-red-500 rounded ml-2"
-                      aria-label={`Remove milestone ${index + 1}`}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
+            <div className="milestone-row" key={row.id}>
+              <div className="field">
+                <label htmlFor={titleId}>Milestone {index + 1} title</label>
+                <input
+                  id={titleId}
+                  data-field="title"
+                  className="input"
+                  value={row.title}
+                  maxLength={MAX_MILESTONE_TITLE_LENGTH + 20}
+                  aria-invalid={rowErrors.title ? true : undefined}
+                  aria-describedby={rowErrors.title ? `${titleId}-error` : undefined}
+                  onChange={(e) => update(index, 'title', e.target.value)}
+                />
+                {rowErrors.title && (
+                  <span id={`${titleId}-error`} className="field-error">
+                    {rowErrors.title}
+                  </span>
+                )}
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  label="Title"
-                  id={`milestone-title-${index}`}
-                  error={titleError}
-                  validate={validateTitleField}
-                  required
+              <div className="field">
+                <label htmlFor={amountId}>Milestone {index + 1} amount ({currencySymbol})</label>
+                <input
+                  id={amountId}
+                  data-field="amount"
+                  className="input mono"
+                  inputMode="decimal"
+                  value={row.amount}
+                  aria-invalid={rowErrors.amount ? true : undefined}
+                  aria-describedby={rowErrors.amount ? `${amountId}-error` : undefined}
+                  onChange={(e) => update(index, 'amount', e.target.value)}
+                />
+                {rowErrors.amount && (
+                  <span id={`${amountId}-error`} className="field-error">
+                    {rowErrors.amount}
+                  </span>
+                )}
+              </div>
+              <div className="row milestone-row-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={index === 0}
+                  aria-label={`Move ${label(row, index)} up`}
+                  onClick={() => move(index, -1)}
                 >
-                  <input
-                    type="text"
-                    value={milestone.title}
-                    onChange={(e) => updateMilestone(index, 'title', e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., Design Phase"
-                  />
-                </FormField>
-
-                <FormField
-                  label="Amount"
-                  id={`milestone-amount-${index}`}
-                  error={amountError}
-                  validate={validateAmountField}
-                  required
+                  Up
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={index === milestones.length - 1}
+                  aria-label={`Move ${label(row, index)} down`}
+                  onClick={() => move(index, 1)}
                 >
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
-                      {currencySymbol}
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={milestone.amount}
-                      onChange={(e) => updateMilestone(index, 'amount', e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </FormField>
+                  Down
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={milestones.length <= 1}
+                  aria-label={`Remove ${label(row, index)}`}
+                  onClick={() => remove(index)}
+                >
+                  Remove
+                </button>
               </div>
             </div>
           );
         })}
       </div>
-
-      {canAddMore && (
-        <button
-          type="button"
-          onClick={addMilestone}
-          className="text-blue-600 hover:text-blue-800 text-sm font-medium focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500 rounded"
-        >
-          + Add Another Milestone
-        </button>
+      <button
+        ref={addRef}
+        type="button"
+        className="btn btn-secondary btn-sm"
+        disabled={atLimit}
+        aria-describedby={atLimit ? limitId : undefined}
+        onClick={add}
+      >
+        Add milestone
+      </button>
+      {atLimit && (
+        <span id={limitId} className="small muted">
+          An escrow can have at most {MAX_MILESTONES} milestones.
+        </span>
       )}
-
-      {!canAddMore && (
-        <p className="text-sm text-slate-500">
-          Maximum of {MAX_MILESTONES} milestones reached
-        </p>
-      )}
-
-      <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-medium text-slate-700">Total:</span>
-          <span className="text-lg font-semibold text-slate-900">
-            {currencySymbol}{total.toFixed(2)}
-          </span>
-        </div>
-      </div>
-    </div>
+      <p className="small milestone-total" aria-live="polite">
+        {milestones.length} {milestones.length === 1 ? 'milestone' : 'milestones'} · Total {total} {currencySymbol}
+      </p>
+      <span className="sr-only" aria-live="polite">
+        {announcement}
+      </span>
+    </fieldset>
   );
-};
+}

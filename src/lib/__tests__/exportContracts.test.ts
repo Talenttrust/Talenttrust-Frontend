@@ -1,198 +1,103 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { EscrowContract } from '@/lib/api';
 import {
-  contractsToCsv,
-  contractsToJson,
-  triggerDownload,
-  downloadContractsCsv,
-  downloadContractsJson,
-} from '../exportContracts';
+  buildExport,
+  CONTRACT_HEADERS,
+  contractsToRows,
+  downloadCsv,
+  exportFilename,
+  MILESTONE_HEADERS,
+  milestonesToRows,
+} from '@/lib/exportContracts';
+import { disputed, readBlob, resolved } from '@/test/exportFixtures';
 
-import type { Contract } from '@/types/domain';
-
-const VALID_ADDRESS_1 = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H';
-const VALID_ADDRESS_2 = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
-
-const baseContract: Contract = {
-  contractName: 'Website Redesign',
-  parties: [
-    { label: 'Client', address: VALID_ADDRESS_1 },
-    { label: 'Freelancer', address: VALID_ADDRESS_2 },
-  ],
-  totalValue: 5000,
-  currency: 'USD',
-  status: 'Active',
-  createdAt: 'Jan 15, 2025',
-  milestoneCount: 3,
-};
-
-describe('contractsToCsv', () => {
-  it('produces CSV with headers and data rows', () => {
-    const csv = contractsToCsv([baseContract]);
-    const lines = csv.split('\n');
-
-    expect(lines[0]).toBe('contractName,parties,totalValue,currency,status,createdAt,milestoneCount');
-    expect(lines[1]).toContain('Website Redesign');
-    expect(lines[1]).toContain('5000');
-    expect(lines[1]).toContain('USD');
-    expect(lines[1]).toContain('Active');
-    expect(lines[1]).toContain('Jan 15, 2025');
-    expect(lines[1]).toContain('3');
+describe('contractsToRows', () => {
+  it('maps a disputed and a resolved contract', () => {
+    expect(contractsToRows([disputed, resolved])).toEqual([
+      [
+        7, '=HYPERLINK("http://evil")', 'Disputed', 'GCLIENT7', 'GFREE7', 'XLM', 1000, 1000, 300, 700, 2,
+        '2026-10-01T09:00:00.000Z', '2026-10-02T10:00:00.000Z', 'GCLIENT7', 'Late "final" delivery\nsee chat',
+      ],
+      [
+        8, 'Логотип café', 'Resolved', 'GCLIENT8', 'GFREE8', 'XLM', 500, 500, 500, 0, 1,
+        '2026-10-03T09:00:00.000Z', '2026-10-04T10:00:00.000Z', 'GFREE8', 'No reason given',
+      ],
+    ]);
+    expect(CONTRACT_HEADERS).toHaveLength(15);
   });
 
-  it('escapes fields containing commas', () => {
-    const contract: Contract = { ...baseContract, contractName: 'Redesign, Phase 1' };
-    const csv = contractsToCsv([contract]);
-    const line = csv.split('\n')[1];
-    expect(line).toContain('"Redesign, Phase 1"');
+  it('leaves dispute and date cells empty when the API does not send them', () => {
+    const plain: EscrowContract = { ...resolved, status: 'Funded', dispute: undefined, createdAt: undefined, updatedAt: undefined };
+    expect(contractsToRows([plain])[0].slice(-4)).toEqual([undefined, undefined, undefined, undefined]);
+    expect(buildExport('escrows', [plain]).endsWith(',1,,,,')).toBe(true);
   });
 
-  it('escapes fields containing double quotes', () => {
-    const contract: Contract = { ...baseContract, contractName: 'Redesign "Phase 1"' };
-    const csv = contractsToCsv([contract]);
-    const line = csv.split('\n')[1];
-    expect(line).toContain('"Redesign ""Phase 1"""');
-  });
-
-  it('escapes fields containing newlines', () => {
-    const contract: Contract = { ...baseContract, contractName: 'Redesign\nPhase 1' };
-    const csv = contractsToCsv([contract]);
-    expect(csv).toContain('"Redesign');
-    expect(csv).toContain('Phase 1"');
-    expect(csv).toContain('Client (GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H)');
-  });
-
-  it('handles empty parties and zero values', () => {
-    const contract: Contract = {
-      contractName: 'Test',
-      parties: [],
-      totalValue: 0,
-      currency: '',
-      status: 'Pending' as const,
-      createdAt: '',
-      milestoneCount: 0,
-    };
-    const csv = contractsToCsv([contract]);
-    expect(csv).toContain('Test');
-    expect(csv).toContain('0');
-  });
-
-  it('handles null fields gracefully via defensive null check', () => {
-    const contract = {
-      contractName: null,
-      parties: [{ label: 'Client', address: 'GABCDEFGHIJKLMNOPQRSTUVWXYZ234567' }],
-      totalValue: 100,
-      currency: 'USD',
-      status: 'Active',
-      createdAt: 'Jan 1, 2025',
-      milestoneCount: 1,
-    } as unknown as Contract;
-    const csv = contractsToCsv([contract]);
-    expect(csv).toContain('Active');
-  });
-
-  it('returns headers only for empty array', () => {
-    const csv = contractsToCsv([]);
-    expect(csv).toBe('contractName,parties,totalValue,currency,status,createdAt,milestoneCount');
-  });
-
-  it('joins parties with semicolons and wraps addresses', () => {
-    const csv = contractsToCsv([baseContract]);
-    const line = csv.split('\n')[1];
-    expect(line).toContain('Client (GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H)');
-    expect(line).toContain('Freelancer');
-  });
-
-  it('handles multiple contracts', () => {
-    const c2: Contract = { ...baseContract, contractName: 'Mobile App' };
-    const csv = contractsToCsv([baseContract, c2]);
-    const lines = csv.split('\n');
-    expect(lines).toHaveLength(3);
-    expect(lines[1]).toContain('Website Redesign');
-    expect(lines[2]).toContain('Mobile App');
+  it('counts missing milestones as 0', () => {
+    const broken = { ...resolved, milestones: undefined } as unknown as EscrowContract;
+    expect(contractsToRows([broken])[0][10]).toBe(0);
+    expect(milestonesToRows([broken])).toEqual([]);
   });
 });
 
-describe('contractsToJson', () => {
-  it('produces a JSON array', () => {
-    const json = contractsToJson([baseContract]);
-    const parsed = JSON.parse(json);
-    expect(Array.isArray(parsed)).toBe(true);
-    expect(parsed).toHaveLength(1);
-    expect(parsed[0].contractName).toBe('Website Redesign');
-  });
-
-  it('produces pretty-printed JSON with indentation', () => {
-    const json = contractsToJson([baseContract]);
-    expect(json).toContain('\n  ');
-  });
-
-  it('returns empty array JSON for no contracts', () => {
-    const json = contractsToJson([]);
-    expect(json).toBe('[]');
-  });
-
-  it('preserves all contract fields', () => {
-    const json = contractsToJson([baseContract]);
-    const parsed = JSON.parse(json);
-    expect(parsed[0]).toEqual(baseContract);
+describe('milestonesToRows', () => {
+  it('writes one row per milestone', () => {
+    expect(milestonesToRows([disputed, resolved])).toEqual([
+      [7, '=HYPERLINK("http://evil")', 0, 'Design, v1', 300, true],
+      [7, '=HYPERLINK("http://evil")', 1, '-Build', 700, false],
+      [8, 'Логотип café', 0, 'Logo', 500, false],
+    ]);
+    expect(MILESTONE_HEADERS).toHaveLength(6);
   });
 });
 
-describe('triggerDownload', () => {
-  beforeEach(() => {
-    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
-    global.URL.revokeObjectURL = jest.fn();
-    jest.spyOn(document.body, 'appendChild').mockImplementation((el: Node) => el);
-    jest.spyOn(document.body, 'removeChild').mockImplementation((el: Node) => el);
-    jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+describe('buildExport', () => {
+  it('escapes and sanitises the escrow CSV', () => {
+    const lines = buildExport('escrows', [disputed]).split('\r\n');
+    expect(lines[0]).toBe(CONTRACT_HEADERS.join(','));
+    expect(lines[1]).toBe(
+      `7,"'=HYPERLINK(""http://evil"")",Disputed,GCLIENT7,GFREE7,XLM,1000,1000,300,700,2,` +
+        `2026-10-01T09:00:00.000Z,2026-10-02T10:00:00.000Z,GCLIENT7,"Late ""final"" delivery\nsee chat"`,
+    );
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it('creates a blob, anchor element, triggers click, and cleans up', () => {
-    triggerDownload('content', 'file.csv', 'text/csv');
-    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
-    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+  it('sanitises milestone titles', () => {
+    expect(buildExport('milestones', [disputed]).split('\r\n')).toEqual([
+      MILESTONE_HEADERS.join(','),
+      `7,"'=HYPERLINK(""http://evil"")",0,"Design, v1",300,true`,
+      `7,"'=HYPERLINK(""http://evil"")",1,'-Build,700,false`,
+    ]);
   });
 });
 
-describe('downloadContractsCsv and downloadContractsJson', () => {
-  beforeEach(() => {
-    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
-    global.URL.revokeObjectURL = jest.fn();
-    jest.spyOn(document.body, 'appendChild').mockImplementation((el: Node) => el);
-    jest.spyOn(document.body, 'removeChild').mockImplementation((el: Node) => el);
-    jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+describe('exportFilename', () => {
+  it('uses the local date', () => {
+    expect(exportFilename(new Date(2026, 0, 5, 23, 59))).toBe('talenttrust-escrows-2026-01-05.csv');
   });
+});
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
+describe('downloadCsv', () => {
+  afterEach(() => vi.restoreAllMocks());
 
-  it('downloadContractsCsv does not throw with contracts', () => {
-    expect(() => downloadContractsCsv([baseContract])).not.toThrow();
-  });
+  it('downloads a UTF-8 Blob with a BOM and revokes the URL', async () => {
+    const create = vi.fn((_: Blob) => 'blob:test');
+    const revoke = vi.fn();
+    Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke });
+    const clicked: HTMLAnchorElement[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      clicked.push(this);
+    });
 
-  it('downloadContractsJson does not throw with contracts', () => {
-    expect(() => downloadContractsJson([baseContract])).not.toThrow();
-  });
+    downloadCsv('a,b\r\n1,é', 'x.csv');
 
-  it('handles empty contracts array for CSV', () => {
-    expect(() => downloadContractsCsv([])).not.toThrow();
-  });
-
-  it('handles empty contracts array for JSON', () => {
-    expect(() => downloadContractsJson([])).not.toThrow();
-  });
-
-  it('downloadContractsCsv triggers download once', () => {
-    downloadContractsCsv([baseContract]);
-    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
-  });
-
-  it('downloadContractsJson triggers download once', () => {
-    downloadContractsJson([baseContract]);
-    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
+    const blob = create.mock.calls[0][0];
+    expect(blob.type).toBe('text/csv;charset=utf-8');
+    const bytes = await readBlob(blob);
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(new TextDecoder().decode(bytes)).toBe('a,b\r\n1,é');
+    expect(clicked).toHaveLength(1);
+    expect(clicked[0].download).toBe('x.csv');
+    expect(clicked[0].href).toBe('blob:test');
+    expect(revoke).toHaveBeenCalledWith('blob:test');
+    expect(document.querySelector('a[download]')).toBeNull();
   });
 });

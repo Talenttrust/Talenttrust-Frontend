@@ -49,6 +49,7 @@ Reference documentation for components, hooks, contexts, and library utilities.
 | [useDialogFocusTrap.md](./hooks/useDialogFocusTrap.md) | Focus management for dialogs |
 | [useFormAnnouncer.md](./hooks/useFormAnnouncer.md) | ARIA announcements for forms |
 | [useMediaQuery.md](./hooks/useMediaQuery.md) | SSR-safe media query hook |
+| [useMilestonesRouteError.md](./hooks/useMilestonesRouteError.md) | Milestones route error recovery — report dedupe, single-flight reset, graceful degradation |
 
 > The `useDialogFocusTrap` hook is documented in [Dialogs.md](./components/Dialogs.md#usedialogfocustrap-hook).
 
@@ -69,7 +70,9 @@ Reference documentation for components, hooks, contexts, and library utilities.
 | [currencyMismatch.md](./lib/currencyMismatch.md) | Currency mismatch detection helper |
 | [dueSoon.md](./lib/dueSoon.md) | Due-soon date helpers |
 | [milestoneStatusTally.md](./lib/milestoneStatusTally.md) | Milestone status count helper |
+| [milestonesRouteError.md](./lib/milestonesRouteError.md) | Sanitized milestones route-failure metadata |
 | [validate-login.md](./lib/validate-login.md) | Login form validation |
+| [webAppManifest.md](./lib/webAppManifest.md) | Web app manifest contract — canonical icons, validation, bounded fallbacks, immutable output, diagnostics |
 
 ---
 
@@ -81,6 +84,7 @@ Reference documentation for components, hooks, contexts, and library utilities.
 | [COPYWRITING_GUIDE.md](./COPYWRITING_GUIDE.md) | Voice, tone, and copy standards |
 | [data-model.md](./data-model.md) | Domain types, `Contract`, `Milestone`, optional `contractId` |
 | [error-reporting.md](./error-reporting.md) | Pluggable error reporting abstraction |
+| [route-failure-recovery.md](./route-failure-recovery.md) | Deterministic failure recovery for the `/contracts` loading fallback (stall, retry budget, error isolation) and for `/sitemap.xml` (base-URL validation, entry invariants, report codes) |
 | [persistence.md](./persistence.md) | `safeStorage`, `localStorage` fallback, SSR safety |
 | [preferences.md](./preferences.md) | `PreferencesProvider` hydration, theme application, amount formatting |
 | [security-headers.md](./security-headers.md) | CSP, `X-Frame-Options`, and other HTTP response headers |

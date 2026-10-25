@@ -4,56 +4,38 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  malware-guard:
+    name: Malware guard (PolinRider)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
         with:
-          node-version: '20'
-          cache: 'npm'
+          persist-credentials: false
+      - name: Scan for supply-chain malware markers
+        run: bash .github/scripts/malware-scan.sh
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
+  build-test:
+    needs: malware-guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Lint (type check)
         run: npm run lint
-
-      - name: Build
-        run: npm run build
-
-      - name: Run tests
+      - name: Test (internal link check)
         run: npm test
-
-      # Fail the build on high or critical advisories.
-      # Re-run once on transient registry errors (exit code 2 = connectivity).
-      # To waive an unavoidable advisory add its ID to .npmrc:
-      #   audit-level=high
-      # or use: npm audit --audit-level=high --ignore <advisory-id> (npm ≥ 10)
-      # Document the waiver reason in a comment here and in the PR description.
-      - name: Dependency audit
-        run: |
-          # Pre-existing advisories in next@14.2.x with no patch available in the 14.x range.
-          # Waived until the project upgrades to next@15+. Re-evaluate on every dep update.
-          # Advisory IDs: 1101438 1105461 1107226 1107512 1107513 1108291 1111391 1112182
-          #               1112593 1112653 1113689 1114897 1114940 1116376 1117015 1117931
-          #               1118942 1118944 1118946 1118948 1118952 1118954 1118958 1118962
-          KNOWN="1101438 1105461 1107226 1107512 1107513 1108291 1111391 1112182 1112593 1112653 1113689 1114897 1114940 1116376 1117015 1117931 1118942 1118944 1118946 1118948 1118952 1118954 1118958 1118962 1124066"
-          AUDIT_JSON=$(npm audit --audit-level=high --omit=dev --ignore 1124066 --json 2>/dev/null || true)
-          NEW=$(echo "$AUDIT_JSON" | node -e "
-            const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-            const known=new Set('$KNOWN'.trim().split(/\s+/));
-            const found=(d.vulnerabilities?Object.values(d.vulnerabilities):[])
-              .flatMap(v=>Array.isArray(v.via)?v.via:[v.via])
-              .filter(v=>v&&typeof v==='object'&&(v.severity==='high'||v.severity==='critical'))
-              .map(v=>String(v.source))
-              .filter(id=>!known.has(id));
-            const uniq=[...new Set(found)];
-            if(uniq.length){console.error('New high/critical advisories:',uniq.join(', '));process.exit(1);}
-          ")
-          echo "Dependency audit passed (only known pre-existing advisories present)."
+      - run: npm run build
