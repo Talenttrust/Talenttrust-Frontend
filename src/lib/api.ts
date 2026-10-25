@@ -10,9 +10,9 @@ export interface Milestone {
 export interface Dispute {
   raisedBy: string;
   reason: string;
-  openedAt: string;
-  freelancerBps?: number;
-  resolvedAt?: string;
+  openedAt?: string;
+  freelancerBps?: number | null;
+  resolvedAt?: string | null;
 }
 
 export interface EscrowContract {
@@ -27,9 +27,12 @@ export interface EscrowContract {
   releasedAmount: number;
   status: 'Created' | 'Funded' | 'Completed' | 'Disputed' | 'Resolved' | 'Cancelled';
   reputationIssued: boolean;
-  dispute?: Dispute;
-  createdAt: string;
-  updatedAt: string;
+  dispute?: Dispute | null;
+  /** Some API versions expose the dispute timestamp at the top level. */
+  disputeOpenedAt?: string;
+  disputedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Reputation {
@@ -39,6 +42,16 @@ export interface Reputation {
   averageRating: number;
 }
 
+export interface Stats {
+  contracts: number;
+  byStatus: Record<EscrowContract["status"], number>;
+  totalEscrowed: number;
+  totalReleased: number;
+}
+
+export function getStats(): Promise<Stats> {
+  return api<Stats>("/stats");
+}
 export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'aborted';
 
 const FRIENDLY_CODES: Record<string, string> = {
@@ -244,4 +257,48 @@ export async function fetchContract(id: number): Promise<ContractFetch> {
     throw new Error('Empty contract response');
   }
   return { ok: true, contract: data as EscrowContract };
+}
+
+/** Unwrap the Reputation that the rate endpoint returns, if present. */
+export function unwrapReputation(payload: unknown): Reputation | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const obj = payload as { data?: Reputation; address?: string };
+  if (obj.data && typeof obj.data.address === 'string') return obj.data;
+  if (typeof obj.address === 'string') return payload as Reputation;
+  return null;
+}
+
+/** Unwrap the EscrowContract that mutation endpoints return, if present. */
+export function unwrapContract(payload: unknown): EscrowContract | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const obj = payload as { data?: EscrowContract; id?: number };
+  if (obj.data && typeof obj.data.id === 'number') return obj.data;
+  if (typeof obj.id === 'number' && 'status' in obj) return payload as EscrowContract;
+  return null;
+}
+
+/** View filter values persisted in the URL ?view= param. */
+export type ViewFilter = 'all' | 'client' | 'freelancer';
+
+/**
+ * Fetch escrow contracts with optional server-side filters.
+ *
+ * The backend supports:
+ *   ?party=<address>  – returns contracts where client OR freelancer equals address
+ *   ?status=<status>  – filter by status
+ *
+ * Uses URLSearchParams so the query string is always correctly encoded.
+ */
+export async function listContracts(opts?: {
+  party?: string;
+  status?: EscrowContract['status'];
+}): Promise<EscrowContract[]> {
+  const params = new URLSearchParams();
+  if (opts?.party) params.set('party', opts.party);
+  if (opts?.status) params.set('status', opts.status);
+  const qs = params.toString();
+  const res = await api<{ data: EscrowContract[] }>(
+    `/api/v1/contracts${qs ? `?${qs}` : ''}`,
+  );
+  return res.data;
 }
