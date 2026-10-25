@@ -18,12 +18,13 @@ import Link from 'next/link';
  */
 export default function OfflinePage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-[var(--background)] text-[var(--foreground)]">
-      <div className="max-w-md w-full text-center space-y-6">
+    <div className="container offline-page">
+      <div className="offline-inner">
         {/* Offline icon */}
-        <div aria-hidden="true" className="flex justify-center">
+        <div aria-hidden="true" className="offline-icon">
           <svg
-            className="h-16 w-16 text-[var(--muted-foreground)]"
+            width="64"
+            height="64"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -42,41 +43,41 @@ export default function OfflinePage() {
           </svg>
         </div>
 
-        <div className="space-y-3">
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">
+        <div>
+          <h1>
             You&apos;re Offline
           </h1>
-          <p className="text-[var(--muted-foreground)]">
+          <p className="muted">
             TalentTrust needs a network connection to load escrow data and
             sign transactions. Your funds are safe — please reconnect to
             continue.
           </p>
         </div>
 
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-          <p className="text-sm text-[var(--muted-foreground)]">
+        <div className="card">
+          <p className="small muted" style={{ margin: 0 }}>
             While offline, you can still browse previously visited pages
             from your cache. Any actions that require the blockchain or
             wallet signing will wait until you&apos;re back online.
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <div className="row" style={{ justifyContent: "center" }}>
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="px-5 py-2.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]"
+            className="btn btn-primary"
           >
             Try Again
           </button>
           <Link
             href="/"
-            className="px-5 py-2.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] font-medium hover:bg-[var(--muted)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]"
+            className="btn btn-secondary"
           >
             Go Home
           </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

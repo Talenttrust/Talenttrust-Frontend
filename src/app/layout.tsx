@@ -1,100 +1,95 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import Link from 'next/link';
 import './globals.css';
-import { ToastProvider } from '@/components/toast/toast-provider';
-
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-const metadataBase = new URL(siteUrl);
-// Social preview image used by Open Graph and Twitter cards lives in public/.
-const socialPreviewImage = '/og-preview.svg';
-
-export const metadata: Metadata = {
-  title: 'TalentTrust - Safe Freelance Payments',
-  description: 'Safe, secure payments that protect both freelancers and clients throughout your project.',
-  metadataBase,
-  manifest: '/manifest.webmanifest',
-  icons: {
-    icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
-    ],
-    apple: [
-      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-    ],
-  },
-  openGraph: {
-    title: 'TalentTrust - Safe Freelance Payments',
-    description: 'Safe, secure payments that protect both freelancers and clients throughout your project.',
-    type: 'website',
-    siteName: 'TalentTrust',
-    url: siteUrl,
-    images: [
-      {
-        url: socialPreviewImage,
-        width: 1200,
-        height: 630,
-        alt: 'TalentTrust social preview showing safe freelance payments',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'TalentTrust - Safe Freelance Payments',
-    description: 'Safe, secure payments that protect both freelancers and clients throughout your project.',
-    images: [socialPreviewImage],
-  },
-};
-
-import { PreferencesProvider } from '@/lib/preferences';
-import { SettingsTrigger } from '@/components/settings/SettingsTrigger';
-import { WalletProvider } from '@/contexts/WalletContext';
-import RouteAnnouncer from '@/components/RouteAnnouncer';
-import Navbar from '@/components/Navbar';
-import HeaderActions from '@/components/HeaderActions';
+import { Header } from '@/components/Header';
+import { ContractStatusProvider } from '@/components/ContractStatusProvider';
+import { PausedBanner } from '@/components/PausedBanner';
+import { ContractStatusPill } from '@/components/ContractStatusPill';
+import { ConfirmProvider } from '@/components/ui/ConfirmProvider';
+import { NotificationsProvider } from '@/components/NotificationsProvider';
+import { ToastProvider } from '@/components/toast/ToastProvider';
+import { SwrProvider } from '@/lib/swr';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import OfflineIndicator from '@/components/OfflineIndicator';
+import { site, explorerUrl, apiDocsUrl } from '@/lib/site';
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const metadata: Metadata = {
+  title: { default: 'TalentTrust | Milestone escrow on Stellar', template: '%s | TalentTrust' },
+  description:
+    'TalentTrust lets clients and freelancers lock payments in a Soroban smart contract, release funds milestone by milestone, resolve disputes and build on-chain reputation.',
+  icons: { icon: '/icon.svg' },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  // Provide per-scheme theme colours so the mobile browser chrome matches
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#4f46e5' },
+    { media: '(prefers-color-scheme: dark)',  color: '#818cf8' },
+  ],
+};
+
+/**
+ * Blocking inline script: reads tt.theme from localStorage and sets
+ * data-theme on <html> before any CSS or React renders, preventing FOUC.
+ * Wrapped in try/catch so storage errors silently fall back to System mode.
+ * The nonce attribute is intentionally omitted here; attach it via
+ * middleware when a CSP nonce is available.
+ */
+const themeScript = `(function(){try{var t=localStorage.getItem('tt.theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`;
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning because data-theme is set by the inline
+    // script before React hydrates, causing a deliberate attribute mismatch.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* eslint-disable-next-line @next/next/no-before-interactive-script-component */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
-        <PreferencesProvider>
-          <ToastProvider>
-            <WalletProvider>
-              {/* Skip link must be the first focusable element so keyboard users
-                  can bypass the sticky header on every page (WCAG 2.4.1). */}
-              <a
-                href="#main-content"
-                className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-blue-600 focus:px-4 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                Skip to main content
-              </a>
-              <RouteAnnouncer />
-              <div className="min-h-screen bg-slate-50 flex flex-col">
-                <header className="sticky top-0 z-40 flex w-full flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white/80 px-6 py-4 backdrop-blur-md">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold tracking-tight text-slate-900">
-                      TalentTrust
-                    </span>
-                    <OfflineIndicator />
-                  </div>
-                  <Navbar />
-                  <HeaderActions />
-                </header>
-                <main className="flex-1 p-6" tabIndex={-1} id="main-content">
-                  {children}
-                </main>
-              </div>
-              <SettingsTrigger />
-              <ServiceWorkerRegister />
-            </WalletProvider>
-          </ToastProvider>
-        </PreferencesProvider>
+        <ToastProvider>
+          <SwrProvider>
+            <ConfirmProvider>
+              <ContractStatusProvider>
+                <NotificationsProvider>
+                  <a href="#main" className="skip">
+                    Skip to content
+                  </a>
+                  <Header />
+                  <OfflineIndicator />
+                  <PausedBanner />
+                  <main id="main">{children}</main>
+                  <footer className="footer">
+                    <div className="container footer-inner">
+                      <div className="footer-brand">
+                        <span>
+                          <strong style={{ color: 'var(--text)' }}>TalentTrust</strong> &middot; {site.tagline}
+                        </span>
+                        <ContractStatusPill />
+                      </div>
+                      <div className="footer-links">
+                        <Link href="/docs">Docs</Link>
+                        <Link href="/status">Status</Link>
+                        <a href={apiDocsUrl} target="_blank" rel="noreferrer">
+                          API
+                        </a>
+                        <a href={explorerUrl} target="_blank" rel="noreferrer">
+                          Contract
+                        </a>
+                        <a href={site.github} target="_blank" rel="noreferrer">
+                          GitHub
+                        </a>
+                      </div>
+                    </div>
+                  </footer>
+                  <ServiceWorkerRegister />
+                </NotificationsProvider>
+              </ContractStatusProvider>
+            </ConfirmProvider>
+          </SwrProvider>
+        </ToastProvider>
       </body>
     </html>
   );

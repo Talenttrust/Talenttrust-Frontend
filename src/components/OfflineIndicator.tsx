@@ -25,11 +25,12 @@ export default function OfflineIndicator() {
     <div
       role="status"
       aria-live="polite"
-      className="inline-flex items-center gap-1.5 rounded-full bg-[var(--status-warning-bg)] px-3 py-1 text-xs font-medium text-[var(--status-warning-foreground)]"
+      className="offline-indicator"
     >
       <svg
         aria-hidden="true"
-        className="h-3.5 w-3.5 flex-shrink-0"
+        width="14"
+        height="14"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"

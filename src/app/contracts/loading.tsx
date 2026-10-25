@@ -1,65 +1,56 @@
-/**
- * loading.tsx – /contracts
- *
- * App Router Suspense boundary rendered while the contracts list page streams
- * in. Mirrors the visual shape of ContractsPage: a page heading followed by
- * a column of contract-card rows (matching the `<li>` cards rendered when
- * contracts exist).
- *
- * Accessibility:
- * - Outer wrapper carries `aria-busy="true"` and `role="status"` so assistive
- *   technologies understand the region is in a transient loading state.
- * - The visually-hidden span announces "Loading contracts…" via an
- *   `aria-live="polite"` region on mount.
- * - All shimmer blocks carry `aria-hidden="true"` — they are decorative
- *   placeholders with no semantic content.
- * - The shimmer animation is suppressed via the project-wide
- *   `prefers-reduced-motion` CSS rule in globals.css plus the
- *   `motion-reduce:animate-none` Tailwind variant belt-and-suspenders guard.
- */
-
-const ContractCardSkeleton = () => (
-  <div
-    aria-hidden="true"
-    className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
-  >
-    {/* Contract name */}
-    <div className="h-5 w-48 rounded-lg bg-slate-200 animate-shimmer motion-reduce:animate-none" />
-    {/* Status · Created */}
-    <div className="mt-2 h-3.5 w-36 rounded-lg bg-slate-200 animate-shimmer motion-reduce:animate-none" />
-  </div>
-);
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function ContractsLoading() {
   return (
-    <main className="min-h-screen p-8" aria-busy="true">
-      {/* Accessible announcement */}
-      <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-        Loading contracts…
-      </span>
-
-      {/* Heading skeleton */}
-      <div
-        aria-hidden="true"
-        className="mb-6 h-8 w-36 rounded-lg bg-slate-200 animate-shimmer motion-reduce:animate-none"
-      />
-
-      {/* "Create Contract" button skeleton – top-right alignment */}
-      <div className="mb-4 flex justify-end">
-        <div
-          aria-hidden="true"
-          className="h-9 w-36 rounded-2xl bg-slate-200 animate-shimmer motion-reduce:animate-none"
-        />
+    <div className="container">
+      <div className="page-head">
+        <Skeleton variant="block" width="min(320px, 60%)" height={44} radius={10} />
+        <div style={{ marginTop: 14 }}>
+          <Skeleton width="min(560px, 100%)" />
+        </div>
       </div>
+      <div className="dash" role="status" aria-live="polite">
+        <span className="sr-only">Loading…</span>
+        <div className="card form">
+          <Skeleton width="40%" height="1.2em" />
+          {[0, 1, 2, 3].map((i) => (
+            <div className="field" key={i}>
+              <Skeleton width="30%" />
+              <Skeleton variant="block" width="100%" height={44} />
+            </div>
+          ))}
+          <Skeleton variant="block" width={140} height={42} />
+        </div>
+        <div className="stack" style={{ minWidth: 0 }}>
+          <div className="skeleton-cards">
+            {[0, 1, 2].map((i) => (
+              <EscrowCardSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-      {/* Contract card list */}
-      <ul className="space-y-4" aria-label="Loading contract list">
-        {Array.from({ length: 5 }, (_, i) => (
-          <li key={i}>
-            <ContractCardSkeleton />
-          </li>
-        ))}
-      </ul>
-    </main>
+function EscrowCardSkeleton() {
+  return (
+    <div className="card skeleton-card">
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <Skeleton width="55%" height="1.2em" />
+        <Skeleton width={84} height={22} radius={999} />
+      </div>
+      <Skeleton width="75%" />
+      <Skeleton variant="block" width="100%" height={8} radius={999} />
+      <Skeleton width="60%" />
+      <div className="stack" style={{ gap: 8, margin: '12px 0' }}>
+        <Skeleton width="80%" />
+        <Skeleton width="65%" />
+      </div>
+      <div className="row">
+        <Skeleton variant="block" width={110} height={34} />
+        <Skeleton variant="block" width={110} height={34} />
+      </div>
+    </div>
   );
 }

@@ -1,92 +1,27 @@
-'use client';
+import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import { EscrowDashboard } from '@/components/EscrowDashboard';
+import { site } from '@/lib/site';
 
-import React, { useState, useCallback } from 'react';
-import EmptyState from '../../components/EmptyState';
-import { ContractCreationForm } from '../../components/ContractCreationForm';
-import { listContracts, saveContract } from '@/lib/repository';
-import type { Contract } from '@/types/domain';
+export const metadata: Metadata = { title: 'Escrows' };
 
-const ContractsPage: React.FC = () => {
-  // Initialise from localStorage on first render; subsequent saves trigger
-  // a state update so the list reflects newly added items immediately.
-  const [contracts, setContracts] = useState<Contract[]>(() => listContracts());
-  const [showForm, setShowForm] = useState(false);
-
-  /**
-   * Opens the contract creation form modal.
-   */
-  const handleCreateContract = useCallback(() => {
-    setShowForm(true);
-  }, []);
-
-  /**
-   * Handles form submission by persisting the contract and refreshing the list.
-   */
-  const handleSubmitContract = useCallback((contract: Contract) => {
-    saveContract(contract);
-    // Re-read storage so the component reflects the persisted state.
-    setContracts(listContracts());
-    setShowForm(false);
-  }, []);
-
-  /**
-   * Closes the contract creation form modal.
-   */
-  const handleCancelForm = useCallback(() => {
-    setShowForm(false);
-  }, []);
-
+export default function ContractsPage() {
   return (
-    <main className="min-h-screen p-8">
-      <h1 className="text-2xl font-bold mb-6">Contracts</h1>
-
-      {!showForm && contracts.length === 0 && (
-        <EmptyState
-          illustration="contracts"
-          title="No contracts found"
-          description="You haven't created any contracts yet. Start by creating your first contract to begin freelancing securely."
-          actionLabel="Create Contract"
-          onAction={handleCreateContract}
-        />
-      )}
-
-      {!showForm && contracts.length > 0 && (
-        <>
-          <div className="mb-4 flex justify-end">
-            <button
-              type="button"
-              onClick={handleCreateContract}
-              className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-            >
-              Create Contract
-            </button>
-          </div>
-          {/* TODO: Replace with a proper ContractSummary list component. */}
-          <ul className="space-y-4">
-            {contracts.map((contract, idx) => (
-              <li
-                key={`${contract.contractName}-${idx}`}
-                className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
-              >
-                <p className="font-semibold text-slate-900">{contract.contractName}</p>
-                <p className="text-sm text-slate-500">
-                  {contract.status} · Created {contract.createdAt}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {showForm && (
-        <ContractCreationForm
-          onSubmit={handleSubmitContract}
-          onCancel={handleCancelForm}
-        />
-      )}
-    </main>
+    <div className="container">
+      <div className="page-head">
+        <h1>Escrow dashboard</h1>
+        <p>
+          Create, fund and settle milestone escrows against the live TalentTrust API at{' '}
+          <a href={site.apiUrl} target="_blank" rel="noreferrer">
+            {site.apiUrl.replace('https://', '')}
+          </a>
+          .
+        </p>
+      </div>
+      {/* useSearchParams needs a Suspense boundary for the static build */}
+      <Suspense fallback={<div className="card muted">Loading escrows...</div>}>
+        <EscrowDashboard />
+      </Suspense>
+    </div>
   );
-};
-
-export default ContractsPage;
-
+}

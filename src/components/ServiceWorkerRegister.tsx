@@ -93,15 +93,15 @@ export default function ServiceWorkerRegister() {
   return (
     <div
       role="alert"
-      className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-3 shadow-lg sm:flex-row"
+      className="sw-update"
     >
-      <span className="text-sm text-[var(--card-foreground)]">
+      <span className="small">
         Update available
       </span>
       <button
         type="button"
         onClick={handleReload}
-        className="rounded-md bg-[var(--primary)] px-3 py-1.5 text-sm font-medium text-[var(--primary-foreground)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--card)]"
+        className="btn btn-primary btn-sm"
       >
         Reload
       </button>
@@ -109,7 +109,7 @@ export default function ServiceWorkerRegister() {
         type="button"
         onClick={handleDismiss}
         aria-label="Dismiss update notification"
-        className="rounded-md px-2 py-1.5 text-sm text-[var(--muted-foreground)] hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--card)]"
+        className="btn btn-secondary btn-sm"
       >
         Later
       </button>
