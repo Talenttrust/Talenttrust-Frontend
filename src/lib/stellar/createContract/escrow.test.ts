@@ -71,7 +71,11 @@ describe('buildCreateContractTx', () => {
     // The SDK types `func` loosely; narrow it to the XDR union we decode.
     const hf = invokeOp.func as unknown as {
       switch(): { name: string };
-      invokeContract(): xdr.InvokeContractArgs;
+      invokeContract(): {
+        contractAddress(): { contractId(): Parameters<typeof Address.contract>[0] };
+        functionName(): { toString(): string };
+        args(): xdr.ScVal[];
+      };
     };
     expect(hf.switch().name).toBe('hostFunctionTypeInvokeContract');
 
