@@ -94,7 +94,7 @@ export function EscrowDashboard() {
   useEffect(() => {
     let active = true;
     getAddress()
-      .then((address) => active && setWalletAddress(address))
+      .then((address) => active && setWalletAddress(address || null))
       .catch(() => active && setWalletAddress(null));
     return () => {
       active = false;
@@ -102,6 +102,8 @@ export function EscrowDashboard() {
   }, []);
   // Role views only apply once a wallet is connected.
   const roleView: ViewFilter = walletAddress ? view : "all";
+  // Only refetch when the server-side filter actually changes.
+  const party = roleView !== "all" && walletAddress ? walletAddress : null;
   const [search, setSearch] = useState(query.q);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const disputeTriggerRef = useRef<HTMLButtonElement>(null);
@@ -145,7 +147,7 @@ export function EscrowDashboard() {
       // Status is filtered by the API; a role view also pre-filters by ?party=
       // (the wallet as client OR freelancer) and is tightened client-side.
       const params = new URLSearchParams();
-      if (roleView !== "all" && walletAddress) params.set("party", walletAddress);
+      if (party) params.set("party", party);
       if (query.status) params.set("status", query.status);
       const qs = params.toString() ? `?${params.toString()}` : "";
       const res = await api<{ data: EscrowContract[] }>(
@@ -166,7 +168,7 @@ export function EscrowDashboard() {
       });
       setContracts([]);
     }
-  }, [query.status, roleView, walletAddress]);
+  }, [query.status, party]);
 
   useEffect(() => {
     load();
