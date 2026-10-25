@@ -11,6 +11,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   Contract,
+  nativeToScVal,
   xdr,
   scValToNative,
   Address,
@@ -73,18 +74,15 @@ describe('buildCreateContractTx', () => {
     expect(args).toHaveLength(4);
 
     // client, freelancer and token are Address ScVals
-    expect(args[0].switch().name).toBe('scvAddress');
     expect(scValToNative(args[0])).toBe(CLIENT);
     expect(scValToNative(args[1])).toBe(FREELANCER);
     expect(scValToNative(args[2])).toBe(TOKEN);
 
-    // milestone amounts are a Vec<i128>
-    expect(args[3].switch().name).toBe('scvVec');
-    const vec = args[3].vec()!;
-    expect(vec).toHaveLength(2);
-    expect(vec.map((v) => v.switch().name)).toEqual(['scvI128', 'scvI128']);
-    expect(scValToNative(vec[0])).toBe(100_000_000n);
-    expect(scValToNative(vec[1])).toBe(200_000_000n);
+    // milestone amounts are a Vec<i128> of exact stroop values
+    expect(scValToNative(args[3])).toEqual([100_000_000n, 200_000_000n]);
+    expect(args[3].toXDR('base64')).toBe(
+      nativeToScVal([100_000_000n, 200_000_000n], { type: ['i128', 'i128'] }).toXDR('base64'),
+    );
 
     // The transaction round-trips through XDR on testnet.
     expect(() => TransactionBuilder.fromXDR(tx.toXDR(), TESTNET_PASSPHRASE)).not.toThrow();
