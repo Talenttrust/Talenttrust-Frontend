@@ -167,3 +167,8 @@ export function useNotifications(): NotificationsContextValue {
   if (!ctx) throw new Error('useNotifications must be used within a NotificationsProvider');
   return ctx;
 }
+
+/** Like useNotifications, but returns null when rendered outside a provider. */
+export function useOptionalNotifications(): NotificationsContextValue | null {
+  return useContext(NotificationsContext);
+}

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
-import { useNotifications } from '@/components/NotificationsProvider';
+import { useNotifications, useOptionalNotifications } from '@/components/NotificationsProvider';
 import type { NotificationItem } from '@/lib/notifications';
 
 function timeAgo(ts: number): string {
@@ -17,7 +17,12 @@ function timeAgo(ts: number): string {
   return `${days} d ago`;
 }
 
+/** Renders nothing when there is no NotificationsProvider (e.g. isolated component tests). */
 export function NotificationBell() {
+  return useOptionalNotifications() ? <NotificationBellPanel /> : null;
+}
+
+function NotificationBellPanel() {
   const { items, unread, markAllRead, clear, announcement } = useNotifications();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);

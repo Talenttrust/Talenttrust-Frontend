@@ -1,9 +1,14 @@
 'use client';
 
 import type { EscrowContract } from '@/lib/api';
-import { useNotifications } from '@/components/NotificationsProvider';
+import { useNotifications, useOptionalNotifications } from '@/components/NotificationsProvider';
 
+/** Renders nothing when there is no NotificationsProvider. */
 export function WatchToggle({ contract }: { contract: EscrowContract }) {
+  return useOptionalNotifications() ? <WatchToggleButton contract={contract} /> : null;
+}
+
+function WatchToggleButton({ contract }: { contract: EscrowContract }) {
   const { isWatched, toggleWatch } = useNotifications();
   const watched = isWatched(contract.id);
   return (
