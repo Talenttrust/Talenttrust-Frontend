@@ -18,11 +18,8 @@ export default function ContractsPage() {
           .
         </p>
       </div>
-      {/*
-        EscrowDashboard calls useSearchParams() which requires a Suspense boundary
-        at the nearest Server Component boundary (Next.js App Router requirement).
-      */}
-      <Suspense fallback={<div className="card muted">Loading escrows…</div>}>
+      {/* useSearchParams needs a Suspense boundary for the static build */}
+      <Suspense fallback={<div className="card muted">Loading escrows...</div>}>
         <EscrowDashboard />
       </Suspense>
     </div>

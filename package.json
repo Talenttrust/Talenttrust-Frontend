@@ -13,26 +13,29 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@stellar/freighter-api": "4.1.0",
+    "@stellar/freighter-api": "3.1.0",
     "@stellar/stellar-sdk": "^17.2.1",
     "@testing-library/dom": "^10.4.2",
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "swr": "2.5.1",
     "vite": "^8.3.4"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
-    "@types/node": "^22.0.0",
     "@types/jest": "^29.5.14",
+    "@types/node": "^22.0.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.2",
+    "axe-core": "^4.10.2",
     "jsdom": "^29.1.1",
     "typescript": "^5.9.3",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "vitest-axe": "^0.1.0"
   },
   "license": "MIT"
 }

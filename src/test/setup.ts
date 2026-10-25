@@ -1,6 +1,17 @@
 import '@testing-library/jest-dom/vitest';
+import * as axeMatchers from 'vitest-axe/matchers';
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, expect } from 'vitest';
+
+expect.extend(axeMatchers);
+
+declare module 'vitest' {
+  // Same type parameters as Vitest 5's Matchers so the declarations merge.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface Matchers<R extends void | Promise<void> = void | Promise<void>, T = unknown> {
+    toHaveNoViolations(): R;
+  }
+}
 
 afterEach(() => {
   cleanup();

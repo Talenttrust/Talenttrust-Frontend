@@ -19,7 +19,10 @@ export interface EscrowContract {
   releasedAmount: number;
   status: 'Created' | 'Funded' | 'Completed' | 'Disputed' | 'Resolved' | 'Cancelled';
   reputationIssued: boolean;
-  dispute?: Dispute;
+  dispute?: Dispute | null;
+  /** Some API versions expose the dispute timestamp at the top level. */
+  disputeOpenedAt?: string;
+  disputedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -27,9 +30,9 @@ export interface EscrowContract {
 export interface Dispute {
   raisedBy: string;
   reason: string;
-  openedAt: string;
-  freelancerBps?: number;
-  resolvedAt?: string;
+  openedAt?: string;
+  freelancerBps?: number | null;
+  resolvedAt?: string | null;
 }
 
 export interface Reputation {
@@ -218,6 +221,24 @@ export async function api<T>(path: string, init: ApiOptions = {}): Promise<T> {
 
     return data as T;
   }
+}
+
+/** Unwrap the Reputation that the rate endpoint returns, if present. */
+export function unwrapReputation(payload: unknown): Reputation | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const obj = payload as { data?: Reputation; address?: string };
+  if (obj.data && typeof obj.data.address === 'string') return obj.data;
+  if (typeof obj.address === 'string') return payload as Reputation;
+  return null;
+}
+
+/** Unwrap the EscrowContract that mutation endpoints return, if present. */
+export function unwrapContract(payload: unknown): EscrowContract | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const obj = payload as { data?: EscrowContract; id?: number };
+  if (obj.data && typeof obj.data.id === 'number') return obj.data;
+  if (typeof obj.id === 'number' && 'status' in obj) return payload as EscrowContract;
+  return null;
 }
 
 /** View filter values persisted in the URL ?view= param. */

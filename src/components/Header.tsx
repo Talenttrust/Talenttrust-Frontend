@@ -5,7 +5,9 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import nav from '@/lib/nav.json';
 import { useDisclosure } from '@/hooks/useDisclosure';
+import { CommandPalette } from '@/components/palette/CommandPalette';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { NotificationBell } from '@/components/NotificationBell';
 
 export function Header() {
   const pathname = usePathname();
@@ -70,6 +72,7 @@ export function Header() {
               {item.label}
             </Link>
           ))}
+          <CommandPalette />
           <Link
             href="/contracts"
             className="btn btn-primary btn-sm"
@@ -79,6 +82,10 @@ export function Header() {
           </Link>
           <ThemeToggle />
         </nav>
+        <div className="header-actions">
+          <NotificationBell />
+        </div>
+
         {/* Mobile trigger */}
         <button
           ref={triggerRef}
