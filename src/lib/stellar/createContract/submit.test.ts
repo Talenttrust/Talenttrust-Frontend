@@ -1,3 +1,5 @@
+// @vitest-environment node
+// stellar-base XDR needs Node typed arrays; jsdom has its own Uint8Array realm.
 /**
  * Tests for simulateSignSubmit pipeline.
  * All network calls and wallet interactions are mocked.
