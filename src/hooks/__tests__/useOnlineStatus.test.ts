@@ -1,3 +1,4 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useOnlineStatus } from '../useOnlineStatus';
 
@@ -78,8 +79,8 @@ describe('useOnlineStatus', () => {
   });
 
   it('removes event listeners on unmount', () => {
-    const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
-    const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+    const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
 
     const { unmount } = renderHook(() => useOnlineStatus());
 
@@ -98,7 +99,7 @@ describe('useOnlineStatus', () => {
   });
 
   it('does not add duplicate listeners on re-render', () => {
-    const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
 
     const { rerender } = renderHook(() => useOnlineStatus());
 

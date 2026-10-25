@@ -1,3 +1,4 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import ServiceWorkerRegister from '../ServiceWorkerRegister';
@@ -7,12 +8,12 @@ import OfflineIndicator from '../OfflineIndicator';
 
 // Track serviceWorker mock state across tests
 let mockController: ServiceWorker | null = null;
-const mockRegister = jest.fn();
-const mockAddEventListener = jest.fn();
-const mockRemoveEventListener = jest.fn();
+const mockRegister = vi.fn();
+const mockAddEventListener = vi.fn();
+const mockRemoveEventListener = vi.fn();
 
 const mockWaiting = {
-  postMessage: jest.fn(),
+  postMessage: vi.fn(),
 } as unknown as ServiceWorker;
 
 function createMockRegistration(waiting?: ServiceWorker): ServiceWorkerRegistration {
@@ -21,12 +22,12 @@ function createMockRegistration(waiting?: ServiceWorker): ServiceWorkerRegistrat
     installing: null,
     active: mockController,
     scope: '/',
-    update: jest.fn(),
-    unregister: jest.fn(),
+    update: vi.fn(),
+    unregister: vi.fn(),
     addEventListener: mockAddEventListener,
     removeEventListener: mockRemoveEventListener,
-    showNotification: jest.fn(),
-    getNotifications: jest.fn().mockResolvedValue([]),
+    showNotification: vi.fn(),
+    getNotifications: vi.fn().mockResolvedValue([]),
   } as unknown as ServiceWorkerRegistration;
 }
 
@@ -34,9 +35,9 @@ function createMockRegistration(waiting?: ServiceWorker): ServiceWorkerRegistrat
 
 describe('ServiceWorkerRegister', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockController = null;
-    process.env.NODE_ENV = 'production';
+    vi.stubEnv('NODE_ENV', 'production');
 
     mockRegister.mockResolvedValue(createMockRegistration());
 
@@ -45,16 +46,16 @@ describe('ServiceWorkerRegister', () => {
       value: {
         register: mockRegister,
         controller: null,
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
         ready: Promise.resolve(createMockRegistration()),
-        getRegistrations: jest.fn().mockResolvedValue([]),
+        getRegistrations: vi.fn().mockResolvedValue([]),
       },
     });
   });
 
   afterEach(() => {
-    process.env.NODE_ENV = 'test';
+    vi.unstubAllEnvs();
   });
 
   it('renders nothing when no update is available', () => {
@@ -122,7 +123,7 @@ describe('ServiceWorkerRegister', () => {
   });
 
   it('does not register in development', () => {
-    process.env.NODE_ENV = 'development';
+    vi.stubEnv('NODE_ENV', 'development');
     render(<ServiceWorkerRegister />);
 
     expect(mockRegister).not.toHaveBeenCalled();

@@ -1,13 +1,16 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { axe } from 'jest-axe';
+import { describe, expect, it, vi } from 'vitest';
+import { axe } from 'vitest-axe';
 
 // Mock next/link so we can assert on link attributes
-jest.mock('next/link', () => {
-  const React = require('react');
-  return ({ children, href, ...props }: any) =>
-    React.createElement('a', { href, ...props }, children);
-});
+vi.mock('next/link', () => ({
+  default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
 
 describe('OfflinePage', () => {
   it('renders the page with a heading', async () => {
