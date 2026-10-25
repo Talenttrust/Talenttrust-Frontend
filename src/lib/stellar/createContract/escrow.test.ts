@@ -74,7 +74,7 @@ describe('buildCreateContractTx', () => {
       invokeContract(): {
         contractAddress(): { contractId(): Parameters<typeof Address.contract>[0] };
         functionName(): { toString(): string };
-        args(): xdr.ScVal[];
+        args(): Array<xdr.ScVal & { switch(): { name: string }; vec(): xdr.ScVal[] | null }>;
       };
     };
     expect(hf.switch().name).toBe('hostFunctionTypeInvokeContract');
