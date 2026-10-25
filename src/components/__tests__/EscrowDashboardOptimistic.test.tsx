@@ -106,7 +106,8 @@ describe('EscrowDashboard optimistic actions', () => {
 
     const alert = await within(card()).findByRole('alert');
     expect(alert).toHaveAttribute('title', 'Insufficient funds');
-    expect(card()).toHaveTextContent('Released 0 / 1000');
+    // The optimistic state is dropped when the transition settles.
+    await waitFor(() => expect(card()).toHaveTextContent('Released 0 / 1000'));
 
     fail = false;
     await user.click(within(alert).getByRole('button', { name: /retry failed action for escrow #7/i }));

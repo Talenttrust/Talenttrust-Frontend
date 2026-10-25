@@ -8,9 +8,12 @@ import { rpc as StellarRpc, Transaction, TransactionBuilder, Networks, xdr, nati
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
-const mockPrepareTransaction = vi.fn();
-const mockSendTransaction = vi.fn();
-const mockGetTransaction = vi.fn();
+const { mockPrepareTransaction, mockSendTransaction, mockGetTransaction, mockSignTransaction } = vi.hoisted(() => ({
+  mockPrepareTransaction: vi.fn(),
+  mockSendTransaction: vi.fn(),
+  mockGetTransaction: vi.fn(),
+  mockSignTransaction: vi.fn(),
+}));
 
 vi.mock('./escrow', async (importOriginal) => {
   const orig = await importOriginal<typeof import('./escrow')>();
@@ -24,7 +27,6 @@ vi.mock('./escrow', async (importOriginal) => {
   };
 });
 
-const mockSignTransaction = vi.fn();
 vi.mock('./freighter', () => ({
   signTransaction: mockSignTransaction,
 }));

@@ -17,14 +17,10 @@ import {
 import { site } from '@/lib/site';
 
 // ── Mock the RPC server ────────────────────────────────────────────────────
-const mockGetAccount = vi.fn();
-vi.mock('./escrow', async (importOriginal) => {
-  const orig = await importOriginal<typeof import('./escrow')>();
-  return {
-    ...orig,
-    getRpcServer: () => ({ getAccount: mockGetAccount }),
-  };
-});
+const { mockGetAccount } = vi.hoisted(() => ({ mockGetAccount: vi.fn() }));
+vi.mock('./rpcServer', () => ({
+  getRpcServer: () => ({ getAccount: mockGetAccount }),
+}));
 
 import { buildCreateContractTx, TESTNET_PASSPHRASE } from './escrow';
 
@@ -39,8 +35,8 @@ function makeAccount(address: string) {
   };
 }
 
-const CLIENT = 'GCLIENT' + 'A'.repeat(49);
-const FREELANCER = 'GFREELANCER' + 'B'.repeat(45);
+const CLIENT = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
+const FREELANCER = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC6PV';
 // A valid-looking contract id (C…)
 const TOKEN = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 

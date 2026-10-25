@@ -19,7 +19,7 @@ import {
   Address,
   xdr,
 } from '@stellar/stellar-sdk';
-import { rpc as StellarRpc } from '@stellar/stellar-sdk';
+import { getRpcServer } from './rpcServer';
 import { site } from '@/lib/site';
 
 /** Testnet network passphrase — sourced from config, never from the wallet. */
@@ -31,20 +31,7 @@ export const TESTNET_PASSPHRASE: string = Networks.TESTNET;
  */
 export const XLM_SAC_ID: string = Asset.native().contractId(Networks.TESTNET);
 
-/**
- * The Soroban RPC endpoint for Stellar testnet.
- * We read this from an env var so CI can override it, but default to the
- * public SDF endpoint. The contract id comes exclusively from site.ts.
- */
-const RPC_URL =
-  (process.env.NEXT_PUBLIC_SOROBAN_RPC_URL ?? 'https://soroban-testnet.stellar.org').replace(
-    /\/$/,
-    '',
-  );
-
-export function getRpcServer(): StellarRpc.Server {
-  return new StellarRpc.Server(RPC_URL, { allowHttp: false });
-}
+export { getRpcServer } from './rpcServer';
 
 export interface BuildCreateContractTxParams {
   /** Stellar public key (G…) of the client — becomes the tx source and signer. */
