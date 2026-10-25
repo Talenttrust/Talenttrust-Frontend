@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { site, explorerUrl, apiDocsUrl } from '@/lib/site';
 import { CopyButton } from '@/components/CopyButton';
+import { ActivityFeed } from '@/components/ActivityFeed';
 
 const steps = [
   { title: 'Agree on milestones', body: 'Client and freelancer define the scope as a list of milestones, each with its own payment.' },
@@ -116,6 +117,11 @@ export default function Home() {
                 </a>
               </dd>
             </dl>
+          </div>
+        </div>
+        <div className="container activity-container">
+          <div className="card">
+            <ActivityFeed />
           </div>
         </div>
       </section>
