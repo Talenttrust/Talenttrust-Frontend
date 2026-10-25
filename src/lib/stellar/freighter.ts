@@ -1,69 +1,53 @@
 /**
- * Minimal adapter over @stellar/freighter-api that exposes only the three
- * functions this codebase needs. Keeping the same names here means the wallet-
- * connect integration PR can swap to a shared WalletProvider without changing
- * any call sites.
+ * Minimal adapter over @stellar/freighter-api.
+ * Keeps a stable interface whether Freighter is installed or not.
  */
 
-import {
-  getAddress,
-  getNetworkDetails,
-  signTransaction as freighterSignTransaction,
-} from '@stellar/freighter-api';
-
-export interface WalletAddress {
-  address: string;
-  error?: string;
-}
-
-export interface NetworkDetails {
-  network: string;
-  networkPassphrase: string;
-  sorobanRpcUrl?: string;
-  error?: string;
-}
-
-export interface SignedTransaction {
-  signedTxXdr: string;
-  error?: string;
-}
-
-/** Return the connected wallet's public key, or an error string. */
-export async function getWalletAddress(): Promise<WalletAddress> {
-  const result = await getAddress();
-  if (result.error) {
-    return { address: '', error: result.error.message };
+let _freighter: typeof import('@stellar/freighter-api') | null = null;
+async function freighter() {
+  if (!_freighter) {
+    _freighter = await import('@stellar/freighter-api');
   }
-  return { address: result.address };
+  return _freighter;
 }
 
-/** Return network details from the connected wallet. */
-export async function getWalletNetworkDetails(): Promise<NetworkDetails> {
-  const result = await getNetworkDetails();
-  if (result.error) {
-    return { network: '', networkPassphrase: '', error: result.error.message };
+/** Returns the connected Stellar public key, or null if not connected. */
+export async function getAddress(): Promise<string | null> {
+  try {
+    const f = await freighter();
+    const result = await f.getAddress();
+    return (result as { address: string }).address ?? (result as unknown as string) ?? null;
+  } catch {
+    return null;
   }
-  return {
-    network: result.network,
-    networkPassphrase: result.networkPassphrase,
-    sorobanRpcUrl: result.sorobanRpcUrl,
-  };
+}
+
+/** Returns the network passphrase for the current Freighter network. */
+export async function getNetworkPassphrase(): Promise<string> {
+  try {
+    const f = await freighter();
+    const result = await f.getNetworkDetails();
+    return result.networkPassphrase;
+  } catch {
+    return 'Test SDF Network ; September 2015';
+  }
 }
 
 /**
- * Ask the wallet to sign `txXdr` on `networkPassphrase`.
- *
- * The passphrase is taken from our config (site.ts / TESTNET_PASSPHRASE),
- * NOT from the wallet response, so a passphrase mismatch always causes a
- * signing failure rather than silently submitting to the wrong network.
+ * Signs a base64-encoded XDR transaction envelope.
+ * Throws with a human-readable message on wallet rejection.
  */
 export async function signTransaction(
-  txXdr: string,
-  networkPassphrase: string,
-): Promise<SignedTransaction> {
-  const result = await freighterSignTransaction(txXdr, { networkPassphrase });
-  if (result.error) {
-    return { signedTxXdr: '', error: result.error.message };
-  }
-  return { signedTxXdr: result.signedTxXdr };
+  xdr: string,
+  opts: { networkPassphrase: string; address?: string }
+): Promise<string> {
+  const f = await freighter();
+  const result = await f.signTransaction(xdr, {
+    networkPassphrase: opts.networkPassphrase,
+    address: opts.address,
+  });
+  const signed =
+    (result as { signedTxXdr: string }).signedTxXdr ?? (result as unknown as string);
+  if (!signed) throw new Error('Freighter returned an empty signed transaction.');
+  return signed;
 }

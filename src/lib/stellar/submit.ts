@@ -1,121 +1,93 @@
-/**
- * Generic simulate → sign → submit → poll pipeline for Soroban transactions.
- *
- * Steps:
- *   1. rpc.prepareTransaction  — simulation + footprint + fee bump
- *   2. wallet signTransaction  — Freighter prompts the user (uses config passphrase)
- *   3. rpc.sendTransaction     — broadcasts the signed XDR
- *   4. poll rpc.getTransaction — waits up to 60 s for SUCCESS or FAILED
- *
- * The network passphrase is always taken from TESTNET_PASSPHRASE (config),
- * never from the wallet response, so a mismatch causes an early error.
- */
-
-import {
-  Transaction,
-  TransactionBuilder,
-  scValToNative,
-} from '@stellar/stellar-sdk';
-import { rpc as StellarRpc } from '@stellar/stellar-sdk';
-import { getRpcServer, TESTNET_PASSPHRASE } from './escrow';
+import { rpc as StellarRpc, TransactionBuilder, xdr } from '@stellar/stellar-sdk';
+import { getRpcServer, NETWORK_PASSPHRASE } from './rpc';
 import { signTransaction } from './freighter';
-import { parseContractError } from './errors';
+import { extractContractErrorCode, CONTRACT_ERRORS } from './escrow';
 
-export interface SubmitResult {
-  /** Transaction hash on the network. */
-  hash: string;
-  /**
-   * The native JS value decoded from the contract's return ScVal.
-   * For create_contract this is a bigint (u64).
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  returnValue: any;
-}
+export type TxStatus =
+  | 'idle'
+  | 'simulating'
+  | 'awaiting_signature'
+  | 'submitting'
+  | 'confirmed'
+  | 'error';
 
-/** Maximum time to wait for ledger confirmation (ms). */
-const POLL_TIMEOUT_MS = 60_000;
-/** Interval between getTransaction polls (ms). */
-const POLL_INTERVAL_MS = 3_000;
+export type StatusCallback = (status: TxStatus, detail?: string) => void;
 
 /**
- * Run the full simulate → sign → submit → poll pipeline.
- *
- * Throws a plain Error with a human-readable message on any failure so callers
- * can display it directly without further parsing.
+ * Full pipeline: simulate → sign → submit → poll.
+ * Calls `onStatus` at each stage so the UI can show progress.
  */
-export async function simulateSignSubmit(tx: Transaction): Promise<SubmitResult> {
+export async function simulateSignSubmit(
+  txXdr: string,
+  signerAddress: string,
+  onStatus: StatusCallback
+): Promise<string> {
   const server = getRpcServer();
 
-  // ── 1. Simulate & prepare ────────────────────────────────────────────────
-  let prepared: Transaction;
-  try {
-    prepared = (await server.prepareTransaction(tx)) as Transaction;
-  } catch (err) {
-    throw new Error(parseContractError(err));
+  // 1. Simulate
+  onStatus('simulating');
+  const rawTx = TransactionBuilder.fromXDR(txXdr, NETWORK_PASSPHRASE);
+  const simResult = await server.simulateTransaction(rawTx);
+
+  if (StellarRpc.Api.isSimulationError(simResult)) {
+    const code = extractContractErrorCode(simResult.error);
+    const name =
+      code !== null ? (CONTRACT_ERRORS[code] ?? `Error #${code}`) : simResult.error;
+    throw new Error(name);
   }
 
-  // ── 2. Sign via wallet ───────────────────────────────────────────────────
-  const xdrToSign = prepared.toXDR();
-  const { signedTxXdr, error: signError } = await signTransaction(xdrToSign, TESTNET_PASSPHRASE);
-  if (signError || !signedTxXdr) {
-    throw new Error(parseContractError(new Error(signError ?? 'Wallet returned an empty signature.')));
+  const assembled = StellarRpc.assembleTransaction(
+    rawTx,
+    simResult as StellarRpc.Api.SimulateTransactionSuccessResponse
+  ).build();
+
+  // 2. Sign
+  onStatus('awaiting_signature');
+  let signedXdr: string;
+  try {
+    signedXdr = await signTransaction(assembled.toXDR(), {
+      networkPassphrase: NETWORK_PASSPHRASE,
+      address: signerAddress,
+    });
+  } catch (err) {
+    throw new Error(
+      err instanceof Error && err.message.toLowerCase().includes('cancel')
+        ? 'Transaction cancelled by user.'
+        : `Wallet error: ${err instanceof Error ? err.message : String(err)}`
+    );
   }
 
-  // ── 3. Submit ────────────────────────────────────────────────────────────
-  const signedTx = TransactionBuilder.fromXDR(signedTxXdr, TESTNET_PASSPHRASE) as Transaction;
-  let sendResult: StellarRpc.Api.SendTransactionResponse;
-  try {
-    sendResult = await server.sendTransaction(signedTx);
-  } catch (err) {
-    throw new Error(parseContractError(err));
-  }
+  // 3. Submit
+  onStatus('submitting');
+  const signedTx = TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
+  const sendResult = await server.sendTransaction(signedTx);
 
   if (sendResult.status === 'ERROR') {
-    const detail = (sendResult as { errorResult?: { result?: () => unknown } }).errorResult;
-    throw new Error(
-      parseContractError(new Error(`Transaction rejected by the network: ${JSON.stringify(detail ?? sendResult.status)}`)),
-    );
+    const errXdr = (sendResult as { errorResult?: xdr.TransactionResult })
+      .errorResult;
+    throw new Error(`Submit failed: ${errXdr?.toString() ?? 'unknown'}`);
   }
 
   const hash = sendResult.hash;
 
-  // ── 4. Poll for confirmation ─────────────────────────────────────────────
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
+  // 4. Poll
+  const POLL_MS = 2_000;
+  const TIMEOUT_MS = 30_000;
+  const deadline = Date.now() + TIMEOUT_MS;
+
   while (Date.now() < deadline) {
-    await sleep(POLL_INTERVAL_MS);
+    await new Promise((r) => setTimeout(r, POLL_MS));
+    const poll = await server.getTransaction(hash);
 
-    let txStatus: StellarRpc.Api.GetTransactionResponse;
-    try {
-      txStatus = await server.getTransaction(hash);
-    } catch (err) {
-      throw new Error(parseContractError(err));
+    if (poll.status === StellarRpc.Api.GetTransactionStatus.SUCCESS) {
+      onStatus('confirmed', hash);
+      return hash;
     }
-
-    if (txStatus.status === StellarRpc.Api.GetTransactionStatus.SUCCESS) {
-      // Decode the return value from the transaction's result metadata
-      const returnValue =
-        txStatus.returnValue != null ? scValToNative(txStatus.returnValue) : undefined;
-      return { hash, returnValue };
+    if (poll.status === StellarRpc.Api.GetTransactionStatus.FAILED) {
+      throw new Error(`Transaction failed on-chain.`);
     }
-
-    if (txStatus.status === StellarRpc.Api.GetTransactionStatus.FAILED) {
-      throw new Error(
-        parseContractError(
-          new Error(`Transaction failed on-chain. Hash: ${hash}`),
-        ),
-      );
-    }
-
-    // status === NOT_FOUND — still pending, keep polling
+    // NOT_FOUND → still pending
   }
 
-  throw new Error(
-    parseContractError(
-      new Error(`timeout: transaction not confirmed after ${POLL_TIMEOUT_MS / 1000}s. Hash: ${hash}`),
-    ),
-  );
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  throw new Error('RPC timeout: transaction not confirmed within 30 s.');
 }
