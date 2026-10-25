@@ -44,7 +44,14 @@ export function CommandPalette() {
     setSelectedIndex(0);
   }, [query]);
 
+  const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const closePalette = useCallback(() => {
+    // Cancel a pending input focus so it cannot steal focus back after closing.
+    if (focusTimer.current !== null) {
+      clearTimeout(focusTimer.current);
+      focusTimer.current = null;
+    }
     setIsOpen(false);
     const dialog = dialogRef.current;
     if (dialog && dialog.open) {
@@ -72,7 +79,9 @@ export function CommandPalette() {
         dialog.setAttribute('open', '');
       }
     }
-    setTimeout(() => {
+    if (focusTimer.current !== null) clearTimeout(focusTimer.current);
+    focusTimer.current = setTimeout(() => {
+      focusTimer.current = null;
       inputRef.current?.focus();
     }, 50);
   }, []);
