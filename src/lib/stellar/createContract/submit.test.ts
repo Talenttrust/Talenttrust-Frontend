@@ -5,8 +5,8 @@
  * All network calls and wallet interactions are mocked.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { rpc as StellarRpc, Transaction, TransactionBuilder, Networks, xdr, nativeToScVal } from '@stellar/stellar-sdk';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
+import { Account, Operation, rpc as StellarRpc, Transaction, TransactionBuilder, Networks, nativeToScVal } from '@stellar/stellar-sdk';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -37,19 +37,23 @@ import { simulateSignSubmit } from './submit';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-/** Build a minimal dummy Transaction for test use. */
+/** Build a small, valid testnet Transaction for the pipeline to serialise. */
 function makeTx(): Transaction {
-  // We don't actually need a fully valid tx here — the pipeline serialises it.
-  // Use a valid XDR envelope from stellar-base for testnet.
-  const txXdr =
-    'AAAAAgAAAABi/B8mYjW05prqx2r6rh0YkNGJ3gkbAAAAAQAAAAAAAAAAAAAAAQAAAAEAAAAAYvwfJmI1tOaa6sdq+q4dGJDRid4JGwAAAAAAAAAAAAAAAAAAAAA=';
-  return TransactionBuilder.fromXDR(txXdr, Networks.TESTNET) as Transaction;
+  const source = new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '0');
+  return new TransactionBuilder(source, { fee: '100', networkPassphrase: Networks.TESTNET })
+    .addOperation(Operation.bumpSequence({ bumpTo: '1' }))
+    .setTimeout(30)
+    .build();
 }
 
 const FAKE_HASH = 'aabbcc001122334455667788';
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('simulateSignSubmit', () => {
@@ -70,7 +74,10 @@ describe('simulateSignSubmit', () => {
         returnValue: returnScVal,
       });
 
-    const result = await simulateSignSubmit(tx);
+    vi.useFakeTimers();
+    const promise = simulateSignSubmit(tx);
+    await vi.runAllTimersAsync();
+    const result = await promise;
 
     expect(result.hash).toBe(FAKE_HASH);
     expect(result.returnValue).toBe(42n);
@@ -103,7 +110,10 @@ describe('simulateSignSubmit', () => {
       status: StellarRpc.Api.GetTransactionStatus.FAILED,
     });
 
-    await expect(simulateSignSubmit(tx)).rejects.toThrow(/failed/i);
+    vi.useFakeTimers();
+    const assertion = expect(simulateSignSubmit(tx)).rejects.toThrow(/failed/i);
+    await vi.runAllTimersAsync();
+    await assertion;
   });
 
   it('throws a timeout error when the transaction never confirms', async () => {
@@ -118,13 +128,11 @@ describe('simulateSignSubmit', () => {
       status: StellarRpc.Api.GetTransactionStatus.NOT_FOUND,
     });
 
-    const promise = simulateSignSubmit(tx);
+    const assertion = expect(simulateSignSubmit(tx)).rejects.toThrow(/timeout/i);
 
     // Advance time past the 60s timeout
     await vi.runAllTimersAsync();
 
-    await expect(promise).rejects.toThrow(/timeout/i);
-
-    vi.useRealTimers();
+    await assertion;
   });
 });

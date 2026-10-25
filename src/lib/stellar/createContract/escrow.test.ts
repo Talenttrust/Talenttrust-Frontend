@@ -10,6 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
+  Contract,
   xdr,
   scValToNative,
   Address,
@@ -42,8 +43,12 @@ const FREELANCER = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC6PV';
 // A valid-looking contract id (C…)
 const TOKEN = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 
+let callSpy: ReturnType<typeof vi.spyOn>;
+
 beforeEach(() => {
   mockGetAccount.mockResolvedValue(makeAccount(CLIENT));
+  callSpy?.mockRestore();
+  callSpy = vi.spyOn(Contract.prototype, 'call');
 });
 
 describe('buildCreateContractTx', () => {
@@ -59,54 +64,30 @@ describe('buildCreateContractTx', () => {
     const op = tx.operations[0];
     expect(op.type).toBe('invokeHostFunction');
 
-    // Serialise → deserialise to inspect the host function
-    const envelope = tx.toEnvelope();
-    const txXdr = envelope.toXDR('base64');
-    const decoded = TransactionBuilder.fromXDR(txXdr, TESTNET_PASSPHRASE);
-    const invokeOp = decoded.operations[0] as import('@stellar/stellar-sdk').Operation.InvokeHostFunction;
-
-    // The host function must be an InvokeContract
-    // The SDK types `func` loosely; narrow it to the XDR union we decode.
-    const hf = invokeOp.func as unknown as {
-      switch(): { name: string };
-      invokeContract(): {
-        contractAddress(): { contractId(): Parameters<typeof Address.contract>[0] };
-        functionName(): { toString(): string };
-        args(): Array<xdr.ScVal & { switch(): { name: string }; vec(): xdr.ScVal[] | null }>;
-      };
-    };
-    expect(hf.switch().name).toBe('hostFunctionTypeInvokeContract');
-
-    const invokeArgs = hf.invokeContract();
-
-    // ── Contract address ──────────────────────────────────────────────────
-    const contractAddrScVal = invokeArgs.contractAddress();
-    const contractAddr = Address.contract(contractAddrScVal.contractId());
-    expect(contractAddr.toString()).toBe(site.contractId);
-
-    // ── Function name ─────────────────────────────────────────────────────
-    const fnName = invokeArgs.functionName().toString();
+    // The call was built against the configured contract with typed args.
+    expect(callSpy).toHaveBeenCalledTimes(1);
+    const contract = callSpy.mock.contexts[0] as Contract;
+    expect(contract.contractId()).toBe(site.contractId);
+    const [fnName, ...args] = callSpy.mock.calls[0] as [string, ...xdr.ScVal[]];
     expect(fnName).toBe('create_contract');
-
-    // ── Arguments ─────────────────────────────────────────────────────────
-    const args = invokeArgs.args();
     expect(args).toHaveLength(4);
 
-    // arg[0] = client Address
+    // client, freelancer and token are Address ScVals
+    expect(args[0].switch().name).toBe('scvAddress');
     expect(scValToNative(args[0])).toBe(CLIENT);
-
-    // arg[1] = freelancer Address
     expect(scValToNative(args[1])).toBe(FREELANCER);
-
-    // arg[2] = token Address
     expect(scValToNative(args[2])).toBe(TOKEN);
 
-    // arg[3] = Vec<i128> milestone amounts
+    // milestone amounts are a Vec<i128>
     expect(args[3].switch().name).toBe('scvVec');
     const vec = args[3].vec()!;
     expect(vec).toHaveLength(2);
+    expect(vec.map((v) => v.switch().name)).toEqual(['scvI128', 'scvI128']);
     expect(scValToNative(vec[0])).toBe(100_000_000n);
     expect(scValToNative(vec[1])).toBe(200_000_000n);
+
+    // The transaction round-trips through XDR on testnet.
+    expect(() => TransactionBuilder.fromXDR(tx.toXDR(), TESTNET_PASSPHRASE)).not.toThrow();
   });
 
   it('uses the testnet network passphrase', async () => {
