@@ -68,7 +68,11 @@ describe('buildCreateContractTx', () => {
     const invokeOp = decoded.operations[0] as import('@stellar/stellar-sdk').Operation.InvokeHostFunction;
 
     // The host function must be an InvokeContract
-    const hf = invokeOp.func;
+    // The SDK types `func` loosely; narrow it to the XDR union we decode.
+    const hf = invokeOp.func as unknown as {
+      switch(): { name: string };
+      invokeContract(): xdr.InvokeContractArgs;
+    };
     expect(hf.switch().name).toBe('hostFunctionTypeInvokeContract');
 
     const invokeArgs = hf.invokeContract();
