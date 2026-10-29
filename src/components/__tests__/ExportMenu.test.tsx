@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { EscrowDashboard } from '@/components/EscrowDashboard';
+import EscrowDashboard from '@/components/EscrowDashboard';
 import { ExportMenu } from '@/components/escrow/ExportMenu';
 import { disputed, readBlob, resolved } from '@/test/exportFixtures';
 

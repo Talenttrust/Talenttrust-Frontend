@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EscrowContract } from '@/lib/api';
 import { ToastProvider } from '@/components/toast/ToastProvider';
-import { EscrowDashboard } from '@/components/EscrowDashboard';
+import EscrowDashboard from '@/components/EscrowDashboard';
 import { escrow } from '@/test/fixtures';
 
 // The connected wallet is the arbiter, so disputed escrows show the resolution form.

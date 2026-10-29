@@ -1,0 +1,21 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "feat/issue-1453-validate-api-responses-at-runtime-with-zod",
+    "main",
+    "origin",
+    "security/issue-1444-add-a-contracts-id-detail-page-with-metadata"
+  ],
+  "parent": {
+    "feat/issue-1453-validate-api-responses-at-runtime-with-zod": "main",
+    "main": null,
+    "origin": "main",
+    "security/issue-1444-add-a-contracts-id-detail-page-with-metadata": "main"
+  },
+  "order": [
+    "main",
+    "feat/issue-1453-validate-api-responses-at-runtime-with-zod",
+    "origin",
+    "security/issue-1444-add-a-contracts-id-detail-page-with-metadata"
+  ]
+}

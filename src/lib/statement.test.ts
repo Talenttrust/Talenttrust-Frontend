@@ -84,7 +84,7 @@ describe('buildStatement — Resolved', () => {
           { index: 0, title: 'Design', amount: 300, released: true },
           { index: 1, title: 'Build', amount: 700, released: false },
         ],
-        dispute: { raisedBy: 'GCLIENT', reason: 'scope', freelancerBps: 5000, resolvedAt: '2026-02-01T09:00:00.000Z' },
+        dispute: { raisedBy: 'GCLIENT', reason: 'scope', resolved: true, freelancerBps: 5000, resolvedAt: '2026-02-01T09:00:00.000Z' },
       }),
     );
     const held = 700;
@@ -105,7 +105,7 @@ describe('buildStatement — Resolved', () => {
         fundedAmount: 1000,
         releasedAmount: 899,
         milestones: [{ index: 0, title: 'Design', amount: 899, released: true }],
-        dispute: { raisedBy: 'GCLIENT', reason: 'scope', freelancerBps: 5000, resolvedAt: null },
+        dispute: { raisedBy: 'GCLIENT', reason: 'scope', resolved: true, freelancerBps: 5000, resolvedAt: null },
       }),
     );
     const held = 101;
