@@ -147,21 +147,19 @@ export default function FundControl({ contract, onDeposit, onSuccess }: FundCont
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={nextMilestone <= 0}
-            onClick={() => applyPreset(nextMilestone)}
+            onClick={() => applyPreset(nextMilestone > 0 ? nextMilestone : remaining)}
+            className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:border-gray-600 dark:text-gray-100 dark:focus:ring-blue-400"
+          >
+            Next milestone ({formatAmount(nextMilestone > 0 ? nextMilestone : remaining)})
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset(remaining)}
+            disabled={remaining <= 0}
             className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:opacity-50 dark:border-gray-600 dark:text-gray-100 dark:focus:ring-blue-400"
           >
-            Next milestone ({formatAmount(nextMilestone)})
+            Remaining ({formatAmount(remaining)})
           </button>
-          {remaining > 0 && (
-            <button
-              type="button"
-              onClick={() => applyPreset(remaining)}
-              className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:border-gray-600 dark:text-gray-100 dark:focus:ring-blue-400"
-            >
-              Remaining ({formatAmount(remaining)})
-            </button>
-          )}
         </div>
 
         {error && (

@@ -48,7 +48,9 @@ describe('validateDeposit', () => {
   }
 
   it('rejects when already fully funded', () => {
-    const result = validateDeposit('1', { totalAmount: 100, fundedAmount: 100 });
+    const fullyFunded: Contract = { totalAmount: 100, fundedAmount: 100 };
+    expect(remainingBalance(fullyFunded)).toBe(0);
+    const result = validateDeposit('1', fullyFunded);
     expect(result.ok).toBe(false);
   });
 
@@ -72,6 +74,7 @@ describe('nextMilestoneDeposit', () => {
   it('returns full amount of first milestone when nothing funded', () => {
     const c = { ...base, fundedAmount: 0 };
     expect(nextMilestoneDeposit(c)).toBe(300);
+    expect(c.milestones[0].amount).toBe(300);
   });
 
   it('returns gap when partially funded', () => {

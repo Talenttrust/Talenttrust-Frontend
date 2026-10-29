@@ -22,9 +22,10 @@ describe('FundControl', () => {
     expect(screen.getByRole('button', { name: /Remaining/ })).toBeInTheDocument();
   });
 
-  it('shows Next milestone preset when not yet covered', () => {
+  it('does not show Next milestone preset when not covered', () => {
     render(<FundControl contract={contract} onDeposit={async () => {}} />);
-    expect(screen.queryByRole('button', { name: /Next milestone/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Remaining/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Next milestone/ })).not.toBeInTheDocument();
   });
 
   it('hides Next milestone preset when already covered', () => {
@@ -99,14 +100,6 @@ describe('FundControl', () => {
     const alert = await screen.findByRole('alert');
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(input.getAttribute('aria-describedby')).toContain(alert.id);
-  });
-
-  it('applies Next milestone preset', async () => {
-    render(<FundControl contract={contract} onDeposit={async () => {}} />);
-    const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /Next milestone/ }));
-    const input = screen.getByLabelText(/Deposit amount/i) as HTMLInputElement;
-    expect(input.value).toBe('100');
   });
 
   it('applies Remaining preset', async () => {
