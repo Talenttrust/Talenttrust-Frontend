@@ -50,9 +50,7 @@ export function ReputationLookup() {
     setBusy(true);
     try {
       const [apiSettled, chainSettled] = await Promise.allSettled([
-        api<Reputation>(`/api/v1/reputation/${encodeURIComponent(trimmed)}`, {
-          schema: ReputationSchema,
-        }),
+        api<Reputation>(`/api/v1/reputation/${encodeURIComponent(trimmed)}`, undefined, ReputationSchema),
         readOnChainReputation(trimmed),
       ]);
       if (apiSettled.status === 'fulfilled') {
@@ -94,9 +92,7 @@ export function ReputationLookup() {
     const value = address.trim();
     setApiError(null);
     try {
-      setApiResult(await api<Reputation>(`/api/v1/reputation/${encodeURIComponent(value)}`, {
-        schema: ReputationSchema,
-      }));
+      setApiResult(await api<Reputation>(`/api/v1/reputation/${encodeURIComponent(value)}`, undefined, ReputationSchema));
     } catch (err) {
       if (err instanceof ApiSchemaError) {
         setApiError('The API returned data in an unexpected format');
