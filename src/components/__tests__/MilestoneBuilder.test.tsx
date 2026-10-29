@@ -11,7 +11,7 @@ import {
   validateMilestones,
   type MilestoneInput,
 } from '@/components/MilestoneBuilder';
-import { EscrowDashboard } from '@/components/EscrowDashboard';
+import EscrowDashboard from '@/components/EscrowDashboard';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/contracts',
@@ -109,7 +109,7 @@ describe('EscrowDashboard create form with the milestone builder', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   const fillParties = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.type(screen.getByLabelText('Client address'), 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF');
+    await user.type(screen.getByLabelText('Client address'), 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF');
     await user.type(screen.getByLabelText('Freelancer address'), 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC6PV');
   };
 

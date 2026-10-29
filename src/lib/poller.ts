@@ -112,6 +112,6 @@ export function startPoller(options: PollerOptions): () => void {
 }
 
 export async function fetchContractById(id: number, signal?: AbortSignal): Promise<EscrowContract> {
-  const res = await api<{ data: EscrowContract }>(`/api/v1/contracts/${id}`, { signal });
+  const res = (await api(`/api/v1/contracts/${id}`, { signal })) as { data: EscrowContract };
   return res.data;
 }
