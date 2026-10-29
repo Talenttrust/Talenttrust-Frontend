@@ -40,11 +40,11 @@ function condenseIssues(error: z.ZodError): string[] {
 
 function isJsonContentType(res: Response): boolean {
   const contentType = res.headers.get('content-type') ?? '';
-  return /\bapplication\/(?:[\w.-+]+\+)?json\b/i.test(contentType);
+  return /\bapplication\/(?:[\w.+-]+\+)?json\b/i.test(contentType);
 }
 
 export function getStats(): Promise<Stats> {
-  return api<Stats>("/stats");
+  return api('/stats', StatsSchema);
 }
 export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'aborted';
 
@@ -282,8 +282,9 @@ export async function listContracts(opts?: {
   if (opts?.party) params.set('party', opts.party);
   if (opts?.status) params.set('status', opts.status);
   const qs = params.toString();
-  const res = await api<{ data: EscrowContract[] }>(
+  const res = await api(
     `/api/v1/contracts${qs ? `?${qs}` : ''}`,
+    ContractListSchema,
   );
   return res.data;
 }
