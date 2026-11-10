@@ -1,0 +1,18 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "feat/issue-1448-support-partial-escrow-deposits-with-an-amount",
+    "main",
+    "origin"
+  ],
+  "parent": {
+    "feat/issue-1448-support-partial-escrow-deposits-with-an-amount": "main",
+    "main": null,
+    "origin": "main"
+  },
+  "order": [
+    "main",
+    "feat/issue-1448-support-partial-escrow-deposits-with-an-amount",
+    "origin"
+  ]
+}
