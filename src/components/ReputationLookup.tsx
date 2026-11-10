@@ -3,7 +3,8 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { StrKey } from '@stellar/stellar-sdk';
-import { api, Reputation } from '@/lib/api';
+import { api, ApiError, ApiSchemaError, Reputation } from '@/lib/api';
+import { ReputationSchema } from '@/lib/schemas';
 import { OnChainReputation, readOnChainReputation } from '@/lib/stellar/reputation';
 import { site } from '@/lib/site';
 
@@ -49,13 +50,20 @@ export function ReputationLookup() {
     setBusy(true);
     try {
       const [apiSettled, chainSettled] = await Promise.allSettled([
-        api<Reputation>(`/api/v1/reputation/${encodeURIComponent(trimmed)}`),
+        api<Reputation>(`/api/v1/reputation/${encodeURIComponent(trimmed)}`, undefined, ReputationSchema),
         readOnChainReputation(trimmed),
       ]);
       if (apiSettled.status === 'fulfilled') {
         setApiResult(apiSettled.value);
       } else {
-        setApiError((apiSettled.reason as Error).message);
+        const err = apiSettled.reason;
+        if (err instanceof ApiError && err.kind === 'aborted') {
+          // aborted; leave api result cleared
+        } else if (err instanceof ApiSchemaError) {
+          setApiError('The API returned data in an unexpected format');
+        } else {
+          setApiError(err instanceof ApiError ? err.userMessage : (err as Error).message);
+        }
       }
       if (chainSettled.status === 'fulfilled') {
         setChainResult(chainSettled.value);
@@ -84,9 +92,13 @@ export function ReputationLookup() {
     const value = address.trim();
     setApiError(null);
     try {
-      setApiResult(await api<Reputation>(`/api/v1/reputation/${encodeURIComponent(value)}`));
+      setApiResult(await api<Reputation>(`/api/v1/reputation/${encodeURIComponent(value)}`, undefined, ReputationSchema));
     } catch (err) {
-      setApiError((err as Error).message);
+      if (err instanceof ApiSchemaError) {
+        setApiError('The API returned data in an unexpected format');
+      } else {
+        setApiError(err instanceof ApiError ? err.userMessage : (err as Error).message);
+      }
     }
   };
 
@@ -204,15 +216,15 @@ export function ReputationLookup() {
                       Retry API
                     </button>
                   </>
-              ) : (
-                apiResult && (
-                  <dl className="stats" aria-labelledby="api-heading">
-                    {statRow('Completed contracts', apiResult.completedContracts, 'api-contracts')}
-                    {statRow('Total rating points', apiResult.totalRating, 'api-total')}
-                    {statRow('Average rating', `${(apiResult.averageRating ?? 0).toFixed(2)} / 5`, 'api-average')}
-                  </dl>
-                )
-              )}
+                ) : (
+                  apiResult && (
+                    <dl className="stats" aria-labelledby="api-heading">
+                      {statRow('Completed contracts', apiResult.completedContracts, 'api-contracts')}
+                      {statRow('Total rating points', apiResult.totalRating, 'api-total')}
+                      {statRow('Average rating', `${(apiResult.averageRating ?? 0).toFixed(2)} / 5`, 'api-average')}
+                    </dl>
+                  )
+                )}
               </div>
             ) : null}
           </div>
