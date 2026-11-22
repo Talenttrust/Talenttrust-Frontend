@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import OnChainEscrowActions from '@/components/onchain/OnChainEscrowActions';
-import { WalletProvider } from '@/contexts/WalletContext';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -12,9 +11,7 @@ export default async function OnChainContractPage({ params }: Props) {
   }
   return (
     <div className="container" style={{ maxWidth: 720 }}>
-      <WalletProvider>
-        <OnChainEscrowActions id={parsed} />
-      </WalletProvider>
+      <OnChainEscrowActions id={parsed} />
     </div>
   );
 }

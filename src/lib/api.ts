@@ -99,8 +99,27 @@ export interface ApiOptions {
 
 const DEFAULT_TIMEOUT_MS = 10000;
 const MAX_RETRIES = 2;
-const RETRY_STATUSES = new Set([502, 503, 504]);
+const RETRY_STATUSES = new Set([429, 502, 503, 504]);
 const BACKOFF_MS = [250, 750];
+const MAX_RETRY_AFTER_MS = 5000;
+
+export function parseRetryAfter(value: string | null | undefined, now: number = Date.now()): number | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (/^-?\d+$/.test(trimmed)) {
+    const seconds = Number(trimmed);
+    return seconds >= 0 ? seconds * 1000 : null;
+  }
+
+  const parsedDate = Date.parse(trimmed);
+  if (!Number.isNaN(parsedDate)) {
+    return Math.max(0, parsedDate - now);
+  }
+
+  return null;
+}
 
 const isAbortSignalLike = (s: unknown): s is AbortSignal =>
   typeof s === 'object' && s !== null && typeof (s as AbortSignal).aborted === 'boolean';
@@ -208,7 +227,10 @@ export async function api<T>(path: string, init: ApiOptions = {}): Promise<T> {
       const { code } = readError(data);
       if (attempt < maxRetries && RETRY_STATUSES.has(res.status)) {
         attempt += 1;
-        await sleep(backoffDelay(attempt - 1), init.signal ?? new AbortController().signal);
+        const retryAfterMs = parseRetryAfter(res.headers.get('retry-after'));
+        const delayMs =
+          retryAfterMs !== null ? Math.min(retryAfterMs, MAX_RETRY_AFTER_MS) : backoffDelay(attempt - 1);
+        await sleep(delayMs, init.signal ?? new AbortController().signal);
         continue;
       }
       throw new ApiError({

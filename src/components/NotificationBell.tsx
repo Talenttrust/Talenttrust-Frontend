@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useNotifications, useOptionalNotifications } from '@/components/NotificationsProvider';
+import { ALL_WATCH_EVENT_TYPES, WATCH_EVENT_LABELS } from '@/lib/desktopNotifications';
 import type { NotificationItem } from '@/lib/notifications';
 
 function timeAgo(ts: number): string {
@@ -28,8 +29,12 @@ function NotificationBellPanel() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
+  const desktopToggleId = useId();
+  const desktopStatusId = useId();
 
   const label = unread > 0 ? `Notifications, ${unread} unread` : 'Notifications';
+  const desktopUnavailable = desktopPermission === 'unsupported' || desktopPermission === 'denied';
+  const desktopChecked = desktopSettings.enabled && desktopPermission === 'granted';
 
   useEffect(() => {
     if (!open) return;
@@ -92,6 +97,82 @@ function NotificationBellPanel() {
                 Clear
               </button>
             </div>
+          </div>
+          <div
+            className="bell-desktop"
+            style={{
+              padding: '10px 14px',
+              borderBottom: '1px solid var(--border)',
+              background: 'var(--surface-2)',
+            }}
+          >
+            <label
+              htmlFor={desktopToggleId}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: desktopUnavailable ? 'not-allowed' : 'pointer' }}
+            >
+              <input
+                id={desktopToggleId}
+                type="checkbox"
+                checked={desktopChecked}
+                disabled={desktopUnavailable}
+                aria-describedby={desktopUnavailable ? desktopStatusId : undefined}
+                onChange={(e) => {
+                  void setDesktopEnabled(e.target.checked);
+                }}
+              />
+              <span className="small">
+                <strong>Desktop notifications</strong> (when tab is hidden)
+              </span>
+            </label>
+
+            {desktopPermission === 'denied' && (
+              <p id={desktopStatusId} role="status" className="small muted" style={{ margin: '6px 0 0' }}>
+                Desktop notifications are blocked by your browser. Allow notifications for this site in your browser settings to enable them.
+              </p>
+            )}
+
+            {desktopPermission === 'unsupported' && (
+              <p id={desktopStatusId} role="status" className="small muted" style={{ margin: '6px 0 0' }}>
+                Desktop notifications are not supported in this browser.
+              </p>
+            )}
+
+            {desktopPermission !== 'unsupported' && (
+              <fieldset
+                style={{
+                  border: 0,
+                  margin: '8px 0 0',
+                  padding: 0,
+                }}
+              >
+                <legend className="small muted" style={{ marginBottom: '4px' }}>
+                  Alert on events
+                </legend>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                    gap: '4px 10px',
+                  }}
+                >
+                  {ALL_WATCH_EVENT_TYPES.map((type) => (
+                    <label
+                      key={type}
+                      className="small"
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={desktopSettings.types.includes(type)}
+                        disabled={desktopUnavailable}
+                        onChange={() => toggleDesktopType(type)}
+                      />
+                      <span>{WATCH_EVENT_LABELS[type]}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
           </div>
           {updatesPaused && (
             <div className="bell-stale" role="status">

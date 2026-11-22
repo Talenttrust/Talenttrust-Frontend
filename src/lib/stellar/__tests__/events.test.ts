@@ -4,8 +4,10 @@ import {
   decodeEvent,
   describeEvent,
   EVENT_LOOKBACK_LEDGERS,
+  fetchEventsSince,
   fetchRecentEvents,
   formatXlm,
+  isCursorError,
   type FetchRecentEventsOptions,
 } from '@/lib/stellar/events';
 import { FIXTURE_CLIENT, FIXTURE_FREELANCER, rawEvent } from '@/test/eventFixtures';
@@ -126,5 +128,88 @@ describe('fetchRecentEvents', () => {
   it('rejects malformed responses', async () => {
     const server = fakeServer([{ events: undefined as unknown as unknown[] }]);
     await expect(fetchRecentEvents({ server })).rejects.toThrow('Malformed getEvents response');
+  });
+});
+
+describe('fetchEventsSince', () => {
+  it('backfills on the first tick and makes a single cursor getEvents call on the second tick', async () => {
+    const server = fakeServer([
+      { events: [rawEvent('created', { ledger: 10 }), rawEvent('deposit', { ledger: 20 })], cursor: 'c1' },
+      { events: [rawEvent('release', { ledger: 30 })], cursor: 'c2' },
+    ]);
+
+    const first = await fetchEventsSince({ server, contractId: 'CTEST' });
+    expect(first.cursor).toBe('c1');
+    expect(first.events.map((e) => e.type)).toEqual(['deposit', 'created']);
+    expect(server.getLatestLedger).toHaveBeenCalledTimes(1);
+    expect(server.getEvents).toHaveBeenCalledTimes(1);
+
+    const second = await fetchEventsSince({ server, contractId: 'CTEST', cursor: first.cursor });
+    expect(second.cursor).toBe('c2');
+    expect(second.events.map((e) => e.type)).toEqual(['release']);
+    expect(server.getLatestLedger).toHaveBeenCalledTimes(1);
+    expect(server.getEvents).toHaveBeenCalledTimes(2);
+    expect(server.getEvents).toHaveBeenLastCalledWith({
+      cursor: 'c1',
+      filters: [{ type: 'contract', contractIds: ['CTEST'] }],
+      limit: 100,
+    });
+  });
+
+  it('uses an explicit startLedger without calling getLatestLedger', async () => {
+    const server = fakeServer([{ events: [rawEvent('deposit', { ledger: 55 })], cursor: 'c55' }]);
+
+    const result = await fetchEventsSince({ server, contractId: 'CTEST', startLedger: 50 });
+
+    expect(server.getLatestLedger).not.toHaveBeenCalled();
+    expect(server.getEvents).toHaveBeenCalledWith({
+      startLedger: 50,
+      filters: [{ type: 'contract', contractIds: ['CTEST'] }],
+      limit: 100,
+    });
+    expect(result.cursor).toBe('c55');
+    expect(result.events).toHaveLength(1);
+  });
+
+  it('preserves the previous cursor when an incremental poll returns no cursor', async () => {
+    const server = fakeServer([{ events: [] }]);
+
+    const result = await fetchEventsSince({ server, cursor: 'c1' });
+
+    expect(server.getLatestLedger).not.toHaveBeenCalled();
+    expect(server.getEvents).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ events: [], cursor: 'c1' });
+  });
+
+  it('pages forward from a cursor and retains only the newest limit events', async () => {
+    const first = Array.from({ length: 100 }, (_, i) => rawEvent('deposit', { ledger: 200 + i }));
+    const second = [rawEvent('release', { ledger: 400 }), rawEvent('rep', { ledger: 401 })];
+    const server = fakeServer([
+      { events: first, cursor: 'c2' },
+      { events: second, cursor: 'c3' },
+    ]);
+
+    const result = await fetchEventsSince({ server, cursor: 'c1', limit: 2 });
+
+    expect(server.getLatestLedger).not.toHaveBeenCalled();
+    expect(server.getEvents).toHaveBeenCalledTimes(2);
+    expect(result.cursor).toBe('c3');
+    expect(result.events.map((e) => e.ledger)).toEqual([401, 400]);
+  });
+});
+
+describe('isCursorError', () => {
+  it('identifies expired or invalid cursor errors', () => {
+    expect(isCursorError(Object.assign(new Error('Invalid params'), { code: -32602 }))).toBe(true);
+    expect(isCursorError(Object.assign(new Error('Invalid request'), { code: -32600 }))).toBe(true);
+    expect(isCursorError(Object.assign(new Error('Bad Request'), { response: { status: 400 } }))).toBe(true);
+    expect(isCursorError(new Error('cursor is too old'))).toBe(true);
+  });
+
+  it('ignores non-cursor errors', () => {
+    expect(isCursorError(new TypeError('Failed to fetch'))).toBe(false);
+    expect(isCursorError(Object.assign(new Error('Service Unavailable'), { response: { status: 503 } }))).toBe(false);
+    expect(isCursorError(null)).toBe(false);
+    expect(isCursorError('cursor')).toBe(false);
   });
 });

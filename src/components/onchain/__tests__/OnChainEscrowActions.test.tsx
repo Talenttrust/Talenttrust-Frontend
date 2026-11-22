@@ -4,9 +4,9 @@ import { vi } from 'vitest';
 import OnChainEscrowActions from '../OnChainEscrowActions';
 import * as escrowLib from '@/lib/stellar/escrow';
 import * as submitLib from '@/lib/stellar/submit';
-import { useWallet } from '@/contexts/WalletContext';
+import { useWallet } from '@/components/wallet/WalletProvider';
 
-vi.mock('@/contexts/WalletContext');
+vi.mock('@/components/wallet/WalletProvider');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockUseWallet = useWallet as unknown as ReturnType<typeof vi.fn>;
 

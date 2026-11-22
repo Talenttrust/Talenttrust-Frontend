@@ -19,6 +19,7 @@ import {
   WATCH_STORE_KEY,
   watch,
   WatchEvent,
+  WatchEventType,
   WatchStore,
 } from '@/lib/watchlist';
 import {
@@ -30,6 +31,17 @@ import {
   startPoller,
 } from '@/lib/poller';
 import { NOTIFICATIONS_KEY } from '@/lib/notifications';
+import {
+  defaultDesktopSettings,
+  DESKTOP_NOTIFY_KEY,
+  DesktopNotificationPermission,
+  DesktopNotifySettings,
+  getPermission,
+  loadDesktopSettings,
+  notifyDesktop,
+  requestPermission,
+  saveDesktopSettings,
+} from '@/lib/desktopNotifications';
 
 interface NotificationsContextValue {
   items: NotificationsStore['items'];
@@ -40,6 +52,10 @@ interface NotificationsContextValue {
   markAllRead: () => void;
   clear: () => void;
   announcement: string;
+  desktopSettings: DesktopNotifySettings;
+  desktopPermission: DesktopNotificationPermission;
+  setDesktopEnabled: (enabled: boolean) => Promise<void>;
+  toggleDesktopType: (type: WatchEventType) => void;
   /** True after repeated failed polls, until the user dismisses it or polling recovers. */
   updatesPaused: boolean;
   dismissUpdatesPaused: () => void;
@@ -56,15 +72,21 @@ export function NotificationsProvider({ children, poller }: NotificationsProvide
   const [notifications, setNotifications] = useState<NotificationsStore>({ version: 1, items: [] });
   const [watchStore, setWatchStore] = useState<WatchStore>({ version: 1, items: [] });
   const [announcement, setAnnouncement] = useState('');
+  const [desktopSettings, setDesktopSettings] = useState<DesktopNotifySettings>(defaultDesktopSettings);
+  const [desktopPermission, setDesktopPermission] = useState<DesktopNotificationPermission>('default');
   const [stale, setStale] = useState(false);
   const [staleDismissed, setStaleDismissed] = useState(false);
   const staleRef = useRef(false);
   const notificationsRef = useRef(notifications);
   notificationsRef.current = notifications;
+  const desktopSettingsRef = useRef(desktopSettings);
+  desktopSettingsRef.current = desktopSettings;
 
   const refresh = useCallback(() => {
     setNotifications(loadNotifications());
     setWatchStore(loadStore());
+    setDesktopSettings(loadDesktopSettings());
+    setDesktopPermission(getPermission());
   }, []);
 
   useEffect(() => {
@@ -74,7 +96,14 @@ export function NotificationsProvider({ children, poller }: NotificationsProvide
   // Cross-tab sync.
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === WATCH_STORE_KEY || e.key === NOTIFICATIONS_KEY || e.key === null) refresh();
+      if (
+        e.key === WATCH_STORE_KEY ||
+        e.key === NOTIFICATIONS_KEY ||
+        e.key === DESKTOP_NOTIFY_KEY ||
+        e.key === null
+      ) {
+        refresh();
+      }
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
@@ -91,12 +120,22 @@ export function NotificationsProvider({ children, poller }: NotificationsProvide
       onEvents: (id: number, events: WatchEvent[], contract: EscrowContract) => {
         let next = notificationsRef.current;
         for (const event of events) {
+          const message = `${contract.title ? `#${id} ${contract.title}: ` : `#${id}: `}${event.message}`;
           next = appendNotification(next, {
             escrowId: id,
             type: event.type,
             title: event.title,
-            message: `${contract.title ? `#${id} ${contract.title}: ` : `#${id}: `}${event.message}`,
+            message,
           });
+          notifyDesktop(
+            {
+              escrowId: id,
+              type: event.type,
+              title: event.title,
+              message,
+            },
+            desktopSettingsRef.current,
+          );
         }
         saveNotifications(next);
         notificationsRef.current = next;
@@ -150,8 +189,28 @@ export function NotificationsProvider({ children, poller }: NotificationsProvide
   const toggleWatch = useCallback((contract: EscrowContract) => {
     setWatchStore((current) => {
       const watchedNow = current.items.some((i) => i.id === contract.id);
-      const next = watchedNow ? unwatch(contract.id) : watch(contract.id, snapshotOf(contract));
-      return next;
+      if (watchedNow) {
+        return unwatch(contract.id);
+      }
+      const { store, evicted } = watch(contract.id, snapshotOf(contract));
+      if (evicted.length > 0) {
+        let nextNotifications = notificationsRef.current;
+        let lastMessage = '';
+        for (const evictedId of evicted) {
+          lastMessage = `Escrow #${evictedId} was removed from your watchlist to stay under the limit`;
+          nextNotifications = appendNotification(nextNotifications, {
+            escrowId: evictedId,
+            type: 'cancelled',
+            title: 'Watchlist limit reached',
+            message: lastMessage,
+          });
+        }
+        saveNotifications(nextNotifications);
+        notificationsRef.current = nextNotifications;
+        setNotifications(nextNotifications);
+        setAnnouncement(lastMessage);
+      }
+      return store;
     });
   }, []);
 
@@ -170,6 +229,51 @@ export function NotificationsProvider({ children, poller }: NotificationsProvide
     setAnnouncement('Notifications cleared.');
   }, []);
 
+  const setDesktopEnabled = useCallback(async (enabled: boolean) => {
+    if (!enabled) {
+      const next: DesktopNotifySettings = { ...desktopSettingsRef.current, enabled: false };
+      saveDesktopSettings(next);
+      desktopSettingsRef.current = next;
+      setDesktopSettings(next);
+      setAnnouncement('Desktop notifications disabled.');
+      return;
+    }
+
+    let perm = getPermission();
+    if (perm === 'default') {
+      perm = await requestPermission();
+    }
+    setDesktopPermission(perm);
+
+    if (perm === 'granted') {
+      const next: DesktopNotifySettings = { ...desktopSettingsRef.current, enabled: true };
+      saveDesktopSettings(next);
+      desktopSettingsRef.current = next;
+      setDesktopSettings(next);
+      setAnnouncement('Desktop notifications enabled.');
+    } else {
+      const next: DesktopNotifySettings = { ...desktopSettingsRef.current, enabled: false };
+      saveDesktopSettings(next);
+      desktopSettingsRef.current = next;
+      setDesktopSettings(next);
+      if (perm === 'denied') {
+        setAnnouncement('Desktop notifications are blocked by browser permissions.');
+      } else if (perm === 'unsupported') {
+        setAnnouncement('Desktop notifications are not supported in this browser.');
+      }
+    }
+  }, []);
+
+  const toggleDesktopType = useCallback((type: WatchEventType) => {
+    const current = desktopSettingsRef.current;
+    const has = current.types.includes(type);
+    const types = has ? current.types.filter((t) => t !== type) : [...current.types, type];
+    const next: DesktopNotifySettings = { ...current, types };
+    saveDesktopSettings(next);
+    desktopSettingsRef.current = next;
+    setDesktopSettings(next);
+  }, []);
+
   const dismissUpdatesPaused = useCallback(() => setStaleDismissed(true), []);
 
   const value = useMemo<NotificationsContextValue>(
@@ -182,6 +286,10 @@ export function NotificationsProvider({ children, poller }: NotificationsProvide
       markAllRead: doMarkAllRead,
       clear: doClear,
       announcement,
+      desktopSettings,
+      desktopPermission,
+      setDesktopEnabled,
+      toggleDesktopType,
       updatesPaused: stale && !staleDismissed,
       dismissUpdatesPaused,
     }),

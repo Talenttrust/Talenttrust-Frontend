@@ -17,14 +17,14 @@ describe('commands library', () => {
       const parsed = parseDynamicCommands('42');
       expect(parsed).toHaveLength(1);
       expect(parsed[0].title).toBe('Go to escrow #42');
-      expect(parsed[0].href).toBe('/contracts?q=42');
+      expect(parsed[0].href).toBe('/contracts/42');
     });
 
     it('parses hash numeric query as escrow lookup', () => {
       const parsed = parseDynamicCommands('#101');
       expect(parsed).toHaveLength(1);
       expect(parsed[0].title).toBe('Go to escrow #101');
-      expect(parsed[0].href).toBe('/contracts?q=101');
+      expect(parsed[0].href).toBe('/contracts/101');
     });
 
     it('parses 56-char Stellar public key as reputation lookup', () => {
