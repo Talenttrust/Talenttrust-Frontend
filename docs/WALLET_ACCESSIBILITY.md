@@ -313,3 +313,17 @@ When making changes to wallet components, verify:
 5. **Motion respect:** Halt non-essential animations via `prefers-reduced-motion`
 6. **High-contrast compatible:** Use data attributes for forced-colors targeting
 7. **Focus management:** Programmatic focus transitions when UI state changes
+
+---
+
+## Global Forced-Colors / High-Contrast Mode (`@media (forced-colors: active)`)
+
+In Windows High Contrast and `forced-colors: active` environments, user agents strip background colors and gradients. To ensure no state information is conveyed by background color alone, `src/app/globals.css` includes a `@media (forced-colors: active)` block using CSS system colors (`CanvasText`, `Highlight`, `LinkText`, `Canvas`):
+
+- **Escrow status pills (`.badge`, `.badge-Funded`, `.badge-Completed`, `.badge-Resolved`, `.badge-Disputed`, `.badge-Cancelled`):** Each status receives a distinct border style (`solid`, `dashed`, `dotted`), border width, outline, and system color (`Highlight`, `LinkText`, `CanvasText`) alongside its visible text label.
+- **Contract status pill (`.contract-status`, `.contract-status-operational`, `.contract-status-paused`, `.contract-status-loading`, `.contract-status-unknown`, `.contract-status-dot`):** Uses distinct solid, dashed, and dotted system-color borders/outlines and preserves the status indicator dot via `forced-color-adjust: none`.
+- **Role chips (`.role-chip`, `.role-chip--client`, `.role-chip--freelancer`):** Distinguishes client (`2px solid Highlight`) from freelancer (`2px solid LinkText`) while keeping explicit role text labels.
+- **Notification bell badge (`.bell-badge`):** Adds a `2px solid Highlight` border and `1px solid CanvasText` outline so the unread counter remains clearly framed when its background fill is stripped.
+- **Milestone timeline (`.mt-connector`, `.mt-index`, `.mt-status-chip`):** Preserves connector lines (`forced-color-adjust: none` with `Highlight` for completed steps) and outlines step index badges and status chips with `CanvasText`.
+- **Progress bars (`.progress`, `.progress > span`, `.mt-progressbar`, `.mt-progressbar-fill`):** Outlines the track with `1px solid CanvasText` and renders the fill with `forced-color-adjust: none`, `background: Highlight`, and a `border-right` edge so partial completion remains visible.
+- **Regression test:** `src/test/forcedColors.test.ts` asserts that `src/app/globals.css` defines the `@media (forced-colors: active)` rule, covers all status indicator and progress classes, uses system colors, and keeps light/dark theme tokens intact.

@@ -1,8 +1,33 @@
+// @vitest-environment node
+// stellar-base XDR needs Node typed arrays; jsdom has its own Uint8Array realm
+// (same pattern as createContract/escrow.test.ts).
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TransactionBuilder, xdr, type Transaction } from '@stellar/stellar-sdk';
 import {
   formatStroops,
   extractContractErrorCode,
   CONTRACT_ERRORS,
+  getContract,
+  buildDepositTx,
+  buildReleaseTx,
+  buildCancelTx,
+  TX_TIMEOUT_SECONDS,
 } from '../escrow';
+import { simulateRead } from '../rpc';
+import { createFakeSoroban, installFakeSoroban } from '@/test/fakeSoroban';
+
+// One merged mock for ../rpc: the transaction builders talk to the chain
+// through getRpcServer(), swapped for the fake Soroban server (see
+// src/test/fakeSoroban.ts) so no network is touched, while getContract
+// reads go through simulateRead, stubbed here for the unit tests below.
+vi.mock('../rpc', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../rpc')>();
+  const fake = await import('@/test/fakeSoroban');
+  return {
+    ...fake.rpcModuleWithFake(actual),
+    simulateRead: vi.fn(),
+  };
+});
 
 describe('formatStroops', () => {
   it('formats whole XLM', () => expect(formatStroops(10_000_000n)).toBe('1.0'));
@@ -25,6 +50,36 @@ describe('extractContractErrorCode', () => {
     expect(extractContractErrorCode('')).toBeNull());
 });
 
+describe('TX_TIMEOUT_SECONDS', () => {
+  const CLIENT = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
+
+  beforeEach(() => {
+    installFakeSoroban(createFakeSoroban());
+  });
+  afterEach(() => {
+    installFakeSoroban(null);
+  });
+
+  it('is 180 seconds', () => expect(TX_TIMEOUT_SECONDS).toBe(180));
+
+  it.each([
+    ['deposit', () => buildDepositTx(1, 10_000_000n, CLIENT)],
+    ['release', () => buildReleaseTx(1, 0, CLIENT)],
+    ['cancel', () => buildCancelTx(1, CLIENT)],
+  ])(
+    'bounds the %s transaction validity to 180 s (decoded timeBounds.maxTime)',
+    async (_name, build) => {
+      const before = Math.floor(Date.now() / 1000);
+      const built = await build();
+      const after = Math.floor(Date.now() / 1000);
+      const tx = TransactionBuilder.fromXDR(built.xdr, built.networkPassphrase) as Transaction;
+      const maxTime = Number(tx.timeBounds?.maxTime ?? '0');
+      expect(maxTime).toBeGreaterThanOrEqual(before + TX_TIMEOUT_SECONDS);
+      expect(maxTime).toBeLessThanOrEqual(after + TX_TIMEOUT_SECONDS);
+    }
+  );
+});
+
 describe('CONTRACT_ERRORS', () => {
   it('maps 5 → ContractNotFound', () => expect(CONTRACT_ERRORS[5]).toBe('ContractNotFound'));
   it('maps 10 → InvalidStatus', () => expect(CONTRACT_ERRORS[10]).toBe('InvalidStatus'));
@@ -33,4 +88,47 @@ describe('CONTRACT_ERRORS', () => {
   it('maps 13 → InsufficientFunds', () =>
     expect(CONTRACT_ERRORS[13]).toBe('InsufficientFunds'));
   it('maps 9 → OverFunded', () => expect(CONTRACT_ERRORS[9]).toBe('OverFunded'));
+});
+
+describe('getContract', () => {
+  const mockSimulateRead = vi.mocked(simulateRead);
+
+  beforeEach(() => {
+    mockSimulateRead.mockReset();
+  });
+
+  it('delegates to simulateRead with a u32 ScVal id and decodes the result', async () => {
+    mockSimulateRead.mockResolvedValue({ map: () => [] } as unknown as xdr.ScVal);
+
+    const result = await getContract(42);
+
+    expect(mockSimulateRead).toHaveBeenCalledTimes(1);
+    const [method, args] = mockSimulateRead.mock.calls[0];
+    expect(method).toBe('get_contract');
+    expect(args).toHaveLength(1);
+    expect(args[0]).toBeInstanceOf(xdr.ScVal);
+    expect((args[0] as xdr.ScVal).toXDR('base64')).toBe(
+      xdr.ScVal.scvU32(42).toXDR('base64')
+    );
+
+    expect(result.id).toBe(42);
+    expect(result.status).toBe('Created');
+    expect(result.milestones).toEqual([]);
+  });
+
+  it('maps contract error code 5 to ContractNotFound', async () => {
+    mockSimulateRead.mockRejectedValue(
+      new Error('HostError: Error(Contract, #5)')
+    );
+
+    await expect(getContract(99)).rejects.toThrow('ContractNotFound');
+  });
+
+  it('rethrows other simulation errors', async () => {
+    mockSimulateRead.mockRejectedValue(
+      new Error('HostError: Error(Contract, #3)')
+    );
+
+    await expect(getContract(99)).rejects.toThrow('HostError: Error(Contract, #3)');
+  });
 });

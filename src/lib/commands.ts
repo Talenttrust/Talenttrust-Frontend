@@ -46,9 +46,9 @@ export function parseDynamicCommands(query: string): CommandItem[] {
     dynamic.push({
       id: `dynamic-escrow-${id}`,
       title: `Go to escrow #${id}`,
-      subtitle: `/contracts?q=${id}`,
+      subtitle: `/contracts/${id}`,
       category: 'Escrows',
-      href: `/contracts?q=${id}`,
+      href: `/contracts/${id}`,
     });
   }
 

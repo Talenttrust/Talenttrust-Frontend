@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useId } from 'react';
-import { useWallet } from '@/contexts/WalletContext';
+import { useWallet } from '@/components/wallet/WalletProvider';
 import {
   getContract,
   buildDepositTx,

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { BRAND_THEME_COLORS } from '@/lib/site';
 
 /**
  * Web app manifest for TalentTrust.
@@ -22,7 +23,7 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
-    theme_color: '#2563eb',
+    theme_color: BRAND_THEME_COLORS.light,
     icons: [
       {
         src: '/icon.svg',

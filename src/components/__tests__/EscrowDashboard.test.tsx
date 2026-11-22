@@ -446,3 +446,91 @@ describe('EscrowDashboard accessibility', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/could not reach the TalentTrust API/i);
   });
 });
+
+describe('EscrowDashboard keyboard shortcuts & roving focus', () => {
+  it('moves focus between visible cards with j and k and announces position', async () => {
+    const user = userEvent.setup();
+    await renderAt();
+    const cards = screen.getAllByRole('article');
+    expect(cards).toHaveLength(10);
+
+    // First 'j' focuses the first card
+    await user.keyboard('j');
+    expect(cards[0]).toHaveFocus();
+    expect(screen.getByTestId('escrow-live-announcer')).toHaveTextContent('Escrow 1 of 10');
+
+    // Next 'j' moves to second card
+    await user.keyboard('j');
+    expect(cards[1]).toHaveFocus();
+    expect(screen.getByTestId('escrow-live-announcer')).toHaveTextContent('Escrow 2 of 10');
+
+    // 'j' again moves to third card
+    await user.keyboard('j');
+    expect(cards[2]).toHaveFocus();
+    expect(screen.getByTestId('escrow-live-announcer')).toHaveTextContent('Escrow 3 of 10');
+
+    // 'k' moves back to second card
+    await user.keyboard('k');
+    expect(cards[1]).toHaveFocus();
+    expect(screen.getByTestId('escrow-live-announcer')).toHaveTextContent('Escrow 2 of 10');
+
+    // 'k' moves to first card and clamps at top
+    await user.keyboard('k');
+    expect(cards[0]).toHaveFocus();
+    expect(screen.getByTestId('escrow-live-announcer')).toHaveTextContent('Escrow 1 of 10');
+    await user.keyboard('k');
+    expect(cards[0]).toHaveFocus();
+    expect(screen.getByTestId('escrow-live-announcer')).toHaveTextContent('Escrow 1 of 10');
+  });
+
+  it('focuses the search field when / is pressed', async () => {
+    const user = userEvent.setup();
+    await renderAt();
+    const searchInput = screen.getByLabelText('Search');
+    expect(searchInput).not.toHaveFocus();
+
+    await user.keyboard('/');
+    expect(searchInput).toHaveFocus();
+  });
+
+  it('suppresses shortcuts while typing in an input or textarea', async () => {
+    const user = userEvent.setup();
+    await renderAt();
+    const cards = screen.getAllByRole('article');
+    const titleInput = screen.getByLabelText('Title');
+
+    await user.click(titleInput);
+    await user.keyboard('jk/?');
+
+    expect(titleInput).toHaveFocus();
+    expect(cards[0]).not.toHaveFocus();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('opens the shortcuts dialog with ? and restores focus to the previous element on close', async () => {
+    const user = userEvent.setup();
+    await renderAt();
+    const cards = screen.getAllByRole('article');
+
+    // Focus card 2 first via j, j
+    await user.keyboard('jj');
+    expect(cards[1]).toHaveFocus();
+
+    // Open shortcuts dialog with ?
+    await user.keyboard('?');
+    const dialog = await screen.findByRole('dialog', { name: /keyboard shortcuts/i });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText(/focus next escrow card/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/focus previous escrow card/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/focus search input/i)).toBeInTheDocument();
+
+    // While dialog is open, j/k do not move focus to cards
+    await user.keyboard('j');
+    expect(cards[2]).not.toHaveFocus();
+
+    // Close with Escape and verify focus returns to card 2
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(cards[1]).toHaveFocus();
+  });
+});

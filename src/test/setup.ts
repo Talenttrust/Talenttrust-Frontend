@@ -53,4 +53,8 @@ vi.mock('@stellar/freighter-api', () => ({
   signTransaction: async () => {
     throw new Error('Freighter is not available in tests');
   },
+  WatchWalletChanges: class {
+    watch = vi.fn().mockReturnValue({});
+    stop = vi.fn();
+  },
 }));

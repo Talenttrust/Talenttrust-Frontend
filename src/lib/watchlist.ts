@@ -3,6 +3,7 @@ import type { EscrowContract } from './api';
 export const WATCH_STORE_KEY = 'tt.watch.v1';
 export const WATCH_STORE_VERSION = 1;
 export const WATCH_MAX_ITEMS = 200;
+export const WATCH_CAPACITY_HINT_THRESHOLD = Math.ceil(WATCH_MAX_ITEMS * 0.9);
 
 export interface Snapshot {
   status: EscrowContract['status'];
@@ -170,17 +171,23 @@ export function saveStore(store: WatchStore): boolean {
   }
 }
 
+export interface WatchResult {
+  store: WatchStore;
+  evicted: number[];
+}
+
 export function isWatched(id: number): boolean {
   return loadStore().items.some((i) => i.id === id);
 }
 
-export function watch(id: number, snapshot: Snapshot): WatchStore {
-  const store = loadStore();
-  const items = store.items.filter((i) => i.id !== id);
+export function watch(id: number, snapshot: Snapshot): WatchResult {
+  const current = loadStore();
+  const items = current.items.filter((i) => i.id !== id);
   items.unshift({ id, lastSnapshot: snapshot });
-  const next: WatchStore = { version: WATCH_STORE_VERSION, items: items.slice(0, WATCH_MAX_ITEMS) };
-  saveStore(next);
-  return next;
+  const evicted = items.slice(WATCH_MAX_ITEMS).map((i) => i.id);
+  const store: WatchStore = { version: WATCH_STORE_VERSION, items: items.slice(0, WATCH_MAX_ITEMS) };
+  saveStore(store);
+  return { store, evicted };
 }
 
 export function unwatch(id: number): WatchStore {
