@@ -54,6 +54,44 @@ describe('applyQuery', () => {
     expect(ids(applyQuery(list, q({ q: search })).items)).toEqual(expected);
   });
 
+  it('matches milestone titles case-insensitively', () => {
+    const contracts = [
+      escrow(1, {
+        title: 'Backend project',
+        milestones: [
+          { index: 0, title: 'Database Schema Design', amount: 300, released: true },
+          { index: 1, title: 'API Integration', amount: 700, released: false },
+        ],
+      }),
+      escrow(2, {
+        title: 'Frontend overhaul',
+        milestones: [{ index: 0, title: 'Component Library', amount: 500, released: false }],
+      }),
+    ];
+    expect(ids(applyQuery(contracts, q({ q: 'schema' })).items)).toEqual([1]);
+    expect(ids(applyQuery(contracts, q({ q: 'DESIGN' })).items)).toEqual([1]);
+    expect(ids(applyQuery(contracts, q({ q: 'component' })).items)).toEqual([2]);
+  });
+
+  it('matches token identifier/address case-insensitively', () => {
+    const contracts = [
+      escrow(1, { title: 'Project Alpha', token: 'USDC' }),
+      escrow(2, { title: 'Project Beta', token: 'CDLZ472TH7MI5XFAV6S5...TOKEN' }),
+    ];
+    expect(ids(applyQuery(contracts, q({ q: 'usdc' })).items)).toEqual([1]);
+    expect(ids(applyQuery(contracts, q({ q: 'USDC' })).items)).toEqual([1]);
+    expect(ids(applyQuery(contracts, q({ q: 'cdlz' })).items)).toEqual([2]);
+  });
+
+  it('handles contracts without a milestones array safely without throwing', () => {
+    const contractWithoutMilestones = escrow(99, { title: 'No milestones here' });
+    delete (contractWithoutMilestones as { milestones?: unknown }).milestones;
+
+    expect(() => applyQuery([contractWithoutMilestones], q({ q: 'test' }))).not.toThrow();
+    expect(ids(applyQuery([contractWithoutMilestones], q({ q: 'milestones' })).items)).toEqual([99]);
+    expect(ids(applyQuery([contractWithoutMilestones], q({ q: 'nonexistent' })).items)).toEqual([]);
+  });
+
   it.each([
     ['newest', [12, 3, 2, 1]],
     ['oldest', [1, 2, 3, 12]],
