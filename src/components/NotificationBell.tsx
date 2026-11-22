@@ -23,7 +23,7 @@ export function NotificationBell() {
 }
 
 function NotificationBellPanel() {
-  const { items, unread, markAllRead, clear, announcement } = useNotifications();
+  const { items, unread, markAllRead, clear, announcement, updatesPaused, dismissUpdatesPaused } = useNotifications();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -93,6 +93,14 @@ function NotificationBellPanel() {
               </button>
             </div>
           </div>
+          {updatesPaused && (
+            <div className="bell-stale" role="status">
+              <span>Updates paused, retrying. Notifications may be out of date.</span>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={dismissUpdatesPaused}>
+                Dismiss
+              </button>
+            </div>
+          )}
           {items.length === 0 ? (
             <div className="bell-empty">
               <p style={{ margin: '0 0 6px' }}>No notifications yet.</p>

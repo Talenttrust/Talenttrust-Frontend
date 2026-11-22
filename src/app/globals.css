@@ -217,6 +217,7 @@ h1, h2, h3 { line-height: 1.2; letter-spacing: -0.02em; }
 .bell-item-unread a { border-left: 3px solid var(--brand); }
 .bell-item-title { font-weight: 600; font-size: 0.92rem; }
 .bell-empty { padding: 18px 16px; color: var(--muted); }
+.bell-stale { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); color: var(--muted); font-size: 0.85rem; }
 @media (max-width: 480px) {
   .bell-panel { position: fixed; left: 12px; right: 12px; width: auto; top: 72px; }
 }

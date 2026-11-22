@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { NotificationsProvider } from '@/components/NotificationsProvider';
 import { NotificationBell } from '@/components/NotificationBell';
 import { NOTIFICATIONS_KEY, NOTIFICATIONS_VERSION } from '@/lib/notifications';
+import { WATCH_STORE_KEY, WATCH_STORE_VERSION } from '@/lib/watchlist';
+import { ApiError } from '@/lib/api';
+import type { EscrowContract } from '@/lib/api';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/contracts' }));
 
@@ -86,5 +89,115 @@ describe('NotificationBell', () => {
     renderBell();
     await userEvent.click(await screen.findByRole('button', { name: /notifications/i }));
     expect(screen.getByRole('link', { name: /released/i })).toHaveAttribute('href', '/contracts');
+  });
+});
+
+describe('NotificationBell stale updates', () => {
+  const watchEscrow = () =>
+    localStorage.setItem(
+      WATCH_STORE_KEY,
+      JSON.stringify({
+        version: WATCH_STORE_VERSION,
+        items: [{ id: 1, lastSnapshot: { status: 'Funded', releasedIdx: [], fundedAmount: 100 } }],
+      }),
+    );
+
+  const okContract: EscrowContract = {
+    id: 1,
+    title: 'Design',
+    client: 'GCLIENT',
+    freelancer: 'GFREE',
+    token: 'XLM',
+    milestones: [],
+    totalAmount: 100,
+    fundedAmount: 100,
+    releasedAmount: 0,
+    status: 'Funded',
+    reputationIssued: false,
+    releasedIdx: [],
+  } as unknown as EscrowContract;
+
+  // Drives the poller by hand through the injectable timer seam.
+  const setup = () => {
+    let failing = true;
+    let next: () => void = () => {};
+    watchEscrow();
+    render(
+      <NotificationsProvider
+        poller={{
+          fetchContract: async () => {
+            if (failing) throw new ApiError({ kind: 'network' });
+            return okContract;
+          },
+          isVisible: () => true,
+          setTimeoutFn: ((fn: () => void) => {
+            next = fn;
+            return 0 as never;
+          }) as never,
+          clearTimeoutFn: () => {},
+        }}
+      >
+        <NotificationBell />
+      </NotificationsProvider>,
+    );
+    const tick = async () => {
+      await act(async () => {
+        next();
+        await new Promise((r) => setTimeout(r, 0));
+      });
+    };
+    return { tick, recover: () => { failing = false; } };
+  };
+
+  const openPanel = async () => userEvent.click(await screen.findByRole('button', { name: /notifications/i }));
+
+  it('does not show the notice before three consecutive failures', async () => {
+    const { tick } = setup();
+    await openPanel();
+    await tick();
+    await tick();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('shows a polite status line after three consecutive failures', async () => {
+    const { tick } = setup();
+    await openPanel();
+    await tick();
+    await tick();
+    await tick();
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent(/updates paused, retrying/i);
+    // Also announced to screen readers once.
+    expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent('Updates paused, retrying.');
+  });
+
+  it('can be dismissed and stays dismissed while the outage continues', async () => {
+    const { tick } = setup();
+    await openPanel();
+    for (let i = 0; i < 3; i += 1) await tick();
+    await userEvent.click(await screen.findByRole('button', { name: /^dismiss$/i }));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    await tick();
+    await tick();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('clears on recovery and shows again for the next outage', async () => {
+    const { tick, recover } = setup();
+    await openPanel();
+    for (let i = 0; i < 3; i += 1) await tick();
+    expect(await screen.findByRole('status')).toHaveTextContent(/updates paused, retrying/i);
+
+    recover();
+    await tick();
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+  });
+
+  it('shows the notice even when there are no notifications', async () => {
+    const { tick } = setup();
+    await openPanel();
+    for (let i = 0; i < 3; i += 1) await tick();
+    expect(await screen.findByRole('status')).toHaveTextContent(/updates paused, retrying/i);
+    expect(screen.getByText(/no notifications yet/i)).toBeInTheDocument();
   });
 });
