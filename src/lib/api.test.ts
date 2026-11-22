@@ -1,5 +1,31 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { api, ApiError } from '@/lib/api';
+import { api, ApiError, parseRetryAfter } from '@/lib/api';
+
+describe('parseRetryAfter', () => {
+  it('returns null for missing or invalid values', () => {
+    expect(parseRetryAfter(null)).toBeNull();
+    expect(parseRetryAfter(undefined)).toBeNull();
+    expect(parseRetryAfter('')).toBeNull();
+    expect(parseRetryAfter('   ')).toBeNull();
+    expect(parseRetryAfter('invalid-value')).toBeNull();
+    expect(parseRetryAfter('-5')).toBeNull();
+  });
+
+  it('parses delta-seconds into milliseconds', () => {
+    expect(parseRetryAfter('0')).toBe(0);
+    expect(parseRetryAfter('2')).toBe(2000);
+    expect(parseRetryAfter(' 120 ')).toBe(120000);
+  });
+
+  it('parses HTTP date values relative to now and clamps past dates to 0', () => {
+    const now = Date.UTC(2026, 0, 1, 12, 0, 0);
+    const future = new Date(now + 3000).toUTCString();
+    const past = new Date(now - 5000).toUTCString();
+
+    expect(parseRetryAfter(future, now)).toBe(3000);
+    expect(parseRetryAfter(past, now)).toBe(0);
+  });
+});
 
 describe('api client hardening', () => {
   beforeEach(() => {
@@ -10,10 +36,10 @@ describe('api client hardening', () => {
     vi.restoreAllMocks();
   });
 
-  const jsonResponse = (body: unknown, status = 200) =>
+  const jsonResponse = (body: unknown, status = 200, extraHeaders?: Record<string, string>) =>
     new Response(JSON.stringify(body), {
       status,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...extraHeaders },
     });
 
   it('returns parsed data on success', async () => {
@@ -77,6 +103,68 @@ describe('api client hardening', () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ error: 'unavailable' }, 503));
     vi.stubGlobal('fetch', fetchMock);
     await expect(api('/x', { method: 'POST' })).rejects.toMatchObject({ kind: 'http', status: 503 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a 429 GET honoring Retry-After seconds header', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: 'rate_limited' }, 429, { 'Retry-After': '2' }))
+      .mockResolvedValueOnce(jsonResponse({ data: 'ok' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const p = api('/x');
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(p).resolves.toEqual({ data: 'ok' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('caps Retry-After delay at 5000ms', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: 'rate_limited' }, 429, { 'Retry-After': '60' }))
+      .mockResolvedValueOnce(jsonResponse({ data: 'ok' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const p = api('/x');
+    await vi.advanceTimersByTimeAsync(4999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(p).resolves.toEqual({ data: 'ok' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries a 429 GET honoring Retry-After HTTP date header', async () => {
+    const now = Date.UTC(2026, 0, 1, 12, 0, 0);
+    vi.setSystemTime(now);
+    const retryAt = new Date(now + 3000).toUTCString();
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: 'rate_limited' }, 429, { 'Retry-After': retryAt }))
+      .mockResolvedValueOnce(jsonResponse({ data: 'ok' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const p = api('/x');
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(p).resolves.toEqual({ data: 'ok' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a POST 429 even with Retry-After', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ error: 'rate_limited' }, 429, { 'Retry-After': '1' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(api('/x', { method: 'POST' })).rejects.toMatchObject({ kind: 'http', status: 429 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
