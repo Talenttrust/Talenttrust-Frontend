@@ -7,7 +7,7 @@ import {
   xdr,
   Address,
 } from '@stellar/stellar-sdk';
-import { getRpcServer, NETWORK_PASSPHRASE } from './rpc';
+import { getRpcServer, NETWORK_PASSPHRASE, simulateRead } from './rpc';
 import { site } from '../site';
 
 // ── Contract error codes ────────────────────────────────────────────────────
@@ -158,35 +158,17 @@ export function decodeEscrow(raw: xdr.ScVal, id: number): OnChainEscrow {
 // ── Read helper ─────────────────────────────────────────────────────────────
 
 export async function getContract(id: number): Promise<OnChainEscrow> {
-  const server = getRpcServer();
-  const contract = getEscrowContract();
-  const { Keypair } = await import('@stellar/stellar-sdk');
-  const keypair = Keypair.random();
-
-  const account = await server.getAccount(keypair.publicKey()).catch(() => ({
-    accountId: () => keypair.publicKey(),
-    sequenceNumber: () => '0',
-    incrementSequenceNumber: () => {},
-  } as unknown as Awaited<ReturnType<typeof server.getAccount>>));
-
-  const tx = new TransactionBuilder(account, {
-    fee: BASE_FEE,
-    networkPassphrase: NETWORK_PASSPHRASE,
-  })
-    .addOperation(contract.call('get_contract', nativeToScVal(id, { type: 'u32' })))
-    .setTimeout(TimeoutInfinite)
-    .build();
-
-  const result = await server.simulateTransaction(tx);
-  if ('error' in result) {
-    const code = extractContractErrorCode(String(result.error));
+  try {
+    const retval = await simulateRead('get_contract', [
+      nativeToScVal(id, { type: 'u32' }),
+    ]);
+    return decodeEscrow(retval, id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const code = extractContractErrorCode(message);
     if (code === 5) throw new Error('ContractNotFound');
-    throw new Error(String(result.error));
+    throw err;
   }
-
-  const sim = result as { result?: { retval: xdr.ScVal } };
-  if (!sim.result) throw new Error('No result returned from simulation');
-  return decodeEscrow(sim.result.retval, id);
 }
 
 // ── TX builders ─────────────────────────────────────────────────────────────

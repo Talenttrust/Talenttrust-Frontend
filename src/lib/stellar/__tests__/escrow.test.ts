@@ -1,8 +1,18 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { xdr } from '@stellar/stellar-sdk';
 import {
   formatStroops,
   extractContractErrorCode,
   CONTRACT_ERRORS,
+  getContract,
 } from '../escrow';
+import { simulateRead } from '../rpc';
+
+vi.mock('../rpc', () => ({
+  getRpcServer: vi.fn(),
+  NETWORK_PASSPHRASE: 'Test SDF Network ; September 2015',
+  simulateRead: vi.fn(),
+}));
 
 describe('formatStroops', () => {
   it('formats whole XLM', () => expect(formatStroops(10_000_000n)).toBe('1.0'));
@@ -33,4 +43,47 @@ describe('CONTRACT_ERRORS', () => {
   it('maps 13 → InsufficientFunds', () =>
     expect(CONTRACT_ERRORS[13]).toBe('InsufficientFunds'));
   it('maps 9 → OverFunded', () => expect(CONTRACT_ERRORS[9]).toBe('OverFunded'));
+});
+
+describe('getContract', () => {
+  const mockSimulateRead = vi.mocked(simulateRead);
+
+  beforeEach(() => {
+    mockSimulateRead.mockReset();
+  });
+
+  it('delegates to simulateRead with a u32 ScVal id and decodes the result', async () => {
+    mockSimulateRead.mockResolvedValue({ map: () => [] } as unknown as xdr.ScVal);
+
+    const result = await getContract(42);
+
+    expect(mockSimulateRead).toHaveBeenCalledTimes(1);
+    const [method, args] = mockSimulateRead.mock.calls[0];
+    expect(method).toBe('get_contract');
+    expect(args).toHaveLength(1);
+    expect(args[0]).toBeInstanceOf(xdr.ScVal);
+    expect((args[0] as xdr.ScVal).toXDR('base64')).toBe(
+      xdr.ScVal.scvU32(42).toXDR('base64')
+    );
+
+    expect(result.id).toBe(42);
+    expect(result.status).toBe('Created');
+    expect(result.milestones).toEqual([]);
+  });
+
+  it('maps contract error code 5 to ContractNotFound', async () => {
+    mockSimulateRead.mockRejectedValue(
+      new Error('HostError: Error(Contract, #5)')
+    );
+
+    await expect(getContract(99)).rejects.toThrow('ContractNotFound');
+  });
+
+  it('rethrows other simulation errors', async () => {
+    mockSimulateRead.mockRejectedValue(
+      new Error('HostError: Error(Contract, #3)')
+    );
+
+    await expect(getContract(99)).rejects.toThrow('HostError: Error(Contract, #3)');
+  });
 });
