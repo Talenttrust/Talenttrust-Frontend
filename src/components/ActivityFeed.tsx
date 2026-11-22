@@ -17,18 +17,35 @@ interface FeedItem {
 
 type Status = 'loading' | 'ready' | 'error';
 
+interface LoadFeedResult {
+  items: FeedItem[];
+  cursor?: string;
+}
+
 // The SDK is loaded lazily so the feed never adds to the landing page's initial bundle.
-async function loadFeedItems(): Promise<FeedItem[]> {
-  const { fetchRecentEvents, describeEvent } = await import('@/lib/stellar/events');
-  const events = await fetchRecentEvents({ limit: MAX_ITEMS });
-  return events.map((e) => ({
-    key: e.key,
-    id: e.id,
-    ledger: e.ledger,
-    closedAt: e.closedAt,
-    txHash: e.txHash,
-    sentence: describeEvent(e),
-  }));
+async function loadFeedItems(cursor?: string): Promise<LoadFeedResult> {
+  const { fetchEventsSince, describeEvent, isCursorError } = await import('@/lib/stellar/events');
+  let result;
+  try {
+    result = await fetchEventsSince({ cursor, limit: MAX_ITEMS });
+  } catch (err) {
+    if (cursor && isCursorError(err)) {
+      result = await fetchEventsSince({ limit: MAX_ITEMS });
+    } else {
+      throw err;
+    }
+  }
+  return {
+    items: result.events.map((e) => ({
+      key: e.key,
+      id: e.id,
+      ledger: e.ledger,
+      closedAt: e.closedAt,
+      txHash: e.txHash,
+      sentence: describeEvent(e),
+    })),
+    cursor: result.cursor,
+  };
 }
 
 function mergeItems(previous: FeedItem[], incoming: FeedItem[]): FeedItem[] {
@@ -73,6 +90,7 @@ export function ActivityFeed({ pollIntervalMs = ACTIVITY_POLL_MS }: { pollInterv
   const inFlight = useRef(false);
   const loadedOnce = useRef(false);
   const itemsRef = useRef<FeedItem[]>([]);
+  const cursorRef = useRef<string | undefined>(undefined);
   const lastAttemptAt = useRef<number | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -81,8 +99,9 @@ export function ActivityFeed({ pollIntervalMs = ACTIVITY_POLL_MS }: { pollInterv
     inFlight.current = true;
     lastAttemptAt.current = Date.now();
     try {
-      const incoming = await loadFeedItems();
+      const { items: incoming, cursor } = await loadFeedItems(cursorRef.current);
       if (!mounted.current) return;
+      cursorRef.current = cursor;
       const previousKeys = new Set(itemsRef.current.map((item) => item.key));
       const merged = mergeItems(itemsRef.current, incoming);
       setFresh(loadedOnce.current ? new Set(merged.filter((i) => !previousKeys.has(i.key)).map((i) => i.key)) : new Set());
