@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { api, ApiError, parseRetryAfter } from '@/lib/api';
+import { api, ApiError, parseRetryAfter, unwrapContract } from '@/lib/api';
 
 describe('parseRetryAfter', () => {
   it('returns null for missing or invalid values', () => {
@@ -193,3 +193,51 @@ describe('api client hardening', () => {
     await assertion;
   });
 });
+
+describe('unwrapContract', () => {
+  it('returns null for null, undefined, and non-object primitives', () => {
+    expect(unwrapContract(null)).toBeNull();
+    expect(unwrapContract(undefined)).toBeNull();
+    expect(unwrapContract('')).toBeNull();
+    expect(unwrapContract(123)).toBeNull();
+    expect(unwrapContract(true)).toBeNull();
+  });
+
+  it('returns null for empty or unrelated objects', () => {
+    expect(unwrapContract({})).toBeNull();
+    expect(unwrapContract({ foo: 'bar' })).toBeNull();
+    expect(unwrapContract([])).toBeNull();
+  });
+
+  it('rejects payloads with an id but without a status property', () => {
+    expect(unwrapContract({ id: 1 })).toBeNull();
+    expect(unwrapContract({ id: 42, title: 'No status' })).toBeNull();
+  });
+
+  it('unwraps top-level contract object when id and status are present', () => {
+    const payload = {
+      id: 1,
+      status: 'Created' as const,
+      title: 'Audit escrow',
+    };
+    expect(unwrapContract(payload)).toEqual(payload);
+  });
+
+  it('unwraps nested contract from { data: ... }', () => {
+    const contract = {
+      id: 2,
+      status: 'Funded' as const,
+      title: 'Dev milestone',
+    };
+    expect(unwrapContract({ data: contract })).toEqual(contract);
+  });
+
+  it('returns null when nested data is null, primitive, or lacks a valid id', () => {
+    expect(unwrapContract({ data: null })).toBeNull();
+    expect(unwrapContract({ data: 'not-an-object' })).toBeNull();
+    expect(unwrapContract({ data: {} })).toBeNull();
+    expect(unwrapContract({ data: { title: 'Missing id' } })).toBeNull();
+    expect(unwrapContract({ data: { id: 'invalid-id' } })).toBeNull();
+  });
+});
+

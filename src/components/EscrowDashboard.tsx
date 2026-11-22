@@ -62,14 +62,6 @@ function toViewFilter(raw: string | null): ViewFilter {
 }
 import { useOptionalToast } from "@/components/toast/ToastProvider";
 
-const asContract = (payload: unknown): EscrowContract | null => {
-  if (!payload || typeof payload !== "object") return null;
-  const obj = payload as { data?: EscrowContract; id?: number };
-  if (obj.data && typeof obj.data.id === "number") return obj.data;
-  if (typeof obj.id === "number") return payload as EscrowContract;
-  return null;
-};
-
 function EscrowCardSkeleton() {
   return (
     <div className="card skeleton-card">
@@ -537,7 +529,7 @@ export function EscrowDashboard() {
       }),
       { pending: "Creating escrow…", success: "Escrow created" },
       (result) => {
-        const created = asContract(result);
+        const created = unwrapContract(result);
         if (created?.id) {
           toast.success(`Escrow #${created.id} created`, {
             action: { label: "View escrow", onClick: () => viewEscrow(created.id) },
