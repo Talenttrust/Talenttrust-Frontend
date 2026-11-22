@@ -125,8 +125,28 @@ export function NotificationsProvider({ children, poller }: NotificationsProvide
   const toggleWatch = useCallback((contract: EscrowContract) => {
     setWatchStore((current) => {
       const watchedNow = current.items.some((i) => i.id === contract.id);
-      const next = watchedNow ? unwatch(contract.id) : watch(contract.id, snapshotOf(contract));
-      return next;
+      if (watchedNow) {
+        return unwatch(contract.id);
+      }
+      const { store, evicted } = watch(contract.id, snapshotOf(contract));
+      if (evicted.length > 0) {
+        let nextNotifications = notificationsRef.current;
+        let lastMessage = '';
+        for (const evictedId of evicted) {
+          lastMessage = `Escrow #${evictedId} was removed from your watchlist to stay under the limit`;
+          nextNotifications = appendNotification(nextNotifications, {
+            escrowId: evictedId,
+            type: 'cancelled',
+            title: 'Watchlist limit reached',
+            message: lastMessage,
+          });
+        }
+        saveNotifications(nextNotifications);
+        notificationsRef.current = nextNotifications;
+        setNotifications(nextNotifications);
+        setAnnouncement(lastMessage);
+      }
+      return store;
     });
   }, []);
 
