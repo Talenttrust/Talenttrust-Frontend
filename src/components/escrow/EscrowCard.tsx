@@ -57,9 +57,10 @@ export function EscrowCard({
 
   return (
     <article
-      className="card"
+      className="card escrow-card"
       id={`escrow-${contract.id}`}
       tabIndex={-1}
+      aria-labelledby={headingId}
       aria-busy={busy}
       style={optimistic ? { opacity: 0.8 } : undefined}
     >

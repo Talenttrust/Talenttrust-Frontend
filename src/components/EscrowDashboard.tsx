@@ -47,6 +47,8 @@ import {
 } from "@/components/MilestoneBuilder";
 import { ViewFilterControl } from "./ViewFilterControl";
 import { RoleChip } from "./RoleChip";
+import { ShortcutsDialog } from "./ShortcutsDialog";
+import { useHotkeys } from "@/hooks/useHotkeys";
 import { getAddress } from "@/lib/stellar/freighter";
 import type { ViewFilter } from "@/lib/api";
 
@@ -152,6 +154,7 @@ export function EscrowDashboard() {
   const formRef = useRef<HTMLFormElement>(null);
   // Create through the demo API, or sign create_contract on testnet with Freighter.
   const [createMode, setCreateMode] = useState<"demo" | "onchain">("demo");
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   // Status is filtered by the API, the rest is done client-side
   const load = useCallback(async () => {
@@ -254,6 +257,51 @@ export function EscrowDashboard() {
     setSearch("");
     update(DEFAULT_QUERY);
   };
+
+  const focusCardByDelta = useCallback(
+    (delta: 1 | -1) => {
+      const items = result.items;
+      if (items.length === 0) return;
+
+      const active = document.activeElement as HTMLElement | null;
+      const cardEl = active?.closest<HTMLElement>('article[id^="escrow-"]') ?? null;
+      let currentIndex = -1;
+      if (cardEl) {
+        const idNum = Number(cardEl.id.replace("escrow-", ""));
+        currentIndex = items.findIndex((item) => item.id === idNum);
+      }
+
+      let nextIndex: number;
+      if (currentIndex === -1) {
+        nextIndex = 0;
+      } else {
+        nextIndex = Math.max(0, Math.min(items.length - 1, currentIndex + delta));
+      }
+
+      const target = items[nextIndex];
+      if (!target) return;
+
+      const el = document.getElementById(`escrow-${target.id}`);
+      if (el) {
+        if (typeof el.scrollIntoView === "function") {
+          el.scrollIntoView({ block: "nearest" });
+        }
+        el.focus({ preventScroll: true });
+      }
+      setAnnouncement(`Escrow ${nextIndex + 1} of ${items.length}`);
+    },
+    [result.items],
+  );
+
+  useHotkeys({
+    j: () => focusCardByDelta(1),
+    k: () => focusCardByDelta(-1),
+    "/": () => {
+      const searchInput = document.getElementById("escrow-search") as HTMLInputElement | null;
+      searchInput?.focus();
+    },
+    "?": () => setShortcutsOpen(true),
+  });
 
   const act = async (
     id: number | "new",
@@ -599,6 +647,14 @@ export function EscrowDashboard() {
 
       <section className="stack" style={{ minWidth: 0 }} aria-labelledby="escrow-list">
         <div className="row list-actions">
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShortcutsOpen(true)}
+            aria-label="Keyboard shortcuts (?)"
+          >
+            Shortcuts <kbd className="palette-kbd">?</kbd>
+          </button>
           <ExportMenu contracts={visible} />
         </div>
         <ViewFilterControl value={roleView} onChange={changeView} walletConnected={Boolean(walletAddress)} />
@@ -807,6 +863,10 @@ export function EscrowDashboard() {
           }}
         />
       )}
+      <ShortcutsDialog
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
     </div>
   );
 }

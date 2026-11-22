@@ -1148,4 +1148,80 @@ button:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visibl
 @media (prefers-reduced-motion: reduce) {
   .activity-skeleton-line, .activity-new { animation: none; }
 }
+/* Keyboard navigation & ShortcutsDialog */
+.card[tabindex="-1"]:focus,
+.card[tabindex="-1"]:focus-visible,
+.escrow-card:focus,
+.escrow-card:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-color: var(--brand);
+}
+
+.shortcuts-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+.shortcuts-body {
+  display: grid;
+  gap: 16px;
+}
+.shortcuts-groups {
+  display: grid;
+  gap: 16px;
+}
+.shortcuts-group {
+  display: grid;
+  gap: 8px;
+}
+.shortcuts-group-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.shortcuts-list {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.shortcuts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.shortcuts-desc {
+  font-size: 0.92rem;
+  color: var(--text);
+}
+.shortcuts-keys {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.shortcuts-key-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.shortcuts-plus {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.shortcuts-kbd {
+  min-width: 24px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 2px 7px;
+}
+
 .activity-container { margin-top: 28px; }
