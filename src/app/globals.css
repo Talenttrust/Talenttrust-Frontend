@@ -1149,3 +1149,20 @@ button:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visibl
   .activity-skeleton-line, .activity-new { animation: none; }
 }
 .activity-container { margin-top: 28px; }
+
+/* ── On-chain escrow actions ─────────────────────────────────────────────── */
+.onchain-actions { gap: 20px; }
+.onchain-eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-weight: 600; }
+.onchain-heading { margin: 6px 0 0; font-size: 1.25rem; color: var(--text); }
+.onchain-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 14px 0 0; }
+.onchain-meta dd { margin: 2px 0 0; font-weight: 600; color: var(--text); }
+.onchain-section { border-top: 1px solid var(--border); padding-top: 16px; }
+.onchain-milestones { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.onchain-milestone-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+.onchain-milestone-label { flex: 1; min-width: 0; color: var(--text); }
+.onchain-released { margin-left: 8px; color: var(--ok); font-size: 0.78rem; font-weight: 600; }
+.onchain-cancel-btn { width: 100%; }
+.tx-progress { margin-top: 4px; }
+.tx-progress-ok { border-color: color-mix(in srgb, var(--ok) 40%, transparent); background: color-mix(in srgb, var(--ok) 10%, var(--surface)); color: var(--ok); }
+.onchain-dialog-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: color-mix(in srgb, var(--bg) 65%, rgba(0, 0, 0, 0.55)); }
+.onchain-dialog { border: 1px solid var(--border); }

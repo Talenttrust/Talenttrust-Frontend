@@ -66,9 +66,6 @@ function xlm(stroops: bigint): string {
   return `${formatStroops(stroops)} XLM`;
 }
 
-const focusRing =
-  'focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-500';
-
 // ── TxProgress ────────────────────────────────────────────────────────────────
 
 type TxProgressProps = { status: TxStatus; error: string | null; txHash: string | null };
@@ -76,20 +73,20 @@ function TxProgress({ status, error, txHash }: TxProgressProps) {
   if (status === 'idle') return null;
   if (status === 'error')
     return (
-      <p role="alert" className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+      <p role="alert" className="alert alert-error tx-progress small">
         {error ?? 'An error occurred.'}
       </p>
     );
   if (status === 'confirmed')
     return (
-      <p role="status" className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+      <p role="status" className="alert tx-progress tx-progress-ok small">
         Confirmed!{' '}
         {txHash && (
           <a
             href={`https://stellar.expert/explorer/testnet/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className={`underline ${focusRing}`}
+            className="alert-link"
           >
             View on Explorer
           </a>
@@ -97,7 +94,7 @@ function TxProgress({ status, error, txHash }: TxProgressProps) {
       </p>
     );
   return (
-    <p role="status" aria-live="polite" className="mt-2 text-sm text-slate-500">
+    <p role="status" aria-live="polite" className="tx-progress small muted">
       {STATUS_LABELS[status]}
     </p>
   );
@@ -125,35 +122,37 @@ function CancelDialog({ refundAmount, onConfirm, onDismiss, titleId }: CancelDia
       role="alertdialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      className="onchain-dialog-backdrop"
     >
-      <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
-        <h2 id={titleId} className="text-lg font-semibold text-slate-900">
-          Cancel contract?
-        </h2>
-        <p className="mt-3 text-sm text-slate-600">
-          This will cancel the contract and refund{' '}
-          <strong aria-label={`${xlm(refundAmount)} will be refunded`}>
-            {xlm(refundAmount)}
-          </strong>{' '}
-          to you.
-        </p>
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onConfirm}
-            autoFocus
-            className={`flex-1 rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 ${focusRing}`}
-          >
-            Confirm cancel
-          </button>
-          <button
-            type="button"
-            onClick={onDismiss}
-            className={`flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-400 ${focusRing}`}
-          >
-            Go back
-          </button>
+      <div className="confirm onchain-dialog">
+        <div className="confirm-body">
+          <h2 id={titleId} className="confirm-title">
+            Cancel contract?
+          </h2>
+          <p className="confirm-description">
+            This will cancel the contract and refund{' '}
+            <strong aria-label={`${xlm(refundAmount)} will be refunded`}>
+              {xlm(refundAmount)}
+            </strong>{' '}
+            to you.
+          </p>
+          <div className="confirm-actions">
+            <button
+              type="button"
+              onClick={onConfirm}
+              autoFocus
+              className="btn btn-danger"
+            >
+              Confirm cancel
+            </button>
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="btn btn-secondary"
+            >
+              Go back
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -260,17 +259,17 @@ export default function OnChainEscrowActions({ id }: OnChainEscrowActionsProps) 
       <div
         role="status"
         aria-label="Loading contract"
-        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+        className="card"
       >
-        <p className="text-sm text-slate-500">Loading contract…</p>
+        <p className="small muted">Loading contract…</p>
       </div>
     );
   }
 
   if (loadError) {
     return (
-      <div role="alert" className="rounded-3xl border border-rose-200 bg-rose-50 p-6">
-        <p className="text-sm text-rose-700">{loadError}</p>
+      <div role="alert" className="alert alert-error">
+        <p className="small">{loadError}</p>
       </div>
     );
   }
@@ -297,51 +296,51 @@ export default function OnChainEscrowActions({ id }: OnChainEscrowActionsProps) 
 
       <section
         aria-labelledby="onchain-actions-heading"
-        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-6"
+        className="card stack onchain-actions"
       >
         <div>
-          <p className="text-sm text-slate-500 uppercase tracking-[0.24em]">On-chain Actions</p>
+          <p className="onchain-eyebrow small muted">On-chain Actions</p>
           <h2
             id="onchain-actions-heading"
-            className="mt-2 text-xl font-semibold text-slate-900"
+            className="onchain-heading"
           >
             Contract #{id}
           </h2>
-          <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+          <dl className="onchain-meta small">
             <div>
-              <dt className="text-slate-500">Status</dt>
-              <dd className="font-semibold text-slate-900">{escrow.status}</dd>
+              <dt className="muted">Status</dt>
+              <dd>{escrow.status}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Total</dt>
-              <dd className="font-semibold text-slate-900">{xlm(escrow.totalAmount)}</dd>
+              <dt className="muted">Total</dt>
+              <dd>{xlm(escrow.totalAmount)}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Funded</dt>
-              <dd className="font-semibold text-slate-900">{xlm(escrow.fundedAmount)}</dd>
+              <dt className="muted">Funded</dt>
+              <dd>{xlm(escrow.fundedAmount)}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Released</dt>
-              <dd className="font-semibold text-slate-900">{xlm(escrow.releasedAmount)}</dd>
+              <dt className="muted">Released</dt>
+              <dd>{xlm(escrow.releasedAmount)}</dd>
             </div>
           </dl>
         </div>
 
         {/* Read-only note for non-client */}
         {!isClient && (
-          <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <p className="notice small muted">
             Only the client can take actions on this contract. You are viewing in read-only mode.
           </p>
         )}
 
         {/* Fund section */}
         {guards.canFund && (
-          <div className="space-y-3 border-t border-slate-100 pt-4">
-            <h3 className="text-sm font-semibold text-slate-700">Fund contract</h3>
-            <p className="text-sm text-slate-500">
+          <div className="onchain-section stack">
+            <h3>Fund contract</h3>
+            <p className="small muted">
               Remaining to fund: <strong>{xlm(remaining)}</strong>
             </p>
-            <div className="flex gap-2">
+            <div className="row">
               <label htmlFor={depositInputId} className="sr-only">
                 Amount in XLM
               </label>
@@ -355,14 +354,14 @@ export default function OnChainEscrowActions({ id }: OnChainEscrowActionsProps) 
                 disabled={isBusy}
                 placeholder="Amount in XLM"
                 aria-label="Deposit amount in XLM"
-                className={`flex-1 rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 disabled:opacity-50 ${focusRing}`}
+                className="input"
               />
               <button
                 type="button"
                 onClick={handleDeposit}
                 disabled={isBusy}
                 aria-label="Fund contract"
-                className={`rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed ${focusRing}`}
+                className="btn btn-primary"
               >
                 Fund
               </button>
@@ -372,19 +371,19 @@ export default function OnChainEscrowActions({ id }: OnChainEscrowActionsProps) 
 
         {/* Milestones */}
         {escrow.milestones.length > 0 && (
-          <div className="space-y-3 border-t border-slate-100 pt-4">
-            <h3 className="text-sm font-semibold text-slate-700">Milestones</h3>
-            <ul className="space-y-2">
+          <div className="onchain-section stack">
+            <h3>Milestones</h3>
+            <ul className="onchain-milestones">
               {escrow.milestones.map((ms, i) => (
                 <li
                   key={i}
-                  className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3"
+                  className="onchain-milestone-item"
                 >
-                  <span className="flex-1 text-sm text-slate-700">
+                  <span className="onchain-milestone-label small">
                     {ms.title || `Milestone ${i + 1}`}{' '}
-                    <span className="text-slate-400">— {xlm(ms.amount)}</span>
+                    <span className="muted">— {xlm(ms.amount)}</span>
                     {ms.released && (
-                      <span className="ml-2 text-emerald-600 text-xs font-semibold">(released)</span>
+                      <span className="onchain-released">(released)</span>
                     )}
                   </span>
                   {guards.canReleaseMilestone(i) && (
@@ -393,7 +392,7 @@ export default function OnChainEscrowActions({ id }: OnChainEscrowActionsProps) 
                       onClick={() => handleRelease(i)}
                       disabled={isBusy}
                       aria-label={`Release milestone ${i + 1}: ${ms.title || ''} (${xlm(ms.amount)})`}
-                      className={`shrink-0 rounded-2xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 transition hover:border-slate-400 disabled:opacity-50 disabled:cursor-not-allowed ${focusRing}`}
+                      className="btn btn-secondary btn-sm"
                     >
                       Release
                     </button>
@@ -406,13 +405,13 @@ export default function OnChainEscrowActions({ id }: OnChainEscrowActionsProps) 
 
         {/* Cancel */}
         {guards.canCancel && (
-          <div className="border-t border-slate-100 pt-4">
+          <div className="onchain-section">
             <button
               type="button"
               onClick={() => setShowCancel(true)}
               disabled={isBusy}
               aria-label="Cancel contract"
-              className={`w-full rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed ${focusRing}`}
+              className="btn btn-danger onchain-cancel-btn"
             >
               Cancel contract
             </button>
