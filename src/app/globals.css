@@ -1149,3 +1149,146 @@ button:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visibl
   .activity-skeleton-line, .activity-new { animation: none; }
 }
 .activity-container { margin-top: 28px; }
+
+/* ── Forced colors / Windows High Contrast mode ─────────────────────────── */
+@media (forced-colors: active) {
+  /* Status pills (EscrowCard) */
+  .badge {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+  }
+  .badge-Funded {
+    border: 2px solid Highlight;
+    color: Highlight;
+  }
+  .badge-Completed,
+  .badge-Resolved {
+    border: 2px solid LinkText;
+    color: LinkText;
+  }
+  .badge-Disputed {
+    border: 2px dashed Highlight;
+    outline: 1px solid CanvasText;
+    outline-offset: 1px;
+    color: CanvasText;
+  }
+  .badge-Cancelled {
+    border: 1px dotted CanvasText;
+    color: CanvasText;
+  }
+
+  /* Contract status pill (ContractStatusPill) */
+  .contract-status {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+  }
+  .contract-status-operational {
+    border: 2px solid Highlight;
+    color: Highlight;
+  }
+  .contract-status-paused {
+    border: 2px dashed CanvasText;
+    outline: 1px solid Highlight;
+    outline-offset: 1px;
+    color: CanvasText;
+  }
+  .contract-status-loading,
+  .contract-status-unknown {
+    border: 1px dotted CanvasText;
+    color: CanvasText;
+  }
+  .contract-status-dot {
+    forced-color-adjust: none;
+    background: currentColor;
+    border: 1px solid CanvasText;
+  }
+
+  /* Role chips */
+  .role-chip {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+  }
+  .role-chip--client {
+    border: 2px solid Highlight;
+    color: Highlight;
+  }
+  .role-chip--freelancer {
+    border: 2px solid LinkText;
+    color: LinkText;
+  }
+
+  /* Notification bell badge */
+  .bell-badge {
+    border: 2px solid Highlight;
+    outline: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  /* Milestone timeline (.mt-*) */
+  .mt-connector {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .mt-connector[data-done="true"] {
+    background: Highlight;
+    width: 3px;
+  }
+  .mt-index {
+    border: 2px solid CanvasText;
+    color: CanvasText;
+  }
+  .mt-status-chip {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+  }
+
+  /* Progress bars */
+  .progress,
+  .mt-progressbar {
+    border: 1px solid CanvasText;
+  }
+  .progress > span,
+  .mt-progressbar-fill {
+    forced-color-adjust: none;
+    background: Highlight;
+    border-right: 2px solid CanvasText;
+  }
+
+  /* Status page pills & banners */
+  .status-banner {
+    border: 1px solid CanvasText;
+  }
+  .status-banner--operational {
+    border: 2px solid Highlight;
+  }
+  .status-banner--degraded {
+    border: 2px dashed Highlight;
+  }
+  .status-banner--down {
+    border: 2px solid CanvasText;
+    outline: 2px dashed Highlight;
+    outline-offset: 2px;
+  }
+  .status-row-state {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+  }
+  .status-row-state--operational {
+    border: 2px solid Highlight;
+    color: Highlight;
+  }
+  .status-row-state--degraded {
+    border: 2px dashed Highlight;
+    color: CanvasText;
+  }
+  .status-row-state--down {
+    border: 2px dotted CanvasText;
+    outline: 1px solid Highlight;
+    color: CanvasText;
+  }
+  .status-mismatch-badge {
+    border: 2px dashed Highlight;
+    color: CanvasText;
+  }
+}
