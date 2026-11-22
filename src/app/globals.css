@@ -210,7 +210,10 @@ h1, h2, h3 { line-height: 1.2; letter-spacing: -0.02em; }
 .bell-panel { position: absolute; right: 0; top: calc(100% + 10px); width: min(360px, calc(100vw - 24px)); max-height: 70vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); z-index: 60; }
 .bell-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); }
 .bell-list { list-style: none; margin: 0; padding: 0; }
-.bell-item { border-bottom: 1px solid var(--border); }
+.bell-item { border-bottom: 1px solid var(--border); display: flex; align-items: stretch; }
+.bell-item > a { flex: 1; min-width: 0; }
+.bell-item-actions { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 8px 10px 8px 0; }
+.bell-panel:focus { outline: none; }
 .bell-item:last-child { border-bottom: 0; }
 .bell-item a { display: grid; gap: 2px; padding: 12px 14px; color: var(--text); }
 .bell-item a:hover { background: var(--surface-2); text-decoration: none; }

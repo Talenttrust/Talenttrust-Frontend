@@ -121,6 +121,22 @@ export function markAllRead(store: NotificationsStore): NotificationsStore {
   return { version: NOTIFICATIONS_VERSION, items: store.items.map((i) => ({ ...i, read: true })) };
 }
 
+/** Marks one notification read. Returns the same store object when nothing changes. */
+export function markRead(store: NotificationsStore, id: string): NotificationsStore {
+  const target = store.items.find((i) => i.id === id);
+  if (!target || target.read) return store;
+  return {
+    version: NOTIFICATIONS_VERSION,
+    items: store.items.map((i) => (i.id === id ? { ...i, read: true } : i)),
+  };
+}
+
+/** Removes one notification. Returns the same store object when the id is unknown. */
+export function dismiss(store: NotificationsStore, id: string): NotificationsStore {
+  if (!store.items.some((i) => i.id === id)) return store;
+  return { version: NOTIFICATIONS_VERSION, items: store.items.filter((i) => i.id !== id) };
+}
+
 export function clearNotifications(): NotificationsStore {
   const next = emptyStore();
   saveNotifications(next);

@@ -88,3 +88,60 @@ describe('NotificationBell', () => {
     expect(screen.getByRole('link', { name: /released/i })).toHaveAttribute('href', '/contracts');
   });
 });
+
+describe('NotificationBell item actions', () => {
+  const stored = () => JSON.parse(localStorage.getItem(NOTIFICATIONS_KEY) ?? '{}').items as Array<{ id: string; read: boolean }>;
+  const open = async () => {
+    renderBell();
+    await userEvent.click(await screen.findByRole('button', { name: /notifications/i }));
+  };
+
+  it('marks a single notification read and updates the count, storage and announcement', async () => {
+    seed([{ escrowId: 1, title: 'First', read: false }, { escrowId: 2, title: 'Second', read: false }]);
+    await open();
+    await userEvent.click(screen.getAllByRole('button', { name: 'Mark notification read' })[0]);
+    expect(await screen.findByRole('button', { name: 'Notifications, 1 unread' })).toBeInTheDocument();
+    expect(stored().filter((i) => i.read)).toHaveLength(1);
+    expect(screen.getByText('Notification marked as read. 1 unread.')).toBeInTheDocument();
+  });
+
+  it('only offers mark read on unread items', async () => {
+    seed([{ escrowId: 1, title: 'New', read: false }, { escrowId: 2, title: 'Old', read: true }]);
+    await open();
+    expect(screen.getAllByRole('button', { name: 'Mark notification read' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Dismiss notification' })).toHaveLength(2);
+  });
+
+  it('dismisses a single notification and keeps the others', async () => {
+    seed([{ escrowId: 1, title: 'First', read: false }, { escrowId: 2, title: 'Second', read: false }]);
+    await open();
+    await userEvent.click(screen.getAllByRole('button', { name: 'Dismiss notification' })[0]);
+    expect(screen.queryByRole('link', { name: /first/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /second/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Notifications, 1 unread' })).toBeInTheDocument();
+    expect(stored()).toHaveLength(1);
+    expect(screen.getByText('Notification dismissed. 1 unread.')).toBeInTheDocument();
+  });
+
+  it('shows the empty state after the last notification is dismissed', async () => {
+    seed([{ escrowId: 1, title: 'Only', read: true }]);
+    await open();
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss notification' }));
+    expect(await screen.findByText(/no notifications yet/i)).toBeInTheDocument();
+  });
+
+  it('keeps focus inside the panel after an action', async () => {
+    seed([{ escrowId: 1, title: 'First', read: false }]);
+    await open();
+    await userEvent.click(screen.getByRole('button', { name: 'Mark notification read' }));
+    expect(screen.getByRole('dialog', { name: 'Notifications' })).toHaveFocus();
+  });
+
+  it('marks a notification read when its link is opened', async () => {
+    seed([{ escrowId: 1, title: 'Released', read: false }]);
+    await open();
+    await userEvent.click(screen.getByRole('link', { name: /released/i }));
+    expect(await screen.findByRole('button', { name: 'Notifications' })).toBeInTheDocument();
+    expect(stored()[0].read).toBe(true);
+  });
+});
