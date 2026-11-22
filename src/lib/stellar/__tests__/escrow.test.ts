@@ -1,18 +1,33 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { xdr } from '@stellar/stellar-sdk';
+// @vitest-environment node
+// stellar-base XDR needs Node typed arrays; jsdom has its own Uint8Array realm
+// (same pattern as createContract/escrow.test.ts).
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TransactionBuilder, xdr, type Transaction } from '@stellar/stellar-sdk';
 import {
   formatStroops,
   extractContractErrorCode,
   CONTRACT_ERRORS,
   getContract,
+  buildDepositTx,
+  buildReleaseTx,
+  buildCancelTx,
+  TX_TIMEOUT_SECONDS,
 } from '../escrow';
 import { simulateRead } from '../rpc';
+import { createFakeSoroban, installFakeSoroban } from '@/test/fakeSoroban';
 
-vi.mock('../rpc', () => ({
-  getRpcServer: vi.fn(),
-  NETWORK_PASSPHRASE: 'Test SDF Network ; September 2015',
-  simulateRead: vi.fn(),
-}));
+// One merged mock for ../rpc: the transaction builders talk to the chain
+// through getRpcServer(), swapped for the fake Soroban server (see
+// src/test/fakeSoroban.ts) so no network is touched, while getContract
+// reads go through simulateRead, stubbed here for the unit tests below.
+vi.mock('../rpc', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../rpc')>();
+  const fake = await import('@/test/fakeSoroban');
+  return {
+    ...fake.rpcModuleWithFake(actual),
+    simulateRead: vi.fn(),
+  };
+});
 
 describe('formatStroops', () => {
   it('formats whole XLM', () => expect(formatStroops(10_000_000n)).toBe('1.0'));
@@ -33,6 +48,36 @@ describe('extractContractErrorCode', () => {
     expect(extractContractErrorCode('unknown error')).toBeNull());
   it('returns null for empty string', () =>
     expect(extractContractErrorCode('')).toBeNull());
+});
+
+describe('TX_TIMEOUT_SECONDS', () => {
+  const CLIENT = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
+
+  beforeEach(() => {
+    installFakeSoroban(createFakeSoroban());
+  });
+  afterEach(() => {
+    installFakeSoroban(null);
+  });
+
+  it('is 180 seconds', () => expect(TX_TIMEOUT_SECONDS).toBe(180));
+
+  it.each([
+    ['deposit', () => buildDepositTx(1, 10_000_000n, CLIENT)],
+    ['release', () => buildReleaseTx(1, 0, CLIENT)],
+    ['cancel', () => buildCancelTx(1, CLIENT)],
+  ])(
+    'bounds the %s transaction validity to 180 s (decoded timeBounds.maxTime)',
+    async (_name, build) => {
+      const before = Math.floor(Date.now() / 1000);
+      const built = await build();
+      const after = Math.floor(Date.now() / 1000);
+      const tx = TransactionBuilder.fromXDR(built.xdr, built.networkPassphrase) as Transaction;
+      const maxTime = Number(tx.timeBounds?.maxTime ?? '0');
+      expect(maxTime).toBeGreaterThanOrEqual(before + TX_TIMEOUT_SECONDS);
+      expect(maxTime).toBeLessThanOrEqual(after + TX_TIMEOUT_SECONDS);
+    }
+  );
 });
 
 describe('CONTRACT_ERRORS', () => {
