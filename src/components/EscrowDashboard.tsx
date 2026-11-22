@@ -28,6 +28,8 @@ import {
 import { EscrowToolbar } from "./escrow/EscrowToolbar";
 import { Pagination } from "./escrow/Pagination";
 import { ExportMenu } from "./escrow/ExportMenu";
+import { FilterPresets } from "./escrow/FilterPresets";
+import { presetToSearch } from "@/lib/filterPresets";
 import { DisputeDialog } from "./disputes/DisputeDialog";
 import { EscrowCard } from "./escrow/EscrowCard";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
@@ -47,7 +49,10 @@ import {
 } from "@/components/MilestoneBuilder";
 import { ViewFilterControl } from "./ViewFilterControl";
 import { RoleChip } from "./RoleChip";
+import { ShortcutsDialog } from "./ShortcutsDialog";
+import { useHotkeys } from "@/hooks/useHotkeys";
 import { getAddress } from "@/lib/stellar/freighter";
+import { useOptionalWallet } from "@/components/wallet/WalletProvider";
 import type { ViewFilter } from "@/lib/api";
 
 /** Coerce any string from the URL into a valid ViewFilter, defaulting to "all". */
@@ -56,14 +61,6 @@ function toViewFilter(raw: string | null): ViewFilter {
   return "all";
 }
 import { useOptionalToast } from "@/components/toast/ToastProvider";
-
-const asContract = (payload: unknown): EscrowContract | null => {
-  if (!payload || typeof payload !== "object") return null;
-  const obj = payload as { data?: EscrowContract; id?: number };
-  if (obj.data && typeof obj.data.id === "number") return obj.data;
-  if (typeof obj.id === "number") return payload as EscrowContract;
-  return null;
-};
 
 function EscrowCardSkeleton() {
   return (
@@ -98,16 +95,19 @@ export function EscrowDashboard() {
   const query = useMemo(() => parseQuery(searchParams), [searchParams]);
   // "My escrows": All / As client / As freelancer, persisted as ?view=
   const view = toViewFilter(searchParams.get("view"));
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const wallet = useOptionalWallet();
+  const [fallbackAddress, setFallbackAddress] = useState<string | null>(null);
   useEffect(() => {
+    if (wallet) return;
     let active = true;
     getAddress()
-      .then((address) => active && setWalletAddress(address || null))
-      .catch(() => active && setWalletAddress(null));
+      .then((address) => active && setFallbackAddress(address || null))
+      .catch(() => active && setFallbackAddress(null));
     return () => {
       active = false;
     };
-  }, []);
+  }, [wallet]);
+  const walletAddress = wallet ? wallet.address : fallbackAddress;
   // Role views only apply once a wallet is connected.
   const roleView: ViewFilter = walletAddress ? view : "all";
   // Only refetch when the server-side filter actually changes.
@@ -152,6 +152,7 @@ export function EscrowDashboard() {
   const formRef = useRef<HTMLFormElement>(null);
   // Create through the demo API, or sign create_contract on testnet with Freighter.
   const [createMode, setCreateMode] = useState<"demo" | "onchain">("demo");
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   // Status is filtered by the API, the rest is done client-side
   const load = useCallback(async () => {
@@ -191,9 +192,9 @@ export function EscrowDashboard() {
   }, [load]);
 
   const update = useCallback(
-    (patch: Partial<ContractQuery>) => {
-      const params = toSearchParams({ ...query, page: 1, ...patch });
-      if (view !== "all") params.set("view", view);
+    (patch: Partial<ContractQuery>, nextView: ViewFilter = view) => {
+      if (patch.q !== undefined) setSearch(patch.q);
+      const params = presetToSearch({ query: { ...query, ...patch, page: 1 }, view: nextView });
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
@@ -254,6 +255,51 @@ export function EscrowDashboard() {
     setSearch("");
     update(DEFAULT_QUERY);
   };
+
+  const focusCardByDelta = useCallback(
+    (delta: 1 | -1) => {
+      const items = result.items;
+      if (items.length === 0) return;
+
+      const active = document.activeElement as HTMLElement | null;
+      const cardEl = active?.closest<HTMLElement>('article[id^="escrow-"]') ?? null;
+      let currentIndex = -1;
+      if (cardEl) {
+        const idNum = Number(cardEl.id.replace("escrow-", ""));
+        currentIndex = items.findIndex((item) => item.id === idNum);
+      }
+
+      let nextIndex: number;
+      if (currentIndex === -1) {
+        nextIndex = 0;
+      } else {
+        nextIndex = Math.max(0, Math.min(items.length - 1, currentIndex + delta));
+      }
+
+      const target = items[nextIndex];
+      if (!target) return;
+
+      const el = document.getElementById(`escrow-${target.id}`);
+      if (el) {
+        if (typeof el.scrollIntoView === "function") {
+          el.scrollIntoView({ block: "nearest" });
+        }
+        el.focus({ preventScroll: true });
+      }
+      setAnnouncement(`Escrow ${nextIndex + 1} of ${items.length}`);
+    },
+    [result.items],
+  );
+
+  useHotkeys({
+    j: () => focusCardByDelta(1),
+    k: () => focusCardByDelta(-1),
+    "/": () => {
+      const searchInput = document.getElementById("escrow-search") as HTMLInputElement | null;
+      searchInput?.focus();
+    },
+    "?": () => setShortcutsOpen(true),
+  });
 
   const act = async (
     id: number | "new",
@@ -483,7 +529,7 @@ export function EscrowDashboard() {
       }),
       { pending: "Creating escrow…", success: "Escrow created" },
       (result) => {
-        const created = asContract(result);
+        const created = unwrapContract(result);
         if (created?.id) {
           toast.success(`Escrow #${created.id} created`, {
             action: { label: "View escrow", onClick: () => viewEscrow(created.id) },
@@ -599,7 +645,20 @@ export function EscrowDashboard() {
 
       <section className="stack" style={{ minWidth: 0 }} aria-labelledby="escrow-list">
         <div className="row list-actions">
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShortcutsOpen(true)}
+            aria-label="Keyboard shortcuts (?)"
+          >
+            Shortcuts <kbd className="palette-kbd">?</kbd>
+          </button>
           <ExportMenu contracts={visible} />
+          <FilterPresets
+            query={{ ...query, q: search.trim() }}
+            view={view}
+            onApply={(presetQuery, presetView) => update(presetQuery, presetView)}
+          />
         </div>
         <ViewFilterControl value={roleView} onChange={changeView} walletConnected={Boolean(walletAddress)} />
         {error && (
@@ -807,6 +866,10 @@ export function EscrowDashboard() {
           }}
         />
       )}
+      <ShortcutsDialog
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
     </div>
   );
 }

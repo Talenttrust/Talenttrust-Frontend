@@ -215,6 +215,7 @@ export function CommandPalette() {
       <dialog
         ref={dialogRef}
         className="palette-dialog"
+        aria-label="Command palette"
         onCancel={(e) => {
           e.preventDefault();
           closePalette();
@@ -232,6 +233,7 @@ export function CommandPalette() {
               ref={inputRef}
               type="text"
               role="combobox"
+              aria-label="Search commands"
               aria-expanded={isOpen}
               aria-controls="command-listbox"
               aria-activedescendant={activeOptionId}

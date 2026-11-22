@@ -13,13 +13,14 @@ const Networks = {
 export function expectedPassphrase(): string {
   switch (site.network) {
     case 'public':
+    case 'mainnet':
       return Networks.PUBLIC;
     case 'testnet':
       return Networks.TESTNET;
     case 'futurenet':
       return Networks.FUTURENET;
     default:
-      // Default to testnet if unknown network
+      // Unknown network names intentionally fall back to the testnet passphrase.
       return Networks.TESTNET;
   }
 }

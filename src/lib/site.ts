@@ -1,6 +1,11 @@
 const network = process.env.NEXT_PUBLIC_STELLAR_NETWORK || 'testnet';
 const defaultRpcUrl = network === 'mainnet' ? 'https://soroban.stellar.org' : 'https://soroban-testnet.stellar.org';
 
+export const BRAND_THEME_COLORS = {
+  light: '#4f46e5',
+  dark: '#818cf8',
+} as const;
+
 export const site = {
   name: 'TalentTrust',
   tagline: 'Milestone escrow for freelancers, secured on Stellar.',

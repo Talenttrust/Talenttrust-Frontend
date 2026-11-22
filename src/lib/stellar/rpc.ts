@@ -44,6 +44,9 @@ export async function simulateRead(method: string, args: unknown[]): Promise<xdr
   };
 
   function toScVal(arg: unknown): xdr.ScVal {
+    if (arg instanceof xdr.ScVal) {
+      return arg as xdr.ScVal;
+    }
     if (typeof arg === 'string') {
       return Address.fromString(arg).toScVal();
     }

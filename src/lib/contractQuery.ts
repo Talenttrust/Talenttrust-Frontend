@@ -65,9 +65,22 @@ export interface QueryResult {
 export function filterContracts(list: EscrowContract[], query: ContractQuery): EscrowContract[] {
   const q = query.q.toLowerCase();
   const matches = q
-    ? list.filter((c) =>
-        [c.title, String(c.id), c.client, c.freelancer].some((v) => v.toLowerCase().includes(q)),
-      )
+    ? list.filter((c) => {
+        const milestoneTitles = Array.isArray(c.milestones)
+          ? c.milestones.map((m) => m?.title)
+          : [];
+        const values = [
+          c.title,
+          String(c.id),
+          c.client,
+          c.freelancer,
+          c.token,
+          ...milestoneTitles,
+        ];
+        return values.some(
+          (v) => typeof v === 'string' && v.toLowerCase().includes(q),
+        );
+      })
     : list.slice();
   return matches.sort(compare[query.sort]);
 }

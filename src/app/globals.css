@@ -210,13 +210,17 @@ h1, h2, h3 { line-height: 1.2; letter-spacing: -0.02em; }
 .bell-panel { position: absolute; right: 0; top: calc(100% + 10px); width: min(360px, calc(100vw - 24px)); max-height: 70vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); z-index: 60; }
 .bell-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); }
 .bell-list { list-style: none; margin: 0; padding: 0; }
-.bell-item { border-bottom: 1px solid var(--border); }
+.bell-item { border-bottom: 1px solid var(--border); display: flex; align-items: stretch; }
+.bell-item > a { flex: 1; min-width: 0; }
+.bell-item-actions { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 8px 10px 8px 0; }
+.bell-panel:focus { outline: none; }
 .bell-item:last-child { border-bottom: 0; }
 .bell-item a { display: grid; gap: 2px; padding: 12px 14px; color: var(--text); }
 .bell-item a:hover { background: var(--surface-2); text-decoration: none; }
 .bell-item-unread a { border-left: 3px solid var(--brand); }
 .bell-item-title { font-weight: 600; font-size: 0.92rem; }
 .bell-empty { padding: 18px 16px; color: var(--muted); }
+.bell-stale { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); color: var(--muted); font-size: 0.85rem; }
 @media (max-width: 480px) {
   .bell-panel { position: fixed; left: 12px; right: 12px; width: auto; top: 72px; }
 }
@@ -568,6 +572,15 @@ tr:last-child td { border-bottom: 0; }
 }
 .list-actions { justify-content: flex-end; }
 .export { position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.filter-presets { position: relative; }
+.filter-presets-panel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: grid; gap: 12px; min-width: 280px; max-width: calc(100vw - 32px); padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
+.filter-presets-panel[hidden] { display: none; }
+.filter-presets-panel [role="menu"] { list-style: none; padding: 6px; margin: 0; border: 1px solid var(--border); border-radius: 8px; }
+.filter-presets-panel [role="group"] { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 2px; }
+.filter-presets-panel [role="menuitem"] { padding: 8px; border: 0; border-radius: 6px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.filter-presets-panel [role="menuitem"]:hover, .filter-presets-panel [role="menuitem"]:focus-visible { background: var(--surface-2); }
+.filter-presets-panel .alert { margin: 0; }
+.filter-presets-panel .field { margin: 0 0 8px; }
 .export > .btn:focus-visible, .export-menu button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .export-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: flex; flex-direction: column; min-width: 220px; max-width: calc(100vw - 32px); padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
 .export-menu button { padding: 9px 12px; border: 0; border-radius: 8px; background: none; color: var(--text); font: inherit; font-size: 0.93rem; text-align: left; cursor: pointer; }
@@ -1148,4 +1161,240 @@ button:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visibl
 @media (prefers-reduced-motion: reduce) {
   .activity-skeleton-line, .activity-new { animation: none; }
 }
+/* Keyboard navigation & ShortcutsDialog */
+.card[tabindex="-1"]:focus,
+.card[tabindex="-1"]:focus-visible,
+.escrow-card:focus,
+.escrow-card:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-color: var(--brand);
+}
+
+.shortcuts-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+.shortcuts-body {
+  display: grid;
+  gap: 16px;
+}
+.shortcuts-groups {
+  display: grid;
+  gap: 16px;
+}
+.shortcuts-group {
+  display: grid;
+  gap: 8px;
+}
+.shortcuts-group-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.shortcuts-list {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.shortcuts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.shortcuts-desc {
+  font-size: 0.92rem;
+  color: var(--text);
+}
+.shortcuts-keys {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.shortcuts-key-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.shortcuts-plus {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.shortcuts-kbd {
+  min-width: 24px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 2px 7px;
+}
+
 .activity-container { margin-top: 28px; }
+
+/* ── Forced colors / Windows High Contrast mode ─────────────────────────── */
+@media (forced-colors: active) {
+  /* Status pills (EscrowCard) */
+  .badge {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+  }
+  .badge-Funded {
+    border: 2px solid Highlight;
+    color: Highlight;
+  }
+  .badge-Completed,
+  .badge-Resolved {
+    border: 2px solid LinkText;
+    color: LinkText;
+  }
+  .badge-Disputed {
+    border: 2px dashed Highlight;
+    outline: 1px solid CanvasText;
+    outline-offset: 1px;
+    color: CanvasText;
+  }
+  .badge-Cancelled {
+    border: 1px dotted CanvasText;
+    color: CanvasText;
+  }
+
+  /* Contract status pill (ContractStatusPill) */
+  .contract-status {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+  }
+  .contract-status-operational {
+    border: 2px solid Highlight;
+    color: Highlight;
+  }
+  .contract-status-paused {
+    border: 2px dashed CanvasText;
+    outline: 1px solid Highlight;
+    outline-offset: 1px;
+    color: CanvasText;
+  }
+  .contract-status-loading,
+  .contract-status-unknown {
+    border: 1px dotted CanvasText;
+    color: CanvasText;
+  }
+  .contract-status-dot {
+    forced-color-adjust: none;
+    background: currentColor;
+    border: 1px solid CanvasText;
+  }
+
+  /* Role chips */
+  .role-chip {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+  }
+  .role-chip--client {
+    border: 2px solid Highlight;
+    color: Highlight;
+  }
+  .role-chip--freelancer {
+    border: 2px solid LinkText;
+    color: LinkText;
+  }
+
+  /* Notification bell badge */
+  .bell-badge {
+    border: 2px solid Highlight;
+    outline: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  /* Milestone timeline (.mt-*) */
+  .mt-connector {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .mt-connector[data-done="true"] {
+    background: Highlight;
+    width: 3px;
+  }
+  .mt-index {
+    border: 2px solid CanvasText;
+    color: CanvasText;
+  }
+  .mt-status-chip {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+  }
+
+  /* Progress bars */
+  .progress,
+  .mt-progressbar {
+    border: 1px solid CanvasText;
+  }
+  .progress > span,
+  .mt-progressbar-fill {
+    forced-color-adjust: none;
+    background: Highlight;
+    border-right: 2px solid CanvasText;
+  }
+
+  /* Status page pills & banners */
+  .status-banner {
+    border: 1px solid CanvasText;
+  }
+  .status-banner--operational {
+    border: 2px solid Highlight;
+  }
+  .status-banner--degraded {
+    border: 2px dashed Highlight;
+  }
+  .status-banner--down {
+    border: 2px solid CanvasText;
+    outline: 2px dashed Highlight;
+    outline-offset: 2px;
+  }
+  .status-row-state {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+  }
+  .status-row-state--operational {
+    border: 2px solid Highlight;
+    color: Highlight;
+  }
+  .status-row-state--degraded {
+    border: 2px dashed Highlight;
+    color: CanvasText;
+  }
+  .status-row-state--down {
+    border: 2px dotted CanvasText;
+    outline: 1px solid Highlight;
+    color: CanvasText;
+  }
+  .status-mismatch-badge {
+    border: 2px dashed Highlight;
+    color: CanvasText;
+  }
+}
+
+/* ── On-chain escrow actions ─────────────────────────────────────────────── */
+.onchain-actions { gap: 20px; }
+.onchain-eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-weight: 600; }
+.onchain-heading { margin: 6px 0 0; font-size: 1.25rem; color: var(--text); }
+.onchain-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 14px 0 0; }
+.onchain-meta dd { margin: 2px 0 0; font-weight: 600; color: var(--text); }
+.onchain-section { border-top: 1px solid var(--border); padding-top: 16px; }
+.onchain-milestones { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.onchain-milestone-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+.onchain-milestone-label { flex: 1; min-width: 0; color: var(--text); }
+.onchain-released { margin-left: 8px; color: var(--ok); font-size: 0.78rem; font-weight: 600; }
+.onchain-cancel-btn { width: 100%; }
+.tx-progress { margin-top: 4px; }
+.tx-progress-ok { border-color: color-mix(in srgb, var(--ok) 40%, transparent); background: color-mix(in srgb, var(--ok) 10%, var(--surface)); color: var(--ok); }
+.onchain-dialog-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: color-mix(in srgb, var(--bg) 65%, rgba(0, 0, 0, 0.55)); }
+.onchain-dialog { border: 1px solid var(--border); }

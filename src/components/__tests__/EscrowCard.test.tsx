@@ -98,6 +98,9 @@ describe('EscrowCard Semantics & Attributes', () => {
     const heading = screen.getByRole('heading', { level: 3, name: /#4 website redesign/i });
     expect(heading).toBeInTheDocument();
     expect(heading).toHaveAttribute('id', 'escrow-heading-4');
+    const card = screen.getByRole('article');
+    expect(card).toHaveAttribute('tabindex', '-1');
+    expect(card).toHaveAttribute('aria-labelledby', 'escrow-heading-4');
   });
 
   it('replaces raw arrow entity with visually hidden client pays freelancer text', () => {

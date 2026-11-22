@@ -14,8 +14,27 @@ Reference for keyboard shortcuts, dialog focus management, and screen-reader ann
 | `/` | Focus the escrow search input (`#escrow-search`) | `EscrowDashboard` via `useHotkeys` (`src/hooks/useHotkeys.ts`) |
 | `?` | Open the keyboard shortcuts dialog (`ShortcutsDialog`) | `EscrowDashboard` via `useHotkeys` (`src/hooks/useHotkeys.ts`) |
 | `Escape` | Clear search input (when focused in `EscrowToolbar`) or close active dialog/disclosure | `EscrowToolbar`, `CommandPalette`, `ConfirmDialog`, `DisputeDialog`, `ShortcutsDialog`, `useDisclosure` |
+| `Ctrl/Cmd + K` | Open / close command palette | `CommandPalette` (`src/components/palette/CommandPalette.tsx:98`) |
+| `j` | Focus next visible escrow card (roving focus) | `EscrowDashboard` (`src/components/EscrowDashboard.tsx`) |
+| `k` | Focus previous visible escrow card (roving focus) | `EscrowDashboard` (`src/components/EscrowDashboard.tsx`) |
+| `/` | Focus escrow search input | `EscrowDashboard` (`src/components/EscrowDashboard.tsx`) |
+| `?` | Open keyboard shortcuts help dialog | `ShortcutsDialog` (`src/components/ShortcutsDialog.tsx`) |
+| `Escape` | Clear search input or close open modal dialog | `EscrowToolbar`, `ShortcutsDialog`, `ConfirmDialog`, `CommandPalette` |
 
 Shortcuts registered through `useHotkeys` (`src/hooks/useHotkeys.ts`) are automatically ignored when focus is inside an `<input>`, `<textarea>`, `<select>`, or `contenteditable` element, when modifier keys (`Ctrl`, `Meta`, `Alt`) are held, or when a native `<dialog open>` is active.
+## Dashboard roving-focus & hotkeys (`useHotkeys`)
+
+The escrow dashboard registers single-key shortcuts through `useHotkeys` (`src/hooks/useHotkeys.ts`):
+
+- **Input suppression**: Shortcuts are ignored whenever focus is inside an `<input>`, `<textarea>`, `<select>`, or `contenteditable` element, or when `Ctrl`, `Meta`, or `Alt` is held.
+- **Dialog suppression**: Shortcuts are ignored while any native `<dialog>` element is open (`dialog[open]`).
+- **Roving card navigation (`j` / `k`)**: Each `EscrowCard` renders an `<article tabIndex={-1} aria-labelledby="escrow-heading-{id}">` with a visible focus ring. Pressing `j` moves focus to the next visible card on the current page (or the first card if none is focused); pressing `k` moves focus to the previous visible card.
+- **Screen-reader position announcement**: Moving focus between cards updates the polite live region (`data-testid="escrow-live-announcer"`) with `"Escrow {position} of {count}"` (e.g. `"Escrow 3 of 10"`).
+- **Focus search (`/`)**: Moves focus directly to `#escrow-search`.
+- **Shortcuts help (`?`)**: Opens `ShortcutsDialog` (`src/components/ShortcutsDialog.tsx`), a native modal `<dialog>` listing available shortcuts, and restores focus to the previously focused element when closed.
+
+---
+
 
 ---
 

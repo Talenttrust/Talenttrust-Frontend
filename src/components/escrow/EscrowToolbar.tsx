@@ -20,7 +20,7 @@ export function EscrowToolbar({ status, sort, search, onStatusChange, onSortChan
           id="escrow-search"
           className="input"
           type="search"
-          placeholder="Title, id or address"
+          placeholder="Title, id, address, milestone or token"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           onKeyDown={(e) => {
