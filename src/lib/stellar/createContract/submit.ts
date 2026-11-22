@@ -7,8 +7,8 @@
  *   3. rpc.sendTransaction     — broadcasts the signed XDR
  *   4. poll rpc.getTransaction — waits up to 60 s for SUCCESS or FAILED
  *
- * The network passphrase is always taken from TESTNET_PASSPHRASE (config),
- * never from the wallet response, so a mismatch causes an early error.
+ * The network passphrase is always taken from stellarConfig, never from the
+ * wallet response, so a mismatch causes an early error.
  */
 
 import {
@@ -17,9 +17,10 @@ import {
   scValToNative,
 } from '@stellar/stellar-sdk';
 import { rpc as StellarRpc } from '@stellar/stellar-sdk';
-import { getRpcServer, TESTNET_PASSPHRASE } from './escrow';
+import { getRpcServer } from './escrow';
 import { signTransaction } from './freighter';
 import { parseContractError } from '../errors';
+import { stellarConfig } from '@/lib/stellar/config';
 
 export interface SubmitResult {
   /** Transaction hash on the network. */
@@ -45,6 +46,7 @@ const POLL_INTERVAL_MS = 3_000;
  */
 export async function simulateSignSubmit(tx: Transaction): Promise<SubmitResult> {
   const server = getRpcServer();
+  const networkPassphrase = stellarConfig.passphrase;
 
   // ── 1. Simulate & prepare ────────────────────────────────────────────────
   let prepared: Transaction;
@@ -56,13 +58,13 @@ export async function simulateSignSubmit(tx: Transaction): Promise<SubmitResult>
 
   // ── 2. Sign via wallet ───────────────────────────────────────────────────
   const xdrToSign = prepared.toXDR();
-  const { signedTxXdr, error: signError } = await signTransaction(xdrToSign, TESTNET_PASSPHRASE);
+  const { signedTxXdr, error: signError } = await signTransaction(xdrToSign, networkPassphrase);
   if (signError || !signedTxXdr) {
     throw new Error(parseContractError(new Error(signError ?? 'Wallet returned an empty signature.')));
   }
 
   // ── 3. Submit ────────────────────────────────────────────────────────────
-  const signedTx = TransactionBuilder.fromXDR(signedTxXdr, TESTNET_PASSPHRASE) as Transaction;
+  const signedTx = TransactionBuilder.fromXDR(signedTxXdr, networkPassphrase) as Transaction;
   let sendResult: StellarRpc.Api.SendTransactionResponse;
   try {
     sendResult = await server.sendTransaction(signedTx);

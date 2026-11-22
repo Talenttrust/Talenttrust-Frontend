@@ -2,18 +2,16 @@
 import {
   Address,
   Keypair,
-  Networks,
   Operation,
   TransactionBuilder,
   xdr,
   rpc as StellarRpc,
   scValToNative,
 } from '@stellar/stellar-sdk';
-import { site } from '../site';
+import { stellarConfig } from './config';
 
-export const RPC_URL = process.env.NEXT_PUBLIC_SOROBAN_RPC_URL ?? site.rpcUrl;
-export const NETWORK_PASSPHRASE =
-  process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? (site.network === 'mainnet' || site.network === 'public' ? Networks.PUBLIC : Networks.TESTNET);
+export const RPC_URL = stellarConfig.rpcUrl;
+export const NETWORK_PASSPHRASE = stellarConfig.passphrase;
 
 let _server: StellarRpc.Server | null = null;
 
@@ -26,7 +24,7 @@ export function getRpcServer(): StellarRpc.Server {
 
 // ── Legacy simulateRead (used by reputation.ts) ──────────────────────────────
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ID ?? site.contractId;
+const CONTRACT_ADDRESS = stellarConfig.contractId;
 
 /**
  * Run a read-only simulation of a Soroban contract call.

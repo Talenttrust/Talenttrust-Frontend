@@ -7,7 +7,7 @@ import {
   Address,
 } from '@stellar/stellar-sdk';
 import { getRpcServer, NETWORK_PASSPHRASE, simulateRead } from './rpc';
-import { site } from '../site';
+import { stellarConfig } from './config';
 
 /**
  * Validity window (seconds) for transactions built by this module.
@@ -65,7 +65,7 @@ export type OnChainEscrow = {
 
 // ── Contract address helper ─────────────────────────────────────────────────
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ID ?? site.contractId;
+const CONTRACT_ADDRESS = stellarConfig.contractId;
 
 export function getEscrowContract(): Contract {
   return new Contract(CONTRACT_ADDRESS);
