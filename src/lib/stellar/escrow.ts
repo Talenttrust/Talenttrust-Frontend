@@ -2,13 +2,20 @@ import {
   Contract,
   TransactionBuilder,
   BASE_FEE,
-  TimeoutInfinite,
   nativeToScVal,
   xdr,
   Address,
 } from '@stellar/stellar-sdk';
 import { getRpcServer, NETWORK_PASSPHRASE, simulateRead } from './rpc';
 import { site } from '../site';
+
+/**
+ * Validity window (seconds) for transactions built by this module.
+ * A signed transaction expires this long after it is built, so a stale
+ * signature cannot be submitted indefinitely. Matches the 180 s bound
+ * used by createContract/escrow.ts.
+ */
+export const TX_TIMEOUT_SECONDS = 180;
 
 // ── Contract error codes ────────────────────────────────────────────────────
 
@@ -67,9 +74,36 @@ export function getEscrowContract(): Contract {
 // ── ScVal decoders ──────────────────────────────────────────────────────────
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+// The installed @stellar/stellar-sdk (v17) exposes ScVal arms as properties
+// (val.type, val.map, val.vec, val.i128, val.sym, …), not as the method calls
+// (val.map(), val.switch(), …) of older stellar-base releases. The decoders
+// below read the property form; every decoder stays defensive and falls back
+// to a neutral value on unexpected shapes.
+
+// XDR text values (symbols, strings) arrive as XdrString objects; decode
+// their raw bytes directly so the result does not depend on which realm's
+// typed arrays the value was created with (jsdom tests, SSR, browser).
+function xdrText(v: any): string {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (Buffer.isBuffer(v)) return v.toString('utf8');
+  if (v.bytes) return Buffer.from(v.bytes as Uint8Array).toString('utf8');
+  return String(v);
+}
+
+function symName(val: xdr.ScVal): string {
+  try {
+    return xdrText((val as any).sym);
+  } catch { return ''; }
+}
+
 function decodeStatus(val: xdr.ScVal): ContractStatus {
   try {
-    const name: string = (val as any).switch()?.name ?? '';
+    // Soroban enum values arrive as scvVec([scvSymbol('Funded')]);
+    // accept a bare symbol as well.
+    const inner =
+      (val as any).type === 'scvVec' ? ((val as any).vec?.[0] as xdr.ScVal) : val;
+    const name = inner ? symName(inner) : '';
     if (name.includes('Funded')) return 'Funded';
     if (name.includes('Completed')) return 'Completed';
     if (name.includes('Cancelled')) return 'Cancelled';
@@ -80,9 +114,10 @@ function decodeStatus(val: xdr.ScVal): ContractStatus {
 
 function decodeI128(val: xdr.ScVal): bigint {
   try {
-    const parts = (val as any).i128() as { hi: () => any; lo: () => any };
-    const hi = BigInt(parts.hi().toString());
-    const lo = BigInt(parts.lo().toString());
+    const parts = (val as any).i128 as { hi: any; lo: any };
+    if (!parts) return 0n;
+    const hi = BigInt(parts.hi.toString());
+    const lo = BigInt(parts.lo.toString());
     return (hi << 64n) | lo;
   } catch {
     return 0n;
@@ -91,11 +126,10 @@ function decodeI128(val: xdr.ScVal): bigint {
 
 function decodeString(val: xdr.ScVal): string {
   try {
-    const b = (val as any).bytes() as Buffer;
-    return Buffer.from(b).toString('utf8');
-  } catch {
-    try { return (val as any).sym().toString(); } catch { return ''; }
-  }
+    const s = (val as any).str;
+    if (s != null) return xdrText(s);
+    return symName(val);
+  } catch { return ''; }
 }
 
 function decodeAddress(val: xdr.ScVal): string {
@@ -105,20 +139,21 @@ function decodeAddress(val: xdr.ScVal): string {
 }
 
 function decodeBool(val: xdr.ScVal): boolean {
-  try { return Boolean((val as any).b()); } catch { return false; }
+  try { return Boolean((val as any).b); } catch { return false; }
 }
 
 function scMapGet(entries: xdr.ScMapEntry[], key: string): xdr.ScVal | undefined {
   const found = entries.find((e) => {
-    try { return ((e as any).key() as any).sym().toString() === key; } catch { return false; }
+    try { return symName((e as any).key as xdr.ScVal) === key; } catch { return false; }
   });
   if (!found) return undefined;
-  return (found as any).val() as xdr.ScVal;
+  return (found as any).val as xdr.ScVal;
 }
 
 function decodeMilestone(val: xdr.ScVal): OnChainMilestone {
   try {
-    const entries: xdr.ScMapEntry[] = (val as any).map() ?? [];
+    const rawMap = (val as any).map;
+    const entries: xdr.ScMapEntry[] = Array.isArray(rawMap) ? rawMap : [];
     return {
       title: decodeString(scMapGet(entries, 'title') ?? xdr.ScVal.scvVoid()),
       amount: decodeI128(scMapGet(entries, 'amount') ?? xdr.ScVal.scvVoid()),
@@ -130,12 +165,13 @@ function decodeMilestone(val: xdr.ScVal): OnChainMilestone {
 }
 
 export function decodeEscrow(raw: xdr.ScVal, id: number): OnChainEscrow {
-  const entries: xdr.ScMapEntry[] = (raw as any).map() ?? [];
+  const rawMap = (raw as any).map;
+  const entries: xdr.ScMapEntry[] = Array.isArray(rawMap) ? rawMap : [];
   const get = (k: string) => scMapGet(entries, k) ?? xdr.ScVal.scvVoid();
 
   const milestones: OnChainMilestone[] = [];
   try {
-    for (const m of ((get('milestones') as any).vec() ?? []) as xdr.ScVal[]) {
+    for (const m of ((get('milestones') as any).vec ?? []) as xdr.ScVal[]) {
       milestones.push(decodeMilestone(m));
     }
   } catch { /* empty */ }
@@ -191,7 +227,7 @@ async function buildTx(
   for (const op of operations) {
     tx.addOperation(op);
   }
-  const built = tx.setTimeout(TimeoutInfinite).build();
+  const built = tx.setTimeout(TX_TIMEOUT_SECONDS).build();
   return { xdr: built.toXDR(), networkPassphrase: NETWORK_PASSPHRASE };
 }
 
