@@ -2,6 +2,7 @@
 
 import { FormEvent, KeyboardEvent, RefObject, useEffect, useRef, useState } from 'react';
 import { api, EscrowContract } from '@/lib/api';
+import { getAddress } from '@/lib/stellar/freighter';
 
 type DisputeRole = 'client' | 'freelancer';
 
@@ -17,14 +18,6 @@ type DisputeErrors = {
   reason?: string;
   evidence?: string;
 };
-
-declare global {
-  interface Window {
-    freighterApi?: {
-      getAddress: () => Promise<{ address?: string }>;
-    };
-  }
-}
 
 function validateEvidence(value: string): string | null {
   const urls = value
@@ -64,6 +57,7 @@ export function DisputeDialog({ contract, triggerRef, onClose, onSuccess }: Disp
   const dialogRef = useRef<HTMLDialogElement>(null);
   const reasonRef = useRef<HTMLTextAreaElement>(null);
   const [raisedBy, setRaisedBy] = useState<DisputeRole>('client');
+  const [detectedFromWallet, setDetectedFromWallet] = useState(false);
   const [reason, setReason] = useState('');
   const [evidence, setEvidence] = useState('');
   const [errors, setErrors] = useState<DisputeErrors>({});
@@ -83,15 +77,18 @@ export function DisputeDialog({ contract, triggerRef, onClose, onSuccess }: Disp
   }, [triggerRef]);
 
   useEffect(() => {
-    if (!window.freighterApi) return;
     let active = true;
 
-    window.freighterApi
-      .getAddress()
-      .then(({ address }) => {
+    getAddress()
+      .then((address) => {
         if (!active || !address) return;
-        if (address === contract.client) setRaisedBy('client');
-        if (address === contract.freelancer) setRaisedBy('freelancer');
+        if (address === contract.client) {
+          setRaisedBy('client');
+          setDetectedFromWallet(true);
+        } else if (address === contract.freelancer) {
+          setRaisedBy('freelancer');
+          setDetectedFromWallet(true);
+        }
       })
       .catch((error: unknown) => {
         console.error('Could not read the connected wallet address.', error);
@@ -203,7 +200,10 @@ export function DisputeDialog({ contract, triggerRef, onClose, onSuccess }: Disp
               value="client"
               checked={raisedBy === 'client'}
               disabled={posting}
-              onChange={() => setRaisedBy('client')}
+              onChange={() => {
+                setRaisedBy('client');
+                setDetectedFromWallet(false);
+              }}
             />
             Client
           </label>
@@ -214,10 +214,16 @@ export function DisputeDialog({ contract, triggerRef, onClose, onSuccess }: Disp
               value="freelancer"
               checked={raisedBy === 'freelancer'}
               disabled={posting}
-              onChange={() => setRaisedBy('freelancer')}
+              onChange={() => {
+                setRaisedBy('freelancer');
+                setDetectedFromWallet(false);
+              }}
             />
             Freelancer
           </label>
+          {detectedFromWallet && (
+            <span className="small muted">Detected from your wallet</span>
+          )}
         </fieldset>
 
         <div className="field">
