@@ -162,6 +162,71 @@ export interface FetchRecentEventsOptions {
   contractId?: string;
 }
 
+export interface FetchEventsSinceOptions extends FetchRecentEventsOptions {
+  cursor?: string;
+  startLedger?: number;
+}
+
+export interface FetchEventsSinceResult {
+  events: ActivityEvent[];
+  cursor?: string;
+}
+
+/** Returns true when an RPC error indicates an expired or invalid pagination cursor. */
+export function isCursorError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { code?: unknown; message?: unknown; response?: { status?: unknown } };
+  if (err.code === -32602 || err.code === -32600) return true;
+  if (err.response?.status === 400) return true;
+  if (typeof err.message === 'string' && /cursor/i.test(err.message)) return true;
+  return false;
+}
+
+/**
+ * Fetch escrow contract events incrementally from a stored cursor, or backfill from the last ~24h.
+ * Returns the newest `limit` events (newest first) along with the latest pagination cursor.
+ */
+export async function fetchEventsSince({
+  cursor,
+  startLedger,
+  limit = DEFAULT_EVENT_LIMIT,
+  server = getRpcServer(),
+  contractId = site.contractId,
+}: FetchEventsSinceOptions = {}): Promise<FetchEventsSinceResult> {
+  if (!Number.isInteger(limit) || limit < 1 || limit > PAGE_SIZE) {
+    throw new RangeError(`limit must be an integer between 1 and ${PAGE_SIZE}`);
+  }
+
+  const filters: rpc.Api.EventFilter[] = [{ type: 'contract', contractIds: [contractId] }];
+
+  let page: Awaited<ReturnType<rpc.Server['getEvents']>>;
+  if (cursor) {
+    page = await server.getEvents({ cursor, filters, limit: PAGE_SIZE });
+  } else {
+    const resolvedStart =
+      startLedger !== undefined
+        ? Math.max(1, startLedger)
+        : Math.max(1, (await server.getLatestLedger()).sequence - EVENT_LOOKBACK_LEDGERS);
+    page = await server.getEvents({ startLedger: resolvedStart, filters, limit: PAGE_SIZE });
+  }
+
+  let tail: RawContractEvent[] = [];
+  let nextCursor = cursor;
+  for (let i = 0; ; i++) {
+    const events = Array.isArray(page?.events) ? page.events : null;
+    if (!events) throw new Error('Malformed getEvents response');
+    tail = [...tail, ...events].slice(-limit);
+    if (page.cursor) nextCursor = page.cursor;
+    if (events.length < PAGE_SIZE || !page.cursor || i + 1 >= MAX_PAGES) break;
+    page = await server.getEvents({ cursor: page.cursor, filters, limit: PAGE_SIZE });
+  }
+
+  return {
+    events: tail.map(decodeEvent).sort(compareEventsDesc),
+    cursor: nextCursor,
+  };
+}
+
 /**
  * Fetch the most recent escrow contract events from the last ~24h, newest first.
  * `getEvents` pages forward from the start ledger, so we walk every page and keep the tail.
@@ -171,23 +236,6 @@ export async function fetchRecentEvents({
   server = getRpcServer(),
   contractId = site.contractId,
 }: FetchRecentEventsOptions = {}): Promise<ActivityEvent[]> {
-  if (!Number.isInteger(limit) || limit < 1 || limit > PAGE_SIZE) {
-    throw new RangeError(`limit must be an integer between 1 and ${PAGE_SIZE}`);
-  }
-
-  const { sequence } = await server.getLatestLedger();
-  const filters: rpc.Api.EventFilter[] = [{ type: 'contract', contractIds: [contractId] }];
-  const startLedger = Math.max(1, sequence - EVENT_LOOKBACK_LEDGERS);
-
-  let tail: RawContractEvent[] = [];
-  let page = await server.getEvents({ startLedger, filters, limit: PAGE_SIZE });
-  for (let i = 0; ; i++) {
-    const events = Array.isArray(page?.events) ? page.events : null;
-    if (!events) throw new Error('Malformed getEvents response');
-    tail = [...tail, ...events].slice(-limit);
-    if (events.length < PAGE_SIZE || !page.cursor || i + 1 >= MAX_PAGES) break;
-    page = await server.getEvents({ cursor: page.cursor, filters, limit: PAGE_SIZE });
-  }
-
-  return tail.map(decodeEvent).sort(compareEventsDesc);
+  const { events } = await fetchEventsSince({ limit, server, contractId });
+  return events;
 }

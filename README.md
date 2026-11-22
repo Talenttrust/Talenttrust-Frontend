@@ -25,9 +25,16 @@ All optional (defaults point at the live deployments), see `.env.example`:
 
 | Variable | Default |
 | --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | `https://talenttrust-frontend.vercel.app` |
 | `NEXT_PUBLIC_API_URL` | `https://talenttrust-backend.vercel.app` |
 | `NEXT_PUBLIC_CONTRACT_ID` | `CCZMIVUBMG5SBC47SDTC32RWLBJ2HW2DCFVWJEOKCH2IFJBZGBKTXK5W` |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | `testnet` |
+
+The root layout uses `src/lib/metadata.ts` for its page title, description,
+Open Graph website metadata and Twitter summary card. Set `NEXT_PUBLIC_SITE_URL`
+to the absolute public frontend URL before building a preview or custom-domain
+deployment so relative Open Graph URLs resolve to that site. Unset or empty
+values use the production URL; invalid absolute URLs fail configuration loading.
 
 ## Development
 

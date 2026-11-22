@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useOptionalToast } from '@/components/toast/ToastProvider';
 
-export function CopyButton({ value }: { value: string }) {
+export function CopyButton({ value, label = 'Copy' }: { value: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   const toast = useOptionalToast();
   return (
@@ -21,7 +21,7 @@ export function CopyButton({ value }: { value: string }) {
         }
       }}
     >
-      {copied ? 'Copied' : 'Copy'}
+      {copied ? 'Copied' : label}
     </button>
   );
 }

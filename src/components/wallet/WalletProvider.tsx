@@ -1,10 +1,26 @@
 'use client';
 
-import { createContext, useContext, useEffect, useReducer, ReactNode } from 'react';
-import { isInstalled, getAddressSafe, getNetworkPassphrase, requestAccessSafe, isAllowedSafe } from '@/lib/stellar/freighterWallet';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useReducer,
+  useRef,
+  useCallback,
+  ReactNode,
+} from 'react';
+import {
+  isInstalled,
+  getAddressSafe,
+  getNetworkPassphrase,
+  requestAccessSafe,
+  isAllowedSafe,
+  signTransactionSafe,
+} from '@/lib/stellar/freighterWallet';
 import { expectedPassphrase } from '@/lib/stellar/network';
+import { WatchWalletChanges } from '@stellar/freighter-api';
 
-type WalletState =
+export type WalletState =
   | { type: 'unavailable' }
   | { type: 'disconnected' }
   | { type: 'connecting' }
@@ -12,7 +28,7 @@ type WalletState =
   | { type: 'wrong-network'; address: string; passphrase: string }
   | { type: 'error'; message: string };
 
-type WalletAction =
+export type WalletAction =
   | { type: 'SET_UNAVAILABLE' }
   | { type: 'SET_DISCONNECTED' }
   | { type: 'SET_CONNECTING' }
@@ -22,7 +38,7 @@ type WalletAction =
 
 const initialState: WalletState = { type: 'disconnected' };
 
-function walletReducer(state: WalletState, action: WalletAction): WalletState {
+export function walletReducer(state: WalletState, action: WalletAction): WalletState {
   switch (action.type) {
     case 'SET_UNAVAILABLE':
       return { type: 'unavailable' };
@@ -41,21 +57,51 @@ function walletReducer(state: WalletState, action: WalletAction): WalletState {
   }
 }
 
-interface WalletContextValue {
+export interface WalletContextValue {
   state: WalletState;
+  address: string | null;
+  isConnecting: boolean;
+  error: string | null;
   connect: () => Promise<void>;
   disconnect: () => void;
   refresh: () => Promise<void>;
+  signTx: (xdr: string, networkPassphrase: string) => Promise<string>;
 }
 
 const WalletContext = createContext<WalletContextValue | undefined>(undefined);
 
 const AUTOCONNECT_KEY = 'tt.wallet.autoconnect';
 
+function safeGetItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function safeRemoveItem(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(walletReducer, initialState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
-  const checkWallet = async () => {
+  const checkWallet = useCallback(async () => {
     try {
       const installed = await isInstalled();
       if (!installed) {
@@ -87,9 +133,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       dispatch({ type: 'SET_ERROR', message: (e as Error).message });
     }
-  };
+  }, []);
 
-  const connect = async () => {
+  const connect = useCallback(async () => {
     dispatch({ type: 'SET_CONNECTING' });
     try {
       const installed = await isInstalled();
@@ -114,23 +160,34 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
 
       dispatch({ type: 'SET_CONNECTED', address, passphrase });
-      localStorage.setItem(AUTOCONNECT_KEY, '1');
+      safeSetItem(AUTOCONNECT_KEY, '1');
     } catch (e) {
       dispatch({ type: 'SET_ERROR', message: (e as Error).message });
     }
-  };
+  }, []);
 
-  const disconnect = () => {
+  const disconnect = useCallback(() => {
     dispatch({ type: 'SET_DISCONNECTED' });
-    localStorage.removeItem(AUTOCONNECT_KEY);
-  };
+    safeRemoveItem(AUTOCONNECT_KEY);
+  }, []);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     await checkWallet();
-  };
+  }, [checkWallet]);
+
+  const signTx = useCallback(async (xdr: string, networkPassphrase: string): Promise<string> => {
+    const result = await signTransactionSafe(xdr, { networkPassphrase });
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    if (!result.signedXdr) {
+      throw new Error('Freighter did not return a signed transaction.');
+    }
+    return result.signedXdr;
+  }, []);
 
   useEffect(() => {
-    const autoconnect = localStorage.getItem(AUTOCONNECT_KEY) === '1';
+    const autoconnect = safeGetItem(AUTOCONNECT_KEY) === '1';
     if (autoconnect) {
       checkWallet();
     } else {
@@ -138,17 +195,70 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         dispatch(installed ? { type: 'SET_DISCONNECTED' } : { type: 'SET_UNAVAILABLE' });
       });
     }
-  }, []);
+  }, [checkWallet]);
 
   useEffect(() => {
+    let watcher: { stop?: () => void } | null = null;
+
+    try {
+      if (typeof WatchWalletChanges === 'function') {
+        const instance = new WatchWalletChanges();
+        if (typeof instance.watch === 'function') {
+          instance.watch((params: {
+            address?: string;
+            network?: string;
+            networkPassphrase?: string;
+            error?: unknown;
+          }) => {
+            if (params.error || !params.address) {
+              if (
+                stateRef.current.type === 'connected' ||
+                stateRef.current.type === 'wrong-network'
+              ) {
+                dispatch({ type: 'SET_DISCONNECTED' });
+              }
+              return;
+            }
+
+            const expected = expectedPassphrase();
+            const passphrase = params.networkPassphrase || expected;
+
+            if (passphrase !== expected) {
+              dispatch({
+                type: 'SET_WRONG_NETWORK',
+                address: params.address,
+                passphrase,
+              });
+            } else {
+              dispatch({
+                type: 'SET_CONNECTED',
+                address: params.address,
+                passphrase,
+              });
+            }
+          });
+          watcher = instance;
+        }
+      }
+    } catch {
+      watcher = null;
+    }
+
     const handleFocus = () => {
-      if (state.type === 'connected' || state.type === 'wrong-network') {
+      if (
+        stateRef.current.type === 'connected' ||
+        stateRef.current.type === 'wrong-network'
+      ) {
         checkWallet();
       }
     };
 
     const handleVisibilityChange = () => {
-      if (!document.hidden && (state.type === 'connected' || state.type === 'wrong-network')) {
+      if (
+        !document.hidden &&
+        (stateRef.current.type === 'connected' ||
+          stateRef.current.type === 'wrong-network')
+      ) {
         checkWallet();
       }
     };
@@ -157,13 +267,38 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      if (watcher && typeof watcher.stop === 'function') {
+        try {
+          watcher.stop();
+        } catch {
+          // Ignore watcher cleanup errors
+        }
+      }
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [state.type]);
+  }, [checkWallet]);
+
+  const address =
+    state.type === 'connected' || state.type === 'wrong-network'
+      ? state.address
+      : null;
+  const isConnecting = state.type === 'connecting';
+  const error = state.type === 'error' ? state.message : null;
 
   return (
-    <WalletContext.Provider value={{ state, connect, disconnect, refresh }}>
+    <WalletContext.Provider
+      value={{
+        state,
+        address,
+        isConnecting,
+        error,
+        connect,
+        disconnect,
+        refresh,
+        signTx,
+      }}
+    >
       {children}
     </WalletContext.Provider>
   );
@@ -181,3 +316,5 @@ export function useWallet() {
   }
   return context;
 }
+
+export default WalletContext;

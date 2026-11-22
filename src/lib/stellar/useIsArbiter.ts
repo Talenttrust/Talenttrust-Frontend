@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { readAdmin } from './admin';
 import { getAddress } from './freighter';
+import { useOptionalWallet } from '@/components/wallet/WalletProvider';
 
 /**
  * true when the connected Freighter account is the contract admin (arbiter),
@@ -10,13 +11,16 @@ import { getAddress } from './freighter';
  */
 export function useIsArbiter(): boolean | null {
   const [isArbiter, setIsArbiter] = useState<boolean | null>(null);
+  const wallet = useOptionalWallet();
+  const walletAddress = wallet ? wallet.address : undefined;
 
   useEffect(() => {
     let active = true;
 
     const checkArbiter = async () => {
       try {
-        const address = await getAddress();
+        const address =
+          walletAddress !== undefined ? walletAddress : await getAddress();
         if (!address) {
           if (active) setIsArbiter(false);
           return;
@@ -30,15 +34,22 @@ export function useIsArbiter(): boolean | null {
     };
 
     checkArbiter();
-    window.addEventListener('focus', checkArbiter);
-    document.addEventListener('visibilitychange', checkArbiter);
+
+    // Fallback focus/visibility listeners only when outside of WalletProvider
+    if (wallet === null) {
+      window.addEventListener('focus', checkArbiter);
+      document.addEventListener('visibilitychange', checkArbiter);
+      return () => {
+        active = false;
+        window.removeEventListener('focus', checkArbiter);
+        document.removeEventListener('visibilitychange', checkArbiter);
+      };
+    }
 
     return () => {
       active = false;
-      window.removeEventListener('focus', checkArbiter);
-      document.removeEventListener('visibilitychange', checkArbiter);
     };
-  }, []);
+  }, [wallet, walletAddress]);
 
   return isArbiter;
 }

@@ -25,9 +25,12 @@ export function useContracts(filters?: ContractFilters) {
 }
 
 export function useContract(id: number | string | null) {
-  const { data, error, isValidating, isLoading, mutate } = useSWR<EscrowContract>(id == null ? null : contractKey(id));
+  const { data, error, isValidating, isLoading, mutate } = useSWR<
+    EscrowContract | { data: EscrowContract }
+  >(id == null ? null : contractKey(id));
+  const contract = data && 'data' in data ? data.data : data ?? null;
   return {
-    contract: data ?? null,
+    contract,
     error: (error as ApiError | null) ?? null,
     isLoading,
     isValidating,

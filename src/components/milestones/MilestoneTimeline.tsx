@@ -12,6 +12,8 @@ export interface MilestoneTimelineProps {
   busy?: boolean;
   /** Show the cumulative released/total summary bar (hide it when the parent already shows progress). */
   showSummary?: boolean;
+  /** Hide release actions when the timeline is presented as read-only information. */
+  readOnly?: boolean;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -50,7 +52,13 @@ const STATUS_META: Record<
 // ──────────────────────────────────────────────────────────────────────────────
 // Component
 // ──────────────────────────────────────────────────────────────────────────────
-export function MilestoneTimeline({ contract, onRelease, busy = false, showSummary = true }: MilestoneTimelineProps) {
+export function MilestoneTimeline({
+  contract,
+  onRelease,
+  busy = false,
+  showSummary = true,
+  readOnly = false,
+}: MilestoneTimelineProps) {
   // Unique per instance: several timelines render on the dashboard at once.
   const headingId = useId();
   const { milestones, totalAmount, releasedAmount, token } = contract;
@@ -113,7 +121,7 @@ export function MilestoneTimeline({ contract, onRelease, busy = false, showSumma
                   </span>
 
                   {/* Per-milestone release button — only shown for releasable milestones */}
-                  {status === 'releasable' && (
+                  {status === 'releasable' && !readOnly && (
                     <button
                       type="button"
                       className="mt-release-btn"

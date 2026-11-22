@@ -6,6 +6,7 @@ import {
   snapshotOf,
   unwatch,
   watch,
+  WATCH_MAX_ITEMS,
   WATCH_STORE_KEY,
   WATCH_STORE_VERSION,
   type Snapshot,
@@ -113,9 +114,38 @@ describe('diffSnapshots', () => {
 
 describe('watch store persistence', () => {
   it('watches and reads back a snapshot', () => {
-    watch(7, snap({ status: 'Funded', fundedAmount: 300 }));
+    const result = watch(7, snap({ status: 'Funded', fundedAmount: 300 }));
+    expect(result.evicted).toEqual([]);
+    expect(result.store.items).toHaveLength(1);
     expect(loadStore().items).toHaveLength(1);
     expect(loadStore().items[0]).toEqual({ id: 7, lastSnapshot: { status: 'Funded', releasedIdx: [], fundedAmount: 300 } });
+  });
+
+  it('reports evicted oldest ids when WATCH_MAX_ITEMS is exceeded', () => {
+    const prefilled = Array.from({ length: WATCH_MAX_ITEMS }, (_, idx) => ({
+      id: idx + 1,
+      lastSnapshot: snap(),
+    }));
+    saveStore({ version: WATCH_STORE_VERSION, items: prefilled });
+
+    const result = watch(999, snap({ status: 'Funded', fundedAmount: 100 }));
+    expect(result.evicted).toEqual([WATCH_MAX_ITEMS]);
+    expect(result.store.items).toHaveLength(WATCH_MAX_ITEMS);
+    expect(result.store.items[0].id).toBe(999);
+    expect(result.store.items.some((i) => i.id === WATCH_MAX_ITEMS)).toBe(false);
+  });
+
+  it('does not evict when re-watching an already watched id at capacity', () => {
+    const prefilled = Array.from({ length: WATCH_MAX_ITEMS }, (_, idx) => ({
+      id: idx + 1,
+      lastSnapshot: snap(),
+    }));
+    saveStore({ version: WATCH_STORE_VERSION, items: prefilled });
+
+    const result = watch(50, snap({ status: 'Funded', fundedAmount: 100 }));
+    expect(result.evicted).toEqual([]);
+    expect(result.store.items).toHaveLength(WATCH_MAX_ITEMS);
+    expect(result.store.items[0].id).toBe(50);
   });
 
   it('unwatches an id', () => {
