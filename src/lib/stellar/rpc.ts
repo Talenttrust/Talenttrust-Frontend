@@ -90,4 +90,42 @@ export async function simulateContractCall(method: string, args: unknown[] = [])
   const value = scValToNative(await simulateRead(method, args));
   return (value ?? null) as ScValResult;
 }
+
+/**
+ * Simulate a read-only call on an arbitrary contract (not just the escrow).
+ * Used by token.ts to read symbol/decimals from any SEP-41 token contract.
+ */
+export async function simulateContractCallFor(
+  contractId: string,
+  method: string,
+  args: unknown[] = [],
+): Promise<ScValResult> {
+  const server = getRpcServer();
+  const keypair = Keypair.random();
+  const simulationSource: any = {
+    accountId: () => keypair.publicKey(),
+    sequenceNumber: () => '0',
+    incrementSequenceNumber: () => { /* no-op */ },
+  };
+  const tx = new TransactionBuilder(simulationSource, {
+    fee: '0',
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(
+      Operation.invokeHostFunction({
+        func: xdr.HostFunction.hostFunctionTypeInvokeContract(
+          new xdr.InvokeContractArgs({
+            contractAddress: Address.fromString(contractId).toScAddress(),
+            functionName: method,
+            args: [],
+          }),
+        ),
+      }),
+    )
+    .build();
+  const sim = await server.simulateTransaction(tx) as any;
+  if (sim.error) throw new Error(String(sim.error));
+  if (!sim.result?.retval) throw new Error('No result');
+  return (scValToNative(sim.result.retval) ?? null) as ScValResult;
+}
 /* eslint-enable @typescript-eslint/no-explicit-any */
