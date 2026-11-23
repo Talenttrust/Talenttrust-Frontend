@@ -264,6 +264,58 @@ describe('ActivityFeed', () => {
     expect(fetchEventsSince).toHaveBeenCalledTimes(1);
   });
 
+  it('filters the feed by event type with aria-pressed toggles, without refetching', async () => {
+    fetchEventsSince.mockResolvedValue({ events: [release, deposit, created], cursor: 'c1' });
+    vi.useRealTimers();
+    const user = userEvent.setup();
+    render(<ActivityFeed />);
+    await screen.findByRole('group', { name: /filter activity by type/i });
+    expect(items()).toHaveLength(3);
+
+    const all = screen.getByRole('button', { name: 'All' });
+    const deposits = screen.getByRole('button', { name: 'Deposits' });
+    expect(all).toHaveAttribute('aria-pressed', 'true');
+    expect(deposits).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(deposits);
+    expect(deposits).toHaveAttribute('aria-pressed', 'true');
+    expect(all).toHaveAttribute('aria-pressed', 'false');
+    expect(items()).toHaveLength(1);
+    expect(items()[0]).toHaveTextContent('funded with 150 XLM');
+    expect(fetchEventsSince).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a specific message when a filter matches nothing', async () => {
+    fetchEventsSince.mockResolvedValue({ events: [deposit], cursor: 'c1' });
+    vi.useRealTimers();
+    const user = userEvent.setup();
+    render(<ActivityFeed />);
+    await screen.findByRole('group', { name: /filter activity by type/i });
+
+    await user.click(screen.getByRole('button', { name: 'Disputes' }));
+    expect(screen.getByRole('status')).toHaveTextContent('No disputes activity in the last 24h');
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('applies the active filter to items arriving from a poll', async () => {
+    fetchEventsSince
+      .mockResolvedValueOnce({ events: [deposit], cursor: 'c1' })
+      .mockResolvedValueOnce({ events: [release], cursor: 'c2' });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<ActivityFeed />);
+    await flush();
+
+    await user.click(screen.getByRole('button', { name: 'Deposits' }));
+    expect(items()).toHaveLength(1);
+
+    await advance(ACTIVITY_POLL_MS);
+    await flush();
+    expect(fetchEventsSince).toHaveBeenCalledTimes(2);
+    expect(items()).toHaveLength(1);
+    expect(items()[0]).toHaveTextContent('funded with 150 XLM');
+    expect(screen.queryByText(/released milestone 1/)).not.toBeInTheDocument();
+  });
+
   it('has no axe violations with events or in the error state', async () => {
     fetchEventsSince.mockResolvedValueOnce({ events: [deposit, created], cursor: 'c1' });
     const { container, unmount } = render(<ActivityFeed />);

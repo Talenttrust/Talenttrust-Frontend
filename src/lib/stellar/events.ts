@@ -33,6 +33,9 @@ export type ActivityEvent = EventMeta &
 
 export type ActivityEventType = ActivityEvent['type'];
 
+/** Event types surfaced by the activity feed filter chips. */
+export type ActivityFilterType = 'deposit' | 'release' | 'dispute' | 'rep';
+
 /** The subset of `rpc.Api.EventResponse` the decoder relies on. */
 export type RawContractEvent = Pick<rpc.Api.EventResponse, 'id' | 'ledger' | 'ledgerClosedAt' | 'txHash' | 'topic' | 'value'> & {
   pagingToken?: string;
