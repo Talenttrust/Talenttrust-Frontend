@@ -277,4 +277,39 @@ describe('WalletProvider', () => {
     setItemSpy.mockRestore();
     removeItemSpy.mockRestore();
   });
+
+  it('mounts and reaches disconnected state when getItem throws', async () => {
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('SecurityError: Access is denied');
+    });
+    vi.mocked(freighter.isInstalled).mockResolvedValue(true);
+
+    const { result } = renderHook(() => useWallet(), { wrapper });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(result.current.state.type).toBe('disconnected');
+    getItemSpy.mockRestore();
+  });
+
+  it('connects successfully when setItem throws', async () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+    vi.mocked(freighter.isInstalled).mockResolvedValue(true);
+    vi.mocked(freighter.requestAccessSafe).mockResolvedValue({ address: 'GTEST123' });
+    vi.mocked(freighter.getNetworkPassphrase).mockResolvedValue('Test SDF Network ; September 2015');
+
+    const { result } = renderHook(() => useWallet(), { wrapper });
+
+    await act(async () => {
+      await result.current.connect();
+    });
+
+    expect(result.current.state.type).toBe('connected');
+    expect(result.current.address).toBe('GTEST123');
+    setItemSpy.mockRestore();
+  });
 });
