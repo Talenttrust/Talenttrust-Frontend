@@ -1,6 +1,7 @@
 import type { Viewport } from 'next';
 import Link from 'next/link';
 import './globals.css';
+import { GlobalErrorHandlers } from '@/components/GlobalErrorHandlers';
 import { Header } from '@/components/Header';
 import { ContractStatusProvider } from '@/components/ContractStatusProvider';
 import { PausedBanner } from '@/components/PausedBanner';
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <a href="#main" className="skip">
                       Skip to content
                     </a>
+                    <GlobalErrorHandlers />
                     <Header />
                     <NetworkGuard />
                     <OfflineIndicator />

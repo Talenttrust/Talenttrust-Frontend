@@ -1,14 +1,22 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { reportError } from '@/lib/errorReporter';
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const heading = useRef<HTMLHeadingElement>(null);
+  const reported = useRef(false);
   const isDev = process.env.NODE_ENV === 'development';
 
   useEffect(() => {
     heading.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (reported.current) return;
+    reported.current = true;
+    reportError(error, { boundary: 'global-error', digest: error.digest });
+  }, [error]);
 
   return (
     <html lang="en">
