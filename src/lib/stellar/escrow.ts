@@ -7,7 +7,8 @@ import {
   Address,
 } from '@stellar/stellar-sdk';
 import { getRpcServer, NETWORK_PASSPHRASE, simulateRead } from './rpc';
-import { site } from '../site';
+import { stellarConfig } from './config';
+import { parseContractError } from './errors';
 
 /**
  * Validity window (seconds) for transactions built by this module.
@@ -19,22 +20,7 @@ export const TX_TIMEOUT_SECONDS = 180;
 
 // ── Contract error codes ────────────────────────────────────────────────────
 
-export const CONTRACT_ERRORS: Record<number, string> = {
-  1: 'AlreadyInitialized',
-  2: 'NotInitialized',
-  3: 'Unauthorized',
-  4: 'InvalidAmount',
-  5: 'ContractNotFound',
-  6: 'InvalidStatus',
-  7: 'MilestoneNotFound',
-  8: 'InvalidMilestone',
-  9: 'OverFunded',
-  10: 'InvalidStatus',
-  11: 'ContractAlreadyFunded',
-  12: 'MilestoneAlreadyReleased',
-  13: 'InsufficientFunds',
-  14: 'DisputeNotFound',
-};
+export { CONTRACT_ERRORS, extractContractErrorCode } from './errors';
 
 // ── On-chain types ──────────────────────────────────────────────────────────
 
@@ -65,7 +51,7 @@ export type OnChainEscrow = {
 
 // ── Contract address helper ─────────────────────────────────────────────────
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ID ?? site.contractId;
+const CONTRACT_ADDRESS = stellarConfig.contractId;
 
 export function getEscrowContract(): Contract {
   return new Contract(CONTRACT_ADDRESS);
@@ -200,10 +186,7 @@ export async function getContract(id: number): Promise<OnChainEscrow> {
     ]);
     return decodeEscrow(retval, id);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const code = extractContractErrorCode(message);
-    if (code === 5) throw new Error('ContractNotFound');
-    throw err;
+    throw new Error(parseContractError(err));
   }
 }
 
@@ -272,12 +255,6 @@ export async function buildCancelTx(
 }
 
 // ── Utilities ───────────────────────────────────────────────────────────────
-
-export function extractContractErrorCode(errStr: string): number | null {
-  const m = errStr.match(/Error\(Contract,\s*#(\d+)\)/);
-  if (m) return parseInt(m[1], 10);
-  return null;
-}
 
 /** Format stroops (bigint) as 7-decimal XLM string. No Number() on stroop values. */
 export function formatStroops(stroops: bigint): string {

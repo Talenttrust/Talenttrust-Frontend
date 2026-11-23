@@ -1,5 +1,6 @@
 import nav from '@/lib/nav.json';
 import { site, apiDocsUrl } from '@/lib/site';
+import { safeGet, safeSet } from '@/lib/safeStorage';
 import { normalizeAddress, validateAddress } from '@/lib/stellar/address';
 
 export interface CommandItem {
@@ -69,6 +70,19 @@ export function parseDynamicCommands(query: string): CommandItem[] {
     }
   }
 
+  // The contracts dashboard searches titles, parties, tokens, and milestones.
+  // Offer that same search from the command palette for any other text query.
+  if (trimmed && !escrowMatch && !isStellarAddress) {
+    const encoded = encodeURIComponent(trimmed);
+    dynamic.push({
+      id: `dynamic-escrow-search-${trimmed.toLowerCase()}`,
+      title: `Search escrows for “${trimmed}”`,
+      subtitle: `/contracts?q=${encoded}`,
+      category: 'Escrows',
+      href: `/contracts?q=${encoded}`,
+    });
+  }
+
   return dynamic;
 }
 
@@ -105,17 +119,71 @@ export function rankCommands(query: string, commands: CommandItem[]): CommandIte
 }
 
 const RECENT_KEY = 'tt_recent_commands';
+const MAX_RECENT_COMMANDS = 5;
+
+const COMMAND_CATEGORIES: readonly CommandItem['category'][] = [
+  'Navigation',
+  'Escrows',
+  'Reputation',
+  'Actions',
+  'Recent',
+];
+
+const COMMAND_ACTION_TYPES: readonly NonNullable<CommandItem['actionType']>[] = [
+  'copy-contract',
+  'open-docs',
+];
+
+/**
+ * Validates a value read from storage before the palette renders or routes it.
+ * Recent commands are plain JSON, so any shape (or a tampered payload) can
+ * appear at runtime; only well-formed internal commands may pass.
+ */
+export function isCommandItem(value: unknown): value is CommandItem {
+  if (typeof value !== 'object' || value === null) return false;
+  const item = value as Record<string, unknown>;
+
+  if (typeof item.id !== 'string' || item.id.trim() === '') return false;
+  if (typeof item.title !== 'string' || item.title.trim() === '') return false;
+  if (item.subtitle !== undefined && typeof item.subtitle !== 'string') return false;
+  if (!COMMAND_CATEGORIES.includes(item.category as CommandItem['category'])) return false;
+  if (item.shortcut !== undefined && typeof item.shortcut !== 'string') return false;
+
+  if (item.href !== undefined) {
+    // Only same-origin app routes are allowed: reject absolute URLs,
+    // protocol-relative hrefs (//example.com) and javascript: payloads.
+    if (typeof item.href !== 'string') return false;
+    if (!item.href.startsWith('/') || item.href.startsWith('//')) return false;
+  }
+
+  if (
+    item.actionType !== undefined &&
+    !COMMAND_ACTION_TYPES.includes(item.actionType as NonNullable<CommandItem['actionType']>)
+  ) {
+    return false;
+  }
+
+  return true;
+}
 
 export function getRecentCommands(): CommandItem[] {
   if (typeof window === 'undefined') return [];
+  const raw = safeGet(RECENT_KEY);
+  if (!raw) return [];
   try {
-    const raw = localStorage.getItem(RECENT_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      return parsed.slice(0, 5);
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    const seen = new Set<string>();
+    const valid: CommandItem[] = [];
+    for (const entry of parsed) {
+      if (!isCommandItem(entry)) continue;
+      if (seen.has(entry.id)) continue;
+      seen.add(entry.id);
+      valid.push(entry);
+      if (valid.length === MAX_RECENT_COMMANDS) break;
     }
-    return [];
+    return valid;
   } catch {
     return [];
   }
@@ -123,22 +191,18 @@ export function getRecentCommands(): CommandItem[] {
 
 export function saveRecentCommand(command: CommandItem): void {
   if (typeof window === 'undefined') return;
-  try {
-    const existing = getRecentCommands();
-    const filtered = existing.filter((c) => c.id !== command.id);
-    const updated = [
-      {
-        id: command.id,
-        title: command.title,
-        subtitle: command.subtitle,
-        category: 'Recent' as const,
-        href: command.href,
-        actionType: command.actionType,
-      },
-      ...filtered,
-    ].slice(0, 5);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
-  } catch {
-    // localStorage quota or access error
-  }
+  const existing = getRecentCommands();
+  const filtered = existing.filter((c) => c.id !== command.id);
+  const updated = [
+    {
+      id: command.id,
+      title: command.title,
+      subtitle: command.subtitle,
+      category: 'Recent' as const,
+      href: command.href,
+      actionType: command.actionType,
+    },
+    ...filtered,
+  ].slice(0, 5);
+  safeSet(RECENT_KEY, JSON.stringify(updated));
 }

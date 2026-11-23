@@ -1,4 +1,5 @@
 import type { EscrowContract } from './api';
+import { createVersionedStore } from './safeStorage';
 
 export const WATCH_STORE_KEY = 'tt.watch.v1';
 export const WATCH_STORE_VERSION = 1;
@@ -105,10 +106,6 @@ export function diffSnapshots(prev: Snapshot | null, next: Snapshot): WatchEvent
   return events;
 }
 
-function emptyStore(): WatchStore {
-  return { version: WATCH_STORE_VERSION, items: [] };
-}
-
 function isValidStore(value: unknown): value is WatchStore {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
@@ -126,49 +123,22 @@ function isValidStore(value: unknown): value is WatchStore {
   });
 }
 
-const storage = (): Storage | null => {
-  try {
-    return typeof localStorage === 'undefined' ? null : localStorage;
-  } catch {
-    return null;
-  }
-};
+const watchStore = createVersionedStore<WatchStore>({
+  key: WATCH_STORE_KEY,
+  version: WATCH_STORE_VERSION,
+  validate: isValidStore,
+  empty: () => ({ version: WATCH_STORE_VERSION, items: [] }),
+  maxItems: WATCH_MAX_ITEMS,
+  itemsOf: (store) => store.items,
+  withItems: (store, items) => ({ version: WATCH_STORE_VERSION, items }),
+});
 
 export function loadStore(): WatchStore {
-  const s = storage();
-  if (!s) return emptyStore();
-  let raw: string | null = null;
-  try {
-    raw = s.getItem(WATCH_STORE_KEY);
-  } catch {
-    return emptyStore();
-  }
-  if (!raw) return emptyStore();
-  try {
-    const parsed = JSON.parse(raw);
-    if (!isValidStore(parsed)) {
-      console.warn('Watchlist data was in an unknown format and has been reset.');
-      saveStore(emptyStore());
-      return emptyStore();
-    }
-    return { version: parsed.version, items: parsed.items.slice(0, WATCH_MAX_ITEMS) };
-  } catch {
-    console.warn('Watchlist data was corrupt and has been reset.');
-    saveStore(emptyStore());
-    return emptyStore();
-  }
+  return watchStore.load();
 }
 
 export function saveStore(store: WatchStore): boolean {
-  const s = storage();
-  if (!s) return false;
-  try {
-    s.setItem(WATCH_STORE_KEY, JSON.stringify({ version: WATCH_STORE_VERSION, items: store.items }));
-    return true;
-  } catch {
-    console.warn('Could not persist the watchlist (storage full or unavailable).');
-    return false;
-  }
+  return watchStore.save(store);
 }
 
 export interface WatchResult {

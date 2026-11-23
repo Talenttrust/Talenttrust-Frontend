@@ -14,6 +14,7 @@ import {
   TX_TIMEOUT_SECONDS,
 } from '../escrow';
 import { simulateRead } from '../rpc';
+import { CONTRACT_ERRORS as sharedNames, escrowErrorMessage } from '../errors';
 import { createFakeSoroban, installFakeSoroban } from '@/test/fakeSoroban';
 
 // One merged mock for ../rpc: the transaction builders talk to the chain
@@ -81,6 +82,7 @@ describe('TX_TIMEOUT_SECONDS', () => {
 });
 
 describe('CONTRACT_ERRORS', () => {
+  it('re-exports the shared derived lookup', () => expect(CONTRACT_ERRORS).toBe(sharedNames));
   it('maps 5 → ContractNotFound', () => expect(CONTRACT_ERRORS[5]).toBe('ContractNotFound'));
   it('maps 10 → InvalidStatus', () => expect(CONTRACT_ERRORS[10]).toBe('InvalidStatus'));
   it('maps 12 → MilestoneAlreadyReleased', () =>
@@ -116,19 +118,24 @@ describe('getContract', () => {
     expect(result.milestones).toEqual([]);
   });
 
-  it('maps contract error code 5 to ContractNotFound', async () => {
+  it('maps contract error code 5 to a readable not-found message', async () => {
     mockSimulateRead.mockRejectedValue(
       new Error('HostError: Error(Contract, #5)')
     );
 
-    await expect(getContract(99)).rejects.toThrow('ContractNotFound');
+    await expect(getContract(99)).rejects.toThrow(escrowErrorMessage(5));
   });
 
-  it('rethrows other simulation errors', async () => {
+  it('formats other contract simulation errors using the shared table', async () => {
     mockSimulateRead.mockRejectedValue(
       new Error('HostError: Error(Contract, #3)')
     );
 
-    await expect(getContract(99)).rejects.toThrow('HostError: Error(Contract, #3)');
+    await expect(getContract(99)).rejects.toThrow(escrowErrorMessage(3));
+  });
+
+  it('preserves unknown simulation messages', async () => {
+    mockSimulateRead.mockRejectedValue(new Error('Unexpected RPC response'));
+    await expect(getContract(99)).rejects.toThrow('Unexpected RPC response');
   });
 });

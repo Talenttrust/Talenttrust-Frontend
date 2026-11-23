@@ -20,122 +20,134 @@ See the [PR template](.github/pull_request_template.md) for the pre-flight check
 
 ## Running tests
 
+The suite runs on [Vitest](https://vitest.dev/) with the jsdom environment and React Testing Library. `vitest.config.ts` is the source of truth: it maps the `@/` alias to `src/`, loads `src/test/setup.ts`, and collects every `src/**/*.test.{ts,tsx}` file.
+
 ```bash
-npm test            # run all tests
-npm test -- --watch # watch mode
-npm test -- --coverage  # generate coverage report
+npm test                                              # link check + full Vitest suite (what CI runs)
+npx vitest run                                        # full suite, without the link check
+npx vitest run src/lib/__tests__/commands.test.ts     # a single test file
+npx vitest run src/lib/__tests__/commands.test.ts -t "malformed JSON"  # tests whose name matches
+npx vitest                                            # watch mode, re-runs affected tests on change
 ```
 
-Coverage expectations are documented in the PR template; the project targets **95% minimum coverage** for impacted modules.
+`npm test` also runs `node scripts/check-links.mjs`, which verifies that internal links map to real App Router routes. Run it before pushing if you add or rename pages.
 
 ### Module alias `@/`
 
-Jest is configured (`jest.config.js`) with the same `@/` path alias defined in `tsconfig.json`:
-
-```
-^@/(.*)$ → src/$1
-```
-
-Import components and utilities using the alias:
+Vitest is configured with the same `@/` path alias as `tsconfig.json` (`@/*` → `./src/*`), in `vitest.config.ts`:
 
 ```ts
-import StatusBadge from '@/components/StatusBadge';
-import { formatAmount } from '@/lib/preferences';
+resolve: {
+  alias: {
+    '@': fileURLToPath(new URL('./src', import.meta.url)),
+  },
+},
 ```
 
-This works in both source files and test files without relative-path gymnastics.
+Import components and utilities through the alias in both source and test files:
+
+```tsx
+import { RoleChip } from '@/components/RoleChip';
+import { staticCommands } from '@/lib/commands';
+```
+
+No relative-path gymnastics required.
 
 ---
 
 ## Writing tests
 
-Tests live next to the units they cover in `__tests__` directories. Jest discovers files matching `**/*.test.{ts,tsx}`.
+Place tests next to the code they cover, either in a `__tests__` directory or as a `*.test.ts(x)` file beside the module. Vitest collects `src/**/*.test.{ts,tsx}`.
 
-| Location                          | Tests                          |
-|-----------------------------------|--------------------------------|
-| `src/components/__tests__/`       | UI component tests             |
-| `src/lib/__tests__/`              | Pure utility / helper tests    |
-| `src/contexts/__tests__/`         | Context / provider tests       |
-| `src/app/**/__tests__/`           | Page-level / route tests       |
+| Location                              | Tests                          |
+|---------------------------------------|--------------------------------|
+| `src/components/**/__tests__/`        | UI component tests             |
+| `src/components/**/*.test.tsx`        | Co-located UI component tests  |
+| `src/lib/__tests__/`                  | Pure utility / helper tests    |
+| `src/hooks/__tests__/`                | Hook tests                     |
+| `src/app/**/__tests__/`               | Page-level / route tests       |
+| `src/test/`                           | Shared setup, fixtures and a11y helpers |
+
+`globals: true` is enabled, so `describe`, `it` and `expect` are available without imports, but importing them from `vitest` explicitly is also fine.
 
 ### Example: a unit test
 
 ```tsx
+import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import StatusBadge from '@/components/StatusBadge';
+import { RoleChip } from '@/components/RoleChip';
 
-describe('StatusBadge', () => {
-  it('renders the status text', () => {
-    render(<StatusBadge status="Active" />);
-    expect(screen.getByText('Active')).toBeInTheDocument();
+describe('RoleChip', () => {
+  it('labels the client role', () => {
+    render(<RoleChip role="client" />);
+    expect(screen.getByText('You are the client')).toBeInTheDocument();
   });
 });
 ```
 
+`src/test/setup.ts` registers `@testing-library/jest-dom` matchers and calls `cleanup()` after every test, so you do not need to unmount manually.
+
 ---
 
-## Accessibility testing with jest-axe
+## Accessibility testing with vitest-axe
 
-The project uses [jest-axe](https://github.com/nickcolley/jest-axe) to audit rendered DOM against WCAG rules. Three helpers are exported from `src/test-utils/a11y.tsx`, and `toHaveNoViolations` is extended globally in `jest.setup.ts`.
-
-### `testA11y(ui, options?)`
-
-Render a component and immediately assert zero axe violations. The canonical one-liner for most a11y tests:
+The project uses [vitest-axe](https://github.com/chaance/vitest-axe) to audit rendered DOM against axe-core rules. `src/test/setup.ts` extends `expect` with vitest-axe's matchers, so `toHaveNoViolations()` is available in every test:
 
 ```tsx
-import { testA11y } from '@/test-utils/a11y';
-import EmptyState from '@/components/EmptyState';
+import { it, expect } from 'vitest';
+import { render } from '@testing-library/react';
+import { axe } from 'vitest-axe';
+import { RoleChip } from '@/components/RoleChip';
 
-it('has no a11y violations', async () => {
-  await testA11y(
-    <EmptyState title="No items" description="Nothing here yet." />
-  );
+it('has no axe violations', async () => {
+  const { container } = render(<RoleChip role="freelancer" />);
+  expect(await axe(container)).toHaveNoViolations();
 });
 ```
 
-### `assertNoA11yViolations(container)`
+### Shared helper: `expectNoA11yViolations`
 
-Run axe against an arbitrary `HTMLElement`. Useful when you need to interact with the component before auditing (e.g. open a modal, click a button):
+`src/test/a11y.ts` exports `expectNoA11yViolations(ui, options?)`, which renders the UI inside the app's providers (toasts, wallet, SWR, confirm dialog, notifications), runs axe, and throws a readable summary of any violations. It disables the `color-contrast` rule because jsdom has no layout or computed colours.
 
 ```tsx
-import { render, fireEvent, screen } from '@testing-library/react';
-import { assertNoA11yViolations } from '@/test-utils/a11y';
+import { expectNoA11yViolations } from '@/test/a11y';
+import { RoleChip } from '@/components/RoleChip';
 
-it('toast has no violations after trigger', async () => {
-  const view = render(<MyToast />);
-  fireEvent.click(screen.getByRole('button'));
-  await assertNoA11yViolations(view.container);
+it('has no accessibility violations', async () => {
+  await expectNoA11yViolations(<RoleChip role="client" />);
 });
 ```
 
-### `renderWithA11y(ui, options?)`
-
-A thin wrapper around `@testing-library/react`'s `render`. Use it when you need the rendered view but want to defer the axe audit or skip it entirely:
+Pass `prepare` when you need to interact with the component before auditing, and `rules` to override axe rules:
 
 ```tsx
-import { renderWithA11y } from '@/test-utils/a11y';
-
-it('renders without crashing', () => {
-  const view = renderWithA11y(<MyComponent />);
-  expect(view.container.firstChild).toBeInTheDocument();
+await expectNoA11yViolations(<MyDialog />, {
+  prepare: () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Open dialog' }));
+  },
 });
 ```
 
 ### Reference test file
 
-[`src/components/__tests__/a11y.test.tsx`](src/components/__tests__/a11y.test.tsx) is the primary reference. It demonstrates:
+[`src/test/a11y.routes.test.tsx`](src/test/a11y.routes.test.tsx) is the primary reference. It demonstrates:
 
-- Using `testA11y` for static component snapshots.
-- Using `assertNoA11yViolations` after user interactions (toast triggers).
-- Using `renderWithA11y` for non-audit assertions alongside a11y checks.
-- Testing components under multiple themes via `data-theme` toggles.
-- Importing from `@/test-utils/a11y`, `@/components/*`, and `@/contexts/*`.
+- Auditing whole pages and the not-found page.
+- Using `prepare` to open dialogs, the command palette and the notification panel before auditing.
+- Overriding axe rules per test where needed.
 
 ---
 
 ## Coverage
 
-Run `npm test -- --coverage` to view per-file coverage. The project enforces a **95% line and branch coverage floor** on any module touched by a PR. If your changes introduce new components or utilities, add corresponding tests to maintain that threshold.
+Coverage is **not enabled by default** and no coverage provider is installed, so `vitest run --coverage` fails until you add one. To generate a report, install the provider that matches the installed Vitest major version:
+
+```bash
+npm install --save-dev @vitest/coverage-v8@^5
+npx vitest run --coverage
+```
+
+Add tests for new components, helpers and branches in the same PR that introduces them; reviewers look for untested behaviour rather than a fixed percentage.
 
 ---
 

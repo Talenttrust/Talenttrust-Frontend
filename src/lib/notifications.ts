@@ -1,4 +1,5 @@
 import type { WatchEventType } from './watchlist';
+import { createVersionedStore } from './safeStorage';
 
 export const NOTIFICATIONS_KEY = 'tt.notifications.v1';
 export const NOTIFICATIONS_VERSION = 1;
@@ -45,49 +46,21 @@ function isValidStore(value: unknown): value is NotificationsStore {
   return v.items.every(isValidItem);
 }
 
-const storage = (): Storage | null => {
-  try {
-    return typeof localStorage === 'undefined' ? null : localStorage;
-  } catch {
-    return null;
-  }
-};
+const notificationsStore = createVersionedStore<NotificationsStore>({
+  key: NOTIFICATIONS_KEY,
+  version: NOTIFICATIONS_VERSION,
+  validate: isValidStore,
+  empty: emptyStore,
+  maxItems: NOTIFICATIONS_MAX,
+  label: 'Notification',
+});
 
 export function loadNotifications(): NotificationsStore {
-  const s = storage();
-  if (!s) return emptyStore();
-  let raw: string | null = null;
-  try {
-    raw = s.getItem(NOTIFICATIONS_KEY);
-  } catch {
-    return emptyStore();
-  }
-  if (!raw) return emptyStore();
-  try {
-    const parsed = JSON.parse(raw);
-    if (!isValidStore(parsed)) {
-      console.warn('Notification data was in an unknown format and has been reset.');
-      saveNotifications(emptyStore());
-      return emptyStore();
-    }
-    return { version: parsed.version, items: parsed.items.slice(0, NOTIFICATIONS_MAX) };
-  } catch {
-    console.warn('Notification data was corrupt and has been reset.');
-    saveNotifications(emptyStore());
-    return emptyStore();
-  }
+  return notificationsStore.load();
 }
 
 export function saveNotifications(store: NotificationsStore): boolean {
-  const s = storage();
-  if (!s) return false;
-  try {
-    s.setItem(NOTIFICATIONS_KEY, JSON.stringify({ version: NOTIFICATIONS_VERSION, items: store.items }));
-    return true;
-  } catch {
-    console.warn('Could not persist notifications (storage full or unavailable).');
-    return false;
-  }
+  return notificationsStore.save(store);
 }
 
 let seq = 0;

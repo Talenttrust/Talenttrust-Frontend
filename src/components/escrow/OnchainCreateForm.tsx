@@ -1,11 +1,11 @@
 'use client';
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { site } from '@/lib/site';
 import { stroopsFromXlm, xlmFromStroops, StroopConversionError } from '@/lib/stellar/stroops';
 import { getWalletAddress, getWalletNetworkDetails } from '@/lib/stellar/createContract/freighter';
 import { buildCreateContractTx, TESTNET_PASSPHRASE, XLM_SAC_ID } from '@/lib/stellar/createContract/escrow';
 import { simulateSignSubmit } from '@/lib/stellar/createContract/submit';
+import { explorerTxUrl } from '@/lib/stellar/config';
 
 /** UX phases for the on-chain submit flow. */
 type OnchainPhase = 'idle' | 'simulating' | 'signing' | 'submitting' | 'confirmed' | 'error';
@@ -140,7 +140,7 @@ export function OnchainCreateForm() {
   };
 
   const inFlight = phase === 'simulating' || phase === 'signing' || phase === 'submitting';
-  const txExplorerUrl = (hash: string) => `https://stellar.expert/explorer/${site.network}/tx/${hash}`;
+  const txExplorerUrl = (hash: string) => explorerTxUrl(hash);
 
   return (
     <form onSubmit={submit} aria-label="New on-chain escrow" className="form stack" style={{ gap: 14 }}>
