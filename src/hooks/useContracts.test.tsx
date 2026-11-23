@@ -23,11 +23,13 @@ const contract = (over: Partial<EscrowContract> = {}): EscrowContract => ({
   ...over,
 });
 
-const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body } as Response);
+const ok = (body: unknown) =>
+  ({ ok: true, status: 200, json: async () => body, text: async () => JSON.stringify(body) } as Response);
 const fail = (status: number, message: string) => ({
   ok: false,
   status,
   json: async () => ({ message }),
+  text: async () => JSON.stringify({ message }),
 } as Response);
 
 const getCalls = () =>
@@ -109,6 +111,29 @@ describe('SWR data layer', () => {
     await screen.findByText(/error: Not found/);
     await new Promise((resolve) => setTimeout(resolve, 150));
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces the parse message when the list returns a non-JSON 200', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => '<!doctype html><title>Gateway</title>',
+    } as Response);
+
+    function ParseConsumer() {
+      const { error } = useContracts();
+      return <div>{error ? `${error.kind}: ${error.userMessage}` : 'pending'}</div>;
+    }
+
+    render(
+      <SwrProvider value={{ provider: () => new Map(), shouldRetryOnError: false }}>
+        <ParseConsumer />
+      </SwrProvider>,
+    );
+
+    expect(
+      await screen.findByText('parse: The TalentTrust API sent a response we could not read. Please try again.'),
+    ).toBeInTheDocument();
   });
 
   it('retries network errors', async () => {
