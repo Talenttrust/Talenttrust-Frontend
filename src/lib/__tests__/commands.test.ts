@@ -36,8 +36,20 @@ describe('commands library', () => {
       expect(parsed[0].href).toBe(`/reputation?address=${address}`);
     });
 
-    it('returns empty array for non-matching query', () => {
-      expect(parseDynamicCommands('hello world')).toEqual([]);
+    it('creates an escrow search command for a title query', () => {
+      const parsed = parseDynamicCommands('website redesign');
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].title).toBe('Search escrows for “website redesign”');
+      expect(parsed[0].href).toBe('/contracts?q=website%20redesign');
+      expect(parsed[0].category).toBe('Escrows');
+    });
+
+    it('creates an escrow search command for a party address query', () => {
+      const parsed = parseDynamicCommands('GABC123');
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].title).toBe('Search escrows for “GABC123”');
+      expect(parsed[0].href).toBe('/contracts?q=GABC123');
+      expect(parsed[0].category).toBe('Escrows');
     });
   });
 

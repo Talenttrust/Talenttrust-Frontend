@@ -65,6 +65,19 @@ export function parseDynamicCommands(query: string): CommandItem[] {
     });
   }
 
+  // The contracts dashboard searches titles, parties, tokens, and milestones.
+  // Offer that same search from the command palette for any other text query.
+  if (trimmed && !escrowMatch && !isStellarAddress) {
+    const encoded = encodeURIComponent(trimmed);
+    dynamic.push({
+      id: `dynamic-escrow-search-${trimmed.toLowerCase()}`,
+      title: `Search escrows for “${trimmed}”`,
+      subtitle: `/contracts?q=${encoded}`,
+      category: 'Escrows',
+      href: `/contracts?q=${encoded}`,
+    });
+  }
+
   return dynamic;
 }
 
