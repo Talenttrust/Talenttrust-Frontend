@@ -22,6 +22,7 @@ import {
   type FakeSoroban,
 } from '@/test/fakeSoroban';
 import type { OnChainEscrow } from '@/lib/stellar/escrow';
+import { escrowErrorMessage, parseContractError } from '@/lib/stellar/errors';
 
 // jsdom swaps in its own Uint8Array realm, which the SDK's XDR validation
 // rejects; restore Node's constructor before any transaction is built.
@@ -175,8 +176,7 @@ describe('on-chain actions flow (fake RPC + fake Freighter)', () => {
     const releaseButton = await renderAndLoad();
     fireEvent.click(releaseButton);
 
-    // Code 10 maps to 'InvalidStatus' via CONTRACT_ERRORS in submit.ts.
-    expect(await screen.findByRole('alert')).toHaveTextContent('InvalidStatus');
+    expect(await screen.findByRole('alert')).toHaveTextContent(escrowErrorMessage(10)!);
     expect(fake.calls).not.toContain('signTransaction');
     expect(fake.calls).not.toContain('sendTransaction');
   });
@@ -190,7 +190,7 @@ describe('on-chain actions flow (fake RPC + fake Freighter)', () => {
     fireEvent.click(releaseButton);
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Transaction cancelled by user.'
+      'Signature rejected: you cancelled the request in your wallet.'
     );
     expect(fake.calls).toContain('signTransaction');
     expect(fake.calls).not.toContain('sendTransaction');
@@ -218,7 +218,7 @@ describe('on-chain actions flow (fake RPC + fake Freighter)', () => {
       });
 
       expect(screen.getByRole('alert')).toHaveTextContent(
-        'RPC timeout: transaction not confirmed within 30 s.'
+        parseContractError(new Error('RPC timeout'))
       );
       expect(fake.calls).toContain('sendTransaction');
       expect(fake.calls.filter((c) => c === 'getTransaction').length).toBeGreaterThan(1);

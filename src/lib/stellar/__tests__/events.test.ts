@@ -1,16 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import { xdr } from '@stellar/stellar-sdk';
 import {
+  buildEscrowEventFilter,
+  compareEventsAsc,
   decodeEvent,
   describeEvent,
+  encodeEscrowTopic,
   EVENT_LOOKBACK_LEDGERS,
+  fetchEscrowEvents,
   fetchEventsSince,
   fetchRecentEvents,
   formatXlm,
   isCursorError,
   type FetchRecentEventsOptions,
 } from '@/lib/stellar/events';
-import { FIXTURE_CLIENT, FIXTURE_FREELANCER, rawEvent } from '@/test/eventFixtures';
+import { EVENT_XDR, FIXTURE_CLIENT, FIXTURE_FREELANCER, rawEvent } from '@/test/eventFixtures';
 
 describe('decodeEvent', () => {
   it.each([
@@ -211,5 +215,141 @@ describe('isCursorError', () => {
     expect(isCursorError(Object.assign(new Error('Service Unavailable'), { response: { status: 503 } }))).toBe(false);
     expect(isCursorError(null)).toBe(false);
     expect(isCursorError('cursor')).toBe(false);
+  });
+});
+
+describe('fetchEscrowEvents', () => {
+  const escrowTopic = (id: number) => [
+    xdr.ScVal.fromXDR(EVENT_XDR.deposit.topic[0], 'base64'),
+    xdr.ScVal.scvU64(BigInt(id)),
+  ];
+
+  it('encodes the escrow id as a u64 ScVal', () => {
+    expect(encodeEscrowTopic(4)).toBe('AAAABQAAAAAAAAAE');
+    expect(encodeEscrowTopic(4n)).toBe('AAAABQAAAAAAAAAE');
+    expect(encodeEscrowTopic('4')).toBe('AAAABQAAAAAAAAAE');
+  });
+
+  it('builds a [symbol, escrow id] topic filter', () => {
+    expect(buildEscrowEventFilter(4, 'CTEST')).toEqual({
+      type: 'contract',
+      contractIds: ['CTEST'],
+      topics: [['*'], ['AAAABQAAAAAAAAAE']],
+    });
+  });
+
+  it('queries only the requested escrow within the lookback window', async () => {
+    const server = fakeServer([{ events: [rawEvent('deposit', { ledger: 100 })], cursor: 'c1' }], 6_000_000);
+
+    const events = await fetchEscrowEvents(4, { server, contractId: 'CTEST' });
+
+    expect(server.getEvents).toHaveBeenCalledWith({
+      startLedger: 6_000_000 - EVENT_LOOKBACK_LEDGERS,
+      filters: [
+        {
+          type: 'contract',
+          contractIds: ['CTEST'],
+          topics: [['*'], ['AAAABQAAAAAAAAAE']],
+        },
+      ],
+      limit: 100,
+    });
+    expect(events.map((event) => event.type)).toEqual(['deposit']);
+  });
+
+  it('clamps the start ledger on young networks', async () => {
+    const server = fakeServer([{ events: [] }], 100);
+    await fetchEscrowEvents(4, { server });
+    expect(server.getEvents.mock.calls[0][0]).toMatchObject({ startLedger: 1 });
+  });
+
+  it('follows cursor pagination and returns events oldest first', async () => {
+    const first = Array.from({ length: 100 }, (_, i) => rawEvent('deposit', { ledger: 100 + i, id: `a-${i}` }));
+    const second = [rawEvent('release', { ledger: 400 }), rawEvent('rep', { ledger: 401 })];
+    const server = fakeServer(
+      [
+        { events: first, cursor: 'c1' },
+        { events: second, cursor: 'c2' },
+      ],
+      6_000_000,
+    );
+
+    const events = await fetchEscrowEvents(4, { server, contractId: 'CTEST' });
+
+    expect(server.getEvents).toHaveBeenCalledTimes(2);
+    expect(server.getEvents).toHaveBeenLastCalledWith({
+      cursor: 'c1',
+      filters: expect.any(Array),
+      limit: 100,
+    });
+    expect(events[0].ledger).toBe(100);
+    expect(events[events.length - 1].ledger).toBe(401);
+    expect(events.map((event) => event.ledger)).toEqual(
+      [...events.map((event) => event.ledger)].sort((a, b) => a - b),
+    );
+  });
+
+  it('de-duplicates events that appear on more than one page', async () => {
+    const repeated = rawEvent('deposit', { ledger: 200, id: 'same' });
+    const first = [
+      ...Array.from({ length: 99 }, (_, i) => rawEvent('deposit', { ledger: 100 + i, id: `a-${i}` })),
+      repeated,
+    ];
+    const second = [repeated, rawEvent('release', { ledger: 300 })];
+    const server = fakeServer(
+      [
+        { events: first, cursor: 'c1' },
+        { events: second, cursor: 'c2' },
+      ],
+      6_000_000,
+    );
+
+    const events = await fetchEscrowEvents(4, { server, contractId: 'CTEST' });
+
+    expect(events.filter((event) => event.id === 'same')).toHaveLength(1);
+  });
+
+  it('drops events that belong to a different escrow', async () => {
+    const server = fakeServer([
+      {
+        events: [
+          rawEvent('deposit', { ledger: 10 }),
+          rawEvent('deposit', { ledger: 11, topic: escrowTopic(5) }),
+        ],
+      },
+    ]);
+
+    const events = await fetchEscrowEvents(4, { server, contractId: 'CTEST' });
+
+    expect(events.map((event) => ('escrowId' in event ? event.escrowId : null))).toEqual([BigInt(4)]);
+  });
+
+  it('propagates RPC failures', async () => {
+    const server = fakeServer([]);
+    server.getEvents.mockRejectedValue(new Error('RPC down'));
+
+    await expect(fetchEscrowEvents(4, { server })).rejects.toThrow('RPC down');
+  });
+
+  it('rejects malformed responses', async () => {
+    const server = fakeServer([{ events: undefined as unknown as unknown[] }]);
+    await expect(fetchEscrowEvents(4, { server })).rejects.toThrow('Malformed getEvents response');
+  });
+
+  it('rejects invalid escrow ids and lookback values', async () => {
+    const server = fakeServer([]);
+
+    await expect(fetchEscrowEvents(-1, { server })).rejects.toBeInstanceOf(RangeError);
+    await expect(fetchEscrowEvents('abc', { server })).rejects.toBeInstanceOf(TypeError);
+    await expect(fetchEscrowEvents(4, { server, lookbackLedgers: -1 })).rejects.toBeInstanceOf(RangeError);
+    expect(server.getEvents).not.toHaveBeenCalled();
+  });
+});
+
+describe('compareEventsAsc', () => {
+  it('orders by ledger then event id', () => {
+    const older = decodeEvent(rawEvent('deposit', { ledger: 10, id: 'a' }));
+    const later = decodeEvent(rawEvent('deposit', { ledger: 20, id: 'b' }));
+    expect([later, older].sort(compareEventsAsc).map((event) => event.ledger)).toEqual([10, 20]);
   });
 });

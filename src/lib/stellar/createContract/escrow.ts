@@ -1,6 +1,9 @@
 /**
  * Builds an unsigned create_contract invocation transaction.
  *
+ * Note: dashboard list loading and mutations are handled by the SWR hooks
+ * (useContracts / useEscrowMutation); this module only builds transactions.
+ *
  * The contract signature is:
  *   create_contract(client: Address, freelancer: Address, token: Address,
  *                   milestone_amounts: Vec<i128>) -> u64
@@ -10,26 +13,31 @@
  */
 
 import {
-  Asset,
   Contract,
   TransactionBuilder,
-  Networks,
   BASE_FEE,
   nativeToScVal,
   Address,
   xdr,
 } from '@stellar/stellar-sdk';
 import { getRpcServer } from './rpcServer';
-import { site } from '@/lib/site';
-
-/** Testnet network passphrase — sourced from config, never from the wallet. */
-export const TESTNET_PASSPHRASE: string = Networks.TESTNET;
+import { stellarConfig } from '@/lib/stellar/config';
 
 /**
- * The Stellar Asset Contract id for native XLM on testnet, derived from the
- * network passphrase (never hard-coded).
+ * The network passphrase for the configured Stellar network.
+ * Sourced from the central config — never hard-coded to testnet.
+ *
+ * Re-exported as TESTNET_PASSPHRASE for backward compatibility with
+ * existing tests and consumers that import this name. The value is now
+ * network-aware; on testnet it still equals Networks.TESTNET.
  */
-export const XLM_SAC_ID: string = Asset.native().contractId(Networks.TESTNET);
+export const TESTNET_PASSPHRASE: string = stellarConfig.passphrase;
+
+/**
+ * The Stellar Asset Contract id for native XLM on the configured network,
+ * derived from the network passphrase (never hard-coded).
+ */
+export const XLM_SAC_ID: string = stellarConfig.nativeAssetContractId;
 
 export { getRpcServer } from './rpcServer';
 
@@ -40,7 +48,7 @@ export interface BuildCreateContractTxParams {
   freelancer: string;
   /**
    * Stellar Asset Contract id (C…) of the token.
-   * Defaults to the XLM SAC for the testnet passphrase.
+   * Defaults to the XLM SAC for the configured network passphrase.
    */
   token: string;
   /**
@@ -65,7 +73,7 @@ export async function buildCreateContractTx(
   const server = getRpcServer();
   const account = await server.getAccount(client);
 
-  const contract = new Contract(site.contractId);
+  const contract = new Contract(stellarConfig.contractId);
 
   // Encode arguments as Soroban ScVals
   const clientScVal = nativeToScVal(Address.fromString(client), { type: 'address' });

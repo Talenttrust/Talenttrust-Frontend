@@ -2,13 +2,25 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { site } from '@/lib/site';
+import type { ActivityEventType } from '@/lib/stellar/events';
 
 export const ACTIVITY_POLL_MS = 30_000;
 const MAX_ITEMS = 10;
 
+type FilterKey = 'all' | 'deposit' | 'release' | 'dispute' | 'rep';
+
+const FILTERS: Array<{ key: FilterKey; label: string; types: ActivityEventType[] | null }> = [
+  { key: 'all', label: 'All', types: null },
+  { key: 'deposit', label: 'Deposits', types: ['deposit'] },
+  { key: 'release', label: 'Releases', types: ['release'] },
+  { key: 'dispute', label: 'Disputes', types: ['dispute', 'resolved'] },
+  { key: 'rep', label: 'Ratings', types: ['rep'] },
+];
+
 interface FeedItem {
   key: string;
   id: string;
+  type: ActivityEventType;
   ledger: number;
   closedAt: string;
   txHash: string;
@@ -39,6 +51,7 @@ async function loadFeedItems(cursor?: string): Promise<LoadFeedResult> {
     items: result.events.map((e) => ({
       key: e.key,
       id: e.id,
+      type: e.type,
       ledger: e.ledger,
       closedAt: e.closedAt,
       txHash: e.txHash,
@@ -86,6 +99,7 @@ export function ActivityFeed({ pollIntervalMs = ACTIVITY_POLL_MS }: { pollInterv
   const [error, setError] = useState<string | null>(null);
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const [now, setNow] = useState(() => Date.now());
+  const [filter, setFilter] = useState<FilterKey>('all');
   const mounted = useRef(false);
   const inFlight = useRef(false);
   const loadedOnce = useRef(false);
@@ -164,6 +178,11 @@ export function ActivityFeed({ pollIntervalMs = ACTIVITY_POLL_MS }: { pollInterv
     };
   }, [load, pollIntervalMs]);
 
+  const activeFilter = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
+  const visibleItems = activeFilter.types
+    ? items.filter((item) => activeFilter.types!.includes(item.type))
+    : items;
+
   return (
     <section ref={sectionRef} className="activity" aria-labelledby="activity-heading">
       <div className="activity-head">
@@ -210,8 +229,30 @@ export function ActivityFeed({ pollIntervalMs = ACTIVITY_POLL_MS }: { pollInterv
       )}
 
       {status === 'ready' && items.length > 0 && (
+        <div className="activity-filters" role="group" aria-label="Filter activity by type">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              className="btn btn-secondary btn-sm"
+              aria-pressed={filter === f.key}
+              onClick={() => setFilter(f.key)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {status === 'ready' && items.length > 0 && visibleItems.length === 0 && (
+        <p className="activity-empty" role="status">
+          No {activeFilter.label.toLowerCase()} activity in the last 24h
+        </p>
+      )}
+
+      {status === 'ready' && visibleItems.length > 0 && (
         <ol className="activity-list" aria-labelledby="activity-heading">
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <li key={item.key} className={fresh.has(item.key) ? 'activity-item activity-new' : 'activity-item'}>
               <p className="activity-sentence">{item.sentence}</p>
               <p className="activity-meta">

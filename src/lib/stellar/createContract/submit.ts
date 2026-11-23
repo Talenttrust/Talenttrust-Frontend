@@ -7,8 +7,8 @@
  *   3. rpc.sendTransaction     — broadcasts the signed XDR
  *   4. poll rpc.getTransaction — waits up to 60 s for SUCCESS or FAILED
  *
- * The network passphrase is always taken from TESTNET_PASSPHRASE (config),
- * never from the wallet response, so a mismatch causes an early error.
+ * The network passphrase is always taken from stellarConfig, never from the
+ * wallet response, so a mismatch causes an early error.
  */
 
 import {
@@ -17,9 +17,10 @@ import {
   scValToNative,
 } from '@stellar/stellar-sdk';
 import { rpc as StellarRpc } from '@stellar/stellar-sdk';
-import { getRpcServer, TESTNET_PASSPHRASE } from './escrow';
+import { getRpcServer } from './escrow';
 import { signTransaction } from './freighter';
 import { parseContractError } from '../errors';
+import { stellarConfig } from '@/lib/stellar/config';
 
 export interface SubmitResult {
   /** Transaction hash on the network. */
@@ -44,37 +45,34 @@ const POLL_INTERVAL_MS = 3_000;
  * can display it directly without further parsing.
  */
 export async function simulateSignSubmit(tx: Transaction): Promise<SubmitResult> {
+  const networkPassphrase = stellarConfig.passphrase;
+  try {
+    return await submitTransaction(tx);
+  } catch (err) {
+    throw new Error(parseContractError(err));
+  }
+}
+
+async function submitTransaction(tx: Transaction): Promise<SubmitResult> {
   const server = getRpcServer();
 
   // ── 1. Simulate & prepare ────────────────────────────────────────────────
-  let prepared: Transaction;
-  try {
-    prepared = (await server.prepareTransaction(tx)) as Transaction;
-  } catch (err) {
-    throw new Error(parseContractError(err));
-  }
+  const prepared = (await server.prepareTransaction(tx)) as Transaction;
 
   // ── 2. Sign via wallet ───────────────────────────────────────────────────
   const xdrToSign = prepared.toXDR();
-  const { signedTxXdr, error: signError } = await signTransaction(xdrToSign, TESTNET_PASSPHRASE);
+  const { signedTxXdr, error: signError } = await signTransaction(xdrToSign, networkPassphrase);
   if (signError || !signedTxXdr) {
-    throw new Error(parseContractError(new Error(signError ?? 'Wallet returned an empty signature.')));
+    throw new Error(signError ?? 'Wallet returned an empty signature.');
   }
 
   // ── 3. Submit ────────────────────────────────────────────────────────────
-  const signedTx = TransactionBuilder.fromXDR(signedTxXdr, TESTNET_PASSPHRASE) as Transaction;
-  let sendResult: StellarRpc.Api.SendTransactionResponse;
-  try {
-    sendResult = await server.sendTransaction(signedTx);
-  } catch (err) {
-    throw new Error(parseContractError(err));
-  }
+  const signedTx = TransactionBuilder.fromXDR(signedTxXdr, networkPassphrase) as Transaction;
+  const sendResult = await server.sendTransaction(signedTx);
 
   if (sendResult.status === 'ERROR') {
     const detail = (sendResult as { errorResult?: { result?: () => unknown } }).errorResult;
-    throw new Error(
-      parseContractError(new Error(`Transaction rejected by the network: ${JSON.stringify(detail ?? sendResult.status)}`)),
-    );
+    throw new Error(`Transaction rejected by the network: ${JSON.stringify(detail ?? sendResult.status)}`);
   }
 
   const hash = sendResult.hash;
@@ -84,12 +82,7 @@ export async function simulateSignSubmit(tx: Transaction): Promise<SubmitResult>
   while (Date.now() < deadline) {
     await sleep(POLL_INTERVAL_MS);
 
-    let txStatus: StellarRpc.Api.GetTransactionResponse;
-    try {
-      txStatus = await server.getTransaction(hash);
-    } catch (err) {
-      throw new Error(parseContractError(err));
-    }
+    const txStatus = await server.getTransaction(hash);
 
     if (txStatus.status === StellarRpc.Api.GetTransactionStatus.SUCCESS) {
       // Decode the return value from the transaction's result metadata
@@ -99,21 +92,13 @@ export async function simulateSignSubmit(tx: Transaction): Promise<SubmitResult>
     }
 
     if (txStatus.status === StellarRpc.Api.GetTransactionStatus.FAILED) {
-      throw new Error(
-        parseContractError(
-          new Error(`Transaction failed on-chain. Hash: ${hash}`),
-        ),
-      );
+      throw new Error(`Transaction failed on-chain. Hash: ${hash}`);
     }
 
     // status === NOT_FOUND — still pending, keep polling
   }
 
-  throw new Error(
-    parseContractError(
-      new Error(`timeout: transaction not confirmed after ${POLL_TIMEOUT_MS / 1000}s. Hash: ${hash}`),
-    ),
-  );
+  throw new Error(`timeout: transaction not confirmed after ${POLL_TIMEOUT_MS / 1000}s. Hash: ${hash}`);
 }
 
 function sleep(ms: number): Promise<void> {

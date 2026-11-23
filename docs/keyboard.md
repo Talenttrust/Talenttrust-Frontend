@@ -1,96 +1,61 @@
 # Keyboard Interaction Reference
 
-Reference for keyboard shortcuts, dialog focus management, and screen-reader announcements in the TalentTrust frontend.
+This reference covers keyboard behavior implemented by the current dashboard, command palette, export menu, search field, dialogs, and toast notifications.
 
----
+## Dashboard shortcuts
 
-## Global & Dashboard Shortcuts
+The dashboard registers these single-key shortcuts through `useHotkeys`:
 
-| Shortcut | Action | Source |
-|----------|--------|--------|
-| `Ctrl+K` / `Cmd+K` | Open or close the command palette | `CommandPalette` (`src/components/palette/CommandPalette.tsx`) |
-| `j` | Focus next escrow card on the dashboard | `EscrowDashboard` via `useHotkeys` (`src/hooks/useHotkeys.ts`) |
-| `k` | Focus previous escrow card on the dashboard | `EscrowDashboard` via `useHotkeys` (`src/hooks/useHotkeys.ts`) |
-| `/` | Focus the escrow search input (`#escrow-search`) | `EscrowDashboard` via `useHotkeys` (`src/hooks/useHotkeys.ts`) |
-| `?` | Open the keyboard shortcuts dialog (`ShortcutsDialog`) | `EscrowDashboard` via `useHotkeys` (`src/hooks/useHotkeys.ts`) |
-| `Escape` | Clear search input (when focused in `EscrowToolbar`) or close active dialog/disclosure | `EscrowToolbar`, `CommandPalette`, `ConfirmDialog`, `DisputeDialog`, `ShortcutsDialog`, `useDisclosure` |
-| `Ctrl/Cmd + K` | Open / close command palette | `CommandPalette` (`src/components/palette/CommandPalette.tsx:98`) |
-| `j` | Focus next visible escrow card (roving focus) | `EscrowDashboard` (`src/components/EscrowDashboard.tsx`) |
-| `k` | Focus previous visible escrow card (roving focus) | `EscrowDashboard` (`src/components/EscrowDashboard.tsx`) |
-| `/` | Focus escrow search input | `EscrowDashboard` (`src/components/EscrowDashboard.tsx`) |
-| `?` | Open keyboard shortcuts help dialog | `ShortcutsDialog` (`src/components/ShortcutsDialog.tsx`) |
-| `Escape` | Clear search input or close open modal dialog | `EscrowToolbar`, `ShortcutsDialog`, `ConfirmDialog`, `CommandPalette` |
+| Key | Action | Source |
+|-----|--------|--------|
+| `j` | Focus the next visible escrow card | `src/components/EscrowDashboard.tsx`, `src/hooks/useHotkeys.ts` |
+| `k` | Focus the previous visible escrow card | `src/components/EscrowDashboard.tsx`, `src/hooks/useHotkeys.ts` |
+| `/` | Focus the escrow search field | `src/components/EscrowDashboard.tsx`, `src/components/escrow/EscrowToolbar.tsx` |
+| `?` | Open the keyboard shortcuts dialog | `src/components/EscrowDashboard.tsx`, `src/components/ShortcutsDialog.tsx` |
 
-Shortcuts registered through `useHotkeys` (`src/hooks/useHotkeys.ts`) are automatically ignored when focus is inside an `<input>`, `<textarea>`, `<select>`, or `contenteditable` element, when modifier keys (`Ctrl`, `Meta`, `Alt`) are held, or when a native `<dialog open>` is active.
-## Dashboard roving-focus & hotkeys (`useHotkeys`)
+These shortcuts are ignored while focus is in an input, textarea, select, or editable content; while `Ctrl`, `Meta`, or `Alt` is held; and while a native dialog is open. The shortcuts dialog focuses its Close button when opened, closes with `Escape`, and restores focus to the element that was active before it opened.
 
-The escrow dashboard registers single-key shortcuts through `useHotkeys` (`src/hooks/useHotkeys.ts`):
+## Command palette
 
-- **Input suppression**: Shortcuts are ignored whenever focus is inside an `<input>`, `<textarea>`, `<select>`, or `contenteditable` element, or when `Ctrl`, `Meta`, or `Alt` is held.
-- **Dialog suppression**: Shortcuts are ignored while any native `<dialog>` element is open (`dialog[open]`).
-- **Roving card navigation (`j` / `k`)**: Each `EscrowCard` renders an `<article tabIndex={-1} aria-labelledby="escrow-heading-{id}">` with a visible focus ring. Pressing `j` moves focus to the next visible card on the current page (or the first card if none is focused); pressing `k` moves focus to the previous visible card.
-- **Screen-reader position announcement**: Moving focus between cards updates the polite live region (`data-testid="escrow-live-announcer"`) with `"Escrow {position} of {count}"` (e.g. `"Escrow 3 of 10"`).
-- **Focus search (`/`)**: Moves focus directly to `#escrow-search`.
-- **Shortcuts help (`?`)**: Opens `ShortcutsDialog` (`src/components/ShortcutsDialog.tsx`), a native modal `<dialog>` listing available shortcuts, and restores focus to the previously focused element when closed.
+Implemented in `src/components/palette/CommandPalette.tsx`.
 
----
+| Key | Action |
+|-----|--------|
+| `Ctrl+K` / `Cmd+K` | Open or close the palette. The shortcut is ignored when invoked from another input, textarea, or editable element outside the palette. |
+| `ArrowDown` / `ArrowUp` | Move the selected command down or up, wrapping at either end. |
+| `Home` / `End` | Select the first or last command. |
+| `Enter` | Run the selected command. |
+| `Escape` | Close the palette. |
 
+Opening the palette focuses its search field. Closing it restores focus to the element that opened it, including when closed with `Escape` or after running a command.
 
----
+## Export menu
 
-## Component Keyboard Interactions
+Implemented in `src/components/escrow/ExportMenu.tsx`.
 
-### `CommandPalette` (`src/components/palette/CommandPalette.tsx`)
+| Key | Action |
+|-----|--------|
+| `ArrowDown` on the trigger | Open the menu and focus the first item. |
+| `ArrowUp` on the trigger | Open the menu and focus the last item. |
+| `ArrowDown` / `ArrowUp` in the menu | Move focus between the export items, wrapping at either end. |
+| `Home` / `End` in the menu | Focus the first or last item. |
+| `Escape` in the menu | Close the menu and return focus to the Export CSV button. |
+| `Tab` in the menu | Close the menu and allow normal tab progression. |
 
-| Key | Behavior |
-|-----|----------|
-| `ArrowDown` / `ArrowUp` | Move active selection down or up through filtered commands (wraps) |
-| `Home` / `End` | Jump to first or last command |
-| `Enter` | Execute selected command (navigate, copy contract ID, or open API docs) |
-| `Escape` | Close palette and return focus to trigger |
+Choosing an export also closes the menu and returns focus to its trigger. Clicking outside closes it without an explicit focus change.
 
-### `ExportMenu` (`src/components/escrow/ExportMenu.tsx`)
+## Search field
 
-| Key | Behavior |
-|-----|----------|
-| `ArrowDown` / `ArrowUp` (on trigger) | Open menu and focus first / last menu item |
-| `ArrowDown` / `ArrowUp` (in menu) | Cycle focus between `Escrows` and `Milestones` CSV options |
-| `Home` / `End` | Focus first / last menu item |
-| `Escape` | Close menu and restore focus to the `Export CSV` button |
-| `Tab` | Close menu and allow normal tab progression |
+The search input in `src/components/escrow/EscrowToolbar.tsx` handles `Escape` only when the search value is non-empty: it prevents the default action and clears the query. Focus remains in the search field. With an empty query, the field does not handle `Escape`.
 
-### `ViewFilterControl` (`src/components/ViewFilterControl.tsx`)
+## Dialogs and disclosures
 
-Implements a WAI-ARIA `role="radiogroup"` with roving `tabIndex`:
+- `src/components/ui/ConfirmDialog.tsx` handles `Escape` as Cancel. The danger variant initially focuses its safe Cancel button; the default variant initially focuses Confirm. When used through `src/components/ui/ConfirmProvider.tsx`, closing restores focus to the element active before the confirmation was opened.
+- `src/hooks/useDisclosure.ts` closes an open disclosure on `Escape` and returns focus to its trigger.
+- The command palette and keyboard shortcuts dialog also close on `Escape`; their focus behavior is described above.
 
-| Key | Behavior |
-|-----|----------|
-| `ArrowRight` / `ArrowDown` | Focus and select next view filter (`All`, `As client`, `As freelancer`) |
-| `ArrowLeft` / `ArrowUp` | Focus and select previous view filter |
+## Screen-reader announcements
 
-### `StarRating` (`src/components/reputation/StarRating.tsx`)
-
-Implements a WAI-ARIA `role="radiogroup"` (1 to 5 stars):
-
-| Key | Behavior |
-|-----|----------|
-| `ArrowRight` / `ArrowUp` | Increase rating selection up to 5 |
-| `ArrowLeft` / `ArrowDown` | Decrease rating selection down to 1 |
-| `Home` / `End` | Select 1 star / 5 stars |
-| `Space` / `Enter` | Select currently focused star |
-
----
-
-## Dialogs & Disclosure Focus Management
-
-- **Native `<dialog>` modals**: `CommandPalette`, `ConfirmDialog` (`src/components/ui/ConfirmDialog.tsx`), `DisputeDialog` (`src/components/disputes/DisputeDialog.tsx`), and `ShortcutsDialog` (`src/components/ShortcutsDialog.tsx`) use native `<dialog>` elements with `showModal()`, `Escape` handling, and focus restoration to the triggering control on close.
-- **Disclosure widgets**: `Header` mobile navigation uses `useDisclosure` (`src/hooks/useDisclosure.ts`), which closes on `Escape` (restoring focus to the menu button), outside pointer-down, or focus leaving the panel. `NotificationBell` (`src/components/NotificationBell.tsx`) and `WalletButton` (`src/components/wallet/WalletButton.tsx`) close on `Escape` or outside click and return focus to their trigger buttons.
-
----
-
-## Screen-Reader Live Regions
-
-- **`EscrowDashboard`** (`src/components/EscrowDashboard.tsx`): Announces card navigation (`Escrow X of Y`), mutation progress (`Creating escrow…`, `Funding escrow…`, `Milestone released`), and result counts via `aria-live="polite"`.
-- **`ToastProvider`** (`src/components/toast/ToastProvider.tsx`): Renders `role="status" aria-live="polite"` for success/info toasts and `role="alert" aria-live="assertive"` for error toasts.
-- **`NotificationsProvider` / `NotificationBell`** (`src/components/NotificationsProvider.tsx`, `src/components/NotificationBell.tsx`): Announces new watched-escrow events and read/clear actions via an `sr-only` `aria-live="polite"` span.
-- **`MilestoneBuilder`** (`src/components/MilestoneBuilder.tsx`): Announces row additions, removals, reorderings, and live total in XLM via `aria-live="polite"`.
+- `src/components/EscrowDashboard.tsx` has a polite live region. It announces the focused escrow's position when navigating cards with `j` / `k` and announces dashboard feedback set by its actions.
+- `src/components/palette/CommandPalette.tsx` has a polite status region for action feedback, such as copying the contract ID or opening API documentation.
+- `src/components/toast/ToastProvider.tsx` places success and informational toasts in a `role="status"` polite live region and error toasts in a `role="alert"` assertive live region. A focused toast can be dismissed with `Escape`.

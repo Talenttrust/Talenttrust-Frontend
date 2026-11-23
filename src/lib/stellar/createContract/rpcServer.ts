@@ -1,16 +1,11 @@
 import { rpc as StellarRpc } from '@stellar/stellar-sdk';
+import { stellarConfig } from '@/lib/stellar/config';
 
 /**
- * The Soroban RPC endpoint for Stellar testnet.
- * We read this from an env var so CI can override it, but default to the
- * public SDF endpoint. The contract id comes exclusively from site.ts.
+ * Returns a Soroban RPC server pointed at the configured endpoint.
+ * The URL is resolved once from stellarConfig (which reads env vars and
+ * applies fallbacks), so this module has no direct env-var reads.
  */
-const RPC_URL =
-  (process.env.NEXT_PUBLIC_SOROBAN_RPC_URL ?? 'https://soroban-testnet.stellar.org').replace(
-    /\/$/,
-    '',
-  );
-
 export function getRpcServer(): StellarRpc.Server {
-  return new StellarRpc.Server(RPC_URL, { allowHttp: false });
+  return new StellarRpc.Server(stellarConfig.rpcUrl, { allowHttp: false });
 }

@@ -200,4 +200,11 @@ describe('EscrowCard Accessible Names for Action Buttons', () => {
     expect(onRate).toHaveBeenCalledTimes(1);
     expect(onRate).toHaveBeenCalledWith(mockCompletedContract, 5);
   });
+
+  it('links to the escrow activity timeline', () => {
+    render(<EscrowCard contract={mockCreatedContract} />);
+
+    const link = screen.getByRole('link', { name: /view on-chain activity for escrow #4/i });
+    expect(link).toHaveAttribute('href', '/contracts/4/activity');
+  });
 });

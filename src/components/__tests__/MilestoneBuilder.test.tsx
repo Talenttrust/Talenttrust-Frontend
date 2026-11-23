@@ -161,3 +161,76 @@ describe('EscrowDashboard create form with the milestone builder', () => {
     expect(await screen.findByRole('alert')).toHaveAttribute('title', 'invalid milestones');
   });
 });
+
+describe('MilestoneBuilder CSV import', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'confirm', {
+      configurable: true,
+      value: vi.fn(() => true),
+    });
+  });
+
+  const upload = async (text: string, name = 'milestones.csv') => {
+    const user = userEvent.setup();
+    const file = new File([text], name, { type: 'text/csv' });
+    await user.upload(screen.getByLabelText('Choose a milestone CSV file'), file);
+  };
+
+  it('offers an Import CSV button and a downloadable template', () => {
+    render(<Harness initial={rows(['Design', '300'])} />);
+
+    expect(screen.getByRole('button', { name: 'Import CSV' })).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Download template' });
+    expect(link).toHaveAttribute('download', 'milestones-template.csv');
+    const href = decodeURIComponent(link.getAttribute('href') ?? '');
+    expect(href).toContain('title,amount');
+    expect(href).toContain('Design,300');
+  });
+
+  it('imports a valid CSV after confirmation and announces success', async () => {
+    render(<Harness initial={rows(['Existing', '1'])} />);
+
+    await upload('title,amount\nDesign,300\nBuild,700\n');
+
+    await waitFor(() => expect(screen.getByLabelText('Milestone 1 title')).toHaveValue('Design'));
+    expect(screen.getByLabelText('Milestone 2 title')).toHaveValue('Build');
+    expect(screen.getByLabelText('Milestone 1 amount (XLM)')).toHaveValue('300');
+    expect(screen.getByText('Imported 2 milestones.')).toBeInTheDocument();
+    expect(window.confirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps existing rows when the replacement is cancelled', async () => {
+    vi.mocked(window.confirm).mockReturnValue(false);
+    render(<Harness initial={rows(['Existing', '1'])} />);
+
+    await upload('title,amount\nDesign,300\n');
+
+    await waitFor(() =>
+      expect(screen.getByText('Import cancelled. Existing milestones were kept.')).toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText('Milestone 1 title')).toHaveValue('Existing');
+  });
+
+  it('shows line-level errors and leaves the builder untouched', async () => {
+    render(<Harness initial={rows(['Existing', '1'])} />);
+
+    await upload('title,amount\n,300\nDesign,abc\n', 'bad.csv');
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Line 2: Enter a milestone title.');
+    expect(alert).toHaveTextContent('Line 3: Enter a number, for example 300 or 12.5.');
+    expect(screen.getByLabelText('Milestone 1 title')).toHaveValue('Existing');
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(screen.getByText('Import failed with 2 errors.')).toBeInTheDocument();
+  });
+
+  it('reports malformed files without changing the builder', async () => {
+    render(<Harness initial={rows(['Existing', '1'])} />);
+
+    await upload('title,amount\n"Design,300\n', 'unclosed.csv');
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Line 2: Unclosed quoted field.');
+    expect(screen.getByLabelText('Milestone 1 title')).toHaveValue('Existing');
+  });
+});

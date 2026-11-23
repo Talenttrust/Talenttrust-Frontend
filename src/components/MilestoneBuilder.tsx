@@ -1,11 +1,22 @@
 'use client';
 
 import { useId, useRef, useState } from 'react';
+import { toCsv } from '@/lib/csv';
+import type { MilestoneImportError } from '@/lib/milestoneImport';
 
 export const MAX_MILESTONE_TITLE_LENGTH = 80;
 export const MAX_MILESTONES = 20;
 /** Stellar amounts have at most 7 decimal places (1 stroop = 0.0000001). */
 export const MAX_AMOUNT_DECIMALS = 7;
+
+const MILESTONE_CSV_TEMPLATE = toCsv(
+  ['title', 'amount'],
+  [
+    ['Design', '300'],
+    ['Build', '700'],
+  ],
+);
+const MILESTONE_CSV_TEMPLATE_HREF = `data:text/csv;charset=utf-8,${encodeURIComponent(MILESTONE_CSV_TEMPLATE)}`;
 
 export interface MilestoneInput {
   id: string;
@@ -29,6 +40,16 @@ let nextId = 0;
 export function newMilestone(title = '', amount = ''): MilestoneInput {
   nextId += 1;
   return { id: `milestone-${nextId}`, title, amount };
+}
+
+function readFileText(file: File): Promise<string> {
+  if (typeof file.text === 'function') return file.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error ?? new Error('Could not read file'));
+    reader.readAsText(file);
+  });
 }
 
 const AMOUNT_RE = new RegExp(`^\\d+(?:\\.\\d{1,${MAX_AMOUNT_DECIMALS}})?$`);
@@ -94,8 +115,10 @@ export interface MilestoneBuilderProps {
 export function MilestoneBuilder({ milestones, onChange, currencySymbol = 'XLM', errors }: MilestoneBuilderProps) {
   const uid = useId();
   const [announcement, setAnnouncement] = useState('');
+  const [importErrors, setImportErrors] = useState<MilestoneImportError[]>([]);
   const addRef = useRef<HTMLButtonElement>(null);
   const rowsRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const label = (row: MilestoneInput, index: number) =>
     `milestone ${index + 1}${row.title.trim() ? `: ${row.title.trim()}` : ''}`;
@@ -137,6 +160,47 @@ export function MilestoneBuilder({ milestones, onChange, currencySymbol = 'XLM',
     onChange(next);
     setAnnouncement(`Moved ${label(milestones[index], index)} to position ${target + 1}.`);
     focusTitle(target);
+  };
+
+  const importCsv = async (file: File) => {
+    setImportErrors([]);
+    setAnnouncement('');
+
+    let text: string;
+    try {
+      text = await readFileText(file);
+    } catch {
+      const message = 'Could not read the selected file.';
+      setImportErrors([{ line: 1, message }]);
+      setAnnouncement(`Import failed. ${message}`);
+      return;
+    }
+
+    const { parseMilestoneCsv } = await import('@/lib/milestoneImport');
+    const result = parseMilestoneCsv(text);
+
+    if (result.errors.length > 0) {
+      setImportErrors(result.errors);
+      setAnnouncement(
+        `Import failed with ${result.errors.length} error${result.errors.length === 1 ? '' : 's'}.`,
+      );
+      return;
+    }
+
+    if (
+      milestones.length > 0 &&
+      !window.confirm(
+        `Replace the current ${milestones.length} milestone${milestones.length === 1 ? '' : 's'} with ${result.rows.length} imported milestone${result.rows.length === 1 ? '' : 's'}?`,
+      )
+    ) {
+      setAnnouncement('Import cancelled. Existing milestones were kept.');
+      return;
+    }
+
+    onChange(result.rows);
+    setAnnouncement(
+      `Imported ${result.rows.length} milestone${result.rows.length === 1 ? '' : 's'}.`,
+    );
   };
 
   const total = formatStroops(totalStroops(milestones));
@@ -241,6 +305,46 @@ export function MilestoneBuilder({ milestones, onChange, currencySymbol = 'XLM',
         <span id={limitId} className="small muted">
           An escrow can have at most {MAX_MILESTONES} milestones.
         </span>
+      )}
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => fileRef.current?.click()}
+        >
+          Import CSV
+        </button>
+        <a
+          href={MILESTONE_CSV_TEMPLATE_HREF}
+          download="milestones-template.csv"
+          className="btn btn-secondary btn-sm"
+        >
+          Download template
+        </a>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".csv,text/csv"
+          className="sr-only"
+          aria-label="Choose a milestone CSV file"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            if (file) void importCsv(file);
+          }}
+        />
+      </div>
+      {importErrors.length > 0 && (
+        <div className="field-error" role="alert">
+          <p>Fix these CSV problems and try again:</p>
+          <ul>
+            {importErrors.map((error, index) => (
+              <li key={`${error.line}-${index}`}>
+                Line {error.line}: {error.message}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <p className="small milestone-total" aria-live="polite">
         {milestones.length} {milestones.length === 1 ? 'milestone' : 'milestones'} · Total {total} {currencySymbol}

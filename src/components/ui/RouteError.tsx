@@ -1,15 +1,25 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { reportError } from '../../lib/errorReporter';
 
 export interface RouteErrorProps {
   error: Error & { digest?: string };
   reset: () => void;
+  context?: Record<string, unknown>;
 }
 
-export function RouteError({ error, reset }: RouteErrorProps) {
+export function RouteError({ error, reset, context }: RouteErrorProps) {
   const heading = useRef<HTMLHeadingElement>(null);
+  const reported = useRef(false);
   const isDev = process.env.NODE_ENV === 'development';
+
+  useEffect(() => {
+    if (!reported.current) {
+      reported.current = true;
+      reportError(error, { source: 'route-error', digest: error.digest, ...context });
+    }
+  }, [error, context]);
 
   useEffect(() => {
     heading.current?.focus();

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import StatusClient from './StatusClient';
@@ -58,8 +58,8 @@ describe('StatusClient', () => {
     expect(screen.getAllByText('Operational')).toHaveLength(4);
     expect(screen.getAllByText('12ms').length).toBeGreaterThan(0);
     expect(screen.getByText(/Last checked:/)).toBeInTheDocument();
-    expect(rpc).toHaveBeenCalledWith('https://rpc.example.com');
-    expect(contract).toHaveBeenCalledWith('https://rpc.example.com');
+    expect(rpc).toHaveBeenCalledWith('https://rpc.example.com', expect.any(AbortSignal));
+    expect(contract).toHaveBeenCalledWith('https://rpc.example.com', expect.any(AbortSignal));
   });
 
   it('marks the results region as a polite live region', async () => {
@@ -120,7 +120,7 @@ describe('StatusClient', () => {
     await waitFor(() =>
       expect(screen.getByTestId('status-banner')).toHaveTextContent(/Partial outage/),
     );
-    expect(rpc).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\//));
+    expect(rpc).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\//), expect.any(AbortSignal));
     expect(contract).toHaveBeenCalled();
   });
 
@@ -155,5 +155,119 @@ describe('StatusClient', () => {
     await screen.findByTestId('status-banner');
     await waitFor(() => expect(screen.getByTestId('status-checks')).toHaveAttribute('aria-busy', 'false'));
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  describe('auto-refresh visibility, offline handling, and unmount abort', () => {
+    const setVisibility = (state: DocumentVisibilityState) => {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: state,
+      });
+    };
+
+    const setNavigatorOnline = (online: boolean) => {
+      Object.defineProperty(navigator, 'onLine', {
+        configurable: true,
+        value: online,
+      });
+    };
+
+    afterEach(() => {
+      vi.useRealTimers();
+      setVisibility('visible');
+      setNavigatorOnline(true);
+    });
+
+    it('skips scheduled refreshes while the tab is hidden and refreshes when visible after the interval', async () => {
+      vi.useFakeTimers();
+      setVisibility('visible');
+      setNavigatorOnline(true);
+
+      render(<StatusClient />);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(api).toHaveBeenCalledTimes(1);
+
+      // Hide the tab and advance past multiple refresh intervals.
+      setVisibility('hidden');
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(90_000);
+        await Promise.resolve();
+      });
+      expect(api).toHaveBeenCalledTimes(1);
+
+      // Returning to visible after >= 30s triggers an immediate refresh.
+      setVisibility('visible');
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'));
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(api).toHaveBeenCalledTimes(2);
+    });
+
+    it('shows an offline notice instead of checking and does not mark services down', async () => {
+      vi.useFakeTimers();
+      setVisibility('visible');
+      setNavigatorOnline(true);
+
+      render(<StatusClient />);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(api).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('status-banner')).toHaveTextContent('All systems operational');
+
+      // Go offline and advance past the refresh interval.
+      setNavigatorOnline(false);
+      act(() => {
+        window.dispatchEvent(new Event('offline'));
+      });
+
+      expect(screen.getByTestId('offline-notice')).toHaveTextContent(
+        'You are offline - results may be outdated',
+      );
+      expect(screen.getByTestId('status-banner')).toHaveTextContent('All systems operational');
+
+      await act(async () => {
+        vi.advanceTimersByTime(60_000);
+        await Promise.resolve();
+      });
+      expect(api).toHaveBeenCalledTimes(1);
+
+      // Coming back online hides the notice and refreshes stale results.
+      setNavigatorOnline(true);
+      await act(async () => {
+        window.dispatchEvent(new Event('online'));
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.queryByTestId('offline-notice')).not.toBeInTheDocument();
+      expect(api).toHaveBeenCalledTimes(2);
+    });
+
+    it('aborts in-flight checks on unmount', async () => {
+      let capturedSignal: AbortSignal | undefined;
+      api.mockImplementation((signal) => {
+        capturedSignal = signal;
+        return new Promise(() => {
+          // Intentionally unresolved to keep the check in-flight.
+        });
+      });
+
+      const { unmount } = render(<StatusClient />);
+      await waitFor(() => expect(capturedSignal).toBeDefined());
+      expect(capturedSignal?.aborted).toBe(false);
+
+      unmount();
+      expect(capturedSignal?.aborted).toBe(true);
+    });
   });
 });
