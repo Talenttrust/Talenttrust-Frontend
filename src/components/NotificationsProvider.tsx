@@ -11,8 +11,10 @@ import {
   markRead,
   NotificationsStore,
   saveNotifications,
+  snapshotKey,
   unreadCount,
 } from '@/lib/notifications';
+import { acquireLeadership, Leadership, TabLeaderOptions } from '@/lib/tabLeader';
 import {
   loadStore,
   saveStore,
@@ -67,12 +69,17 @@ interface NotificationsContextValue {
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 
+/** Leadership lock/lease name shared by every tab's poller. */
+export const POLLER_LEADER_NAME = 'tt.poller';
+
 export interface NotificationsProviderProps {
   children: React.ReactNode;
   poller?: Partial<Omit<PollerOptions, 'onEvents' | 'onRemoved'>>;
+  /** Seam for tab-leader election (lock manager, storage, timers); lets tests simulate several tabs. */
+  tabLeader?: TabLeaderOptions;
 }
 
-export function NotificationsProvider({ children, poller }: NotificationsProviderProps) {
+export function NotificationsProvider({ children, poller, tabLeader }: NotificationsProviderProps) {
   const [notifications, setNotifications] = useState<NotificationsStore>({ version: 1, items: [] });
   const [watchStore, setWatchStore] = useState<WatchStore>({ version: 1, items: [] });
   const [announcement, setAnnouncement] = useState('');
@@ -113,39 +120,56 @@ export function NotificationsProvider({ children, poller }: NotificationsProvide
     return () => window.removeEventListener('storage', onStorage);
   }, [refresh]);
 
-  // Background poller.
+  // Background poller, run only by the leader tab. Other tabs receive its
+  // notifications through the `storage` listener above. Tabs only compete for
+  // leadership while visible: the poller skips hidden ticks, so a hidden leader
+  // would otherwise stop updates for every tab.
   useEffect(() => {
-    const stop = startPoller({
+    const isVisible =
+      poller?.isVisible ?? (() => typeof document === 'undefined' || document.visibilityState === 'visible');
+    const addVisibilityListener =
+      poller?.addVisibilityListener ??
+      ((fn: () => void) => {
+        document.addEventListener('visibilitychange', fn);
+        return () => document.removeEventListener('visibilitychange', fn);
+      });
+
+    // Appends to the latest stored notifications (another tab may have written
+    // since this one last rendered). Returns false for a duplicate.
+    const append = (item: Parameters<typeof appendNotification>[1]): boolean => {
+      const current = loadNotifications();
+      const next = appendNotification(current, item);
+      if (next === current) {
+        if (notificationsRef.current !== current) {
+          notificationsRef.current = current;
+          setNotifications(current);
+        }
+        return false;
+      }
+      saveNotifications(next);
+      notificationsRef.current = next;
+      setNotifications(next);
+      return true;
+    };
+
+    const pollerOptions: PollerOptions = {
       ...poller,
       intervalMs: poller?.intervalMs ?? POLL_INTERVAL_MS,
       fetchContract: poller?.fetchContract ?? ((id) => fetchContractById(id)),
       loadStore: poller?.loadStore ?? loadStore,
       saveStore: poller?.saveStore ?? saveStore,
+      isVisible,
       onEvents: (id: number, events: WatchEvent[], contract: EscrowContract) => {
-        let next = notificationsRef.current;
+        const snapshot = snapshotKey(snapshotOf(contract));
+        let lastTitle = '';
         for (const event of events) {
           const message = `${contract.title ? `#${id} ${contract.title}: ` : `#${id}: `}${event.message}`;
-          next = appendNotification(next, {
-            escrowId: id,
-            type: event.type,
-            title: event.title,
-            message,
-          });
-          notifyDesktop(
-            {
-              escrowId: id,
-              type: event.type,
-              title: event.title,
-              message,
-            },
-            desktopSettingsRef.current,
-          );
+          const item = { escrowId: id, type: event.type, title: event.title, message };
+          if (!append({ ...item, snapshot })) continue;
+          lastTitle = event.title;
+          notifyDesktop(item, desktopSettingsRef.current);
         }
-        saveNotifications(next);
-        notificationsRef.current = next;
-        setNotifications(next);
-        const last = events[events.length - 1];
-        if (last) setAnnouncement(`${last.title}. ${unreadCount(next)} unread.`);
+        if (lastTitle) setAnnouncement(`${lastTitle}. ${unreadCount(notificationsRef.current)} unread.`);
       },
       onError: (info: PollErrorInfo) => {
         poller?.onError?.(info);
@@ -168,25 +192,47 @@ export function NotificationsProvider({ children, poller }: NotificationsProvide
         const next = unwatch(id);
         setWatchStore(next);
         const message = `Escrow #${id} is no longer available and was removed from your watchlist.`;
-        const withNotice = appendNotification(notificationsRef.current, {
-          escrowId: id,
-          type: 'cancelled',
-          title: 'Escrow removed',
-          message,
-        });
-        saveNotifications(withNotice);
-        notificationsRef.current = withNotice;
-        setNotifications(withNotice);
-        setAnnouncement(message);
+        if (append({ escrowId: id, type: 'cancelled', title: 'Escrow removed', message, snapshot: 'removed' })) {
+          setAnnouncement(message);
+        }
       },
-      addVisibilityListener:
-        poller?.addVisibilityListener ??
-        ((fn) => {
-          document.addEventListener('visibilitychange', fn);
-          return () => document.removeEventListener('visibilitychange', fn);
-        }),
-    });
-    return stop;
+      addVisibilityListener,
+    };
+
+    let leadership: Leadership | null = null;
+    let stopPoller: (() => void) | null = null;
+    let hasLed = false;
+
+    const onLeaderChange = (leader: boolean) => {
+      if (leader && !stopPoller) {
+        // On a takeover, check right away instead of waiting a full interval.
+        stopPoller = startPoller({ ...pollerOptions, initialDelayMs: hasLed ? 0 : poller?.initialDelayMs });
+        hasLed = true;
+      } else if (!leader && stopPoller) {
+        stopPoller();
+        stopPoller = null;
+      }
+    };
+
+    const syncLeadership = () => {
+      if (isVisible()) {
+        if (!leadership || leadership.released) {
+          leadership = acquireLeadership(POLLER_LEADER_NAME, { ...tabLeader, onChange: onLeaderChange });
+        }
+      } else if (leadership) {
+        leadership.release();
+        leadership = null;
+      }
+    };
+
+    syncLeadership();
+    const removeVisibilityListener = addVisibilityListener(syncLeadership);
+    return () => {
+      removeVisibilityListener();
+      leadership?.release();
+      stopPoller?.();
+      stopPoller = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -317,19 +363,22 @@ export function NotificationsProvider({ children, poller }: NotificationsProvide
       updatesPaused: stale && !staleDismissed,
       dismissUpdatesPaused,
     }),
-    [notifications, watchStore, toggleWatch, doMarkAllRead, doMarkRead, doDismiss, doClear, announcement],
-    [notifications, watchStore, toggleWatch, doMarkAllRead, doClear, announcement, stale, staleDismissed, dismissUpdatesPaused],
     [
       notifications,
       watchStore,
       toggleWatch,
       doMarkAllRead,
+      doMarkRead,
+      doDismiss,
       doClear,
       announcement,
       desktopSettings,
       desktopPermission,
       setDesktopEnabled,
       toggleDesktopType,
+      stale,
+      staleDismissed,
+      dismissUpdatesPaused,
     ],
   );
 

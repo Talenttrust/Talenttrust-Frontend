@@ -1,8 +1,10 @@
-import type { WatchEventType } from './watchlist';
+import type { Snapshot, WatchEventType } from './watchlist';
 
 export const NOTIFICATIONS_KEY = 'tt.notifications.v1';
 export const NOTIFICATIONS_VERSION = 1;
 export const NOTIFICATIONS_MAX = 100;
+/** A repeat of the same event for the same escrow state within this window is dropped. */
+export const NOTIFICATION_DEDUPE_WINDOW_MS = 5 * 60 * 1000;
 
 export interface NotificationItem {
   id: string;
@@ -12,6 +14,11 @@ export interface NotificationItem {
   message: string;
   createdAt: number;
   read: boolean;
+  /**
+   * Key of the escrow state that produced this notification (see `snapshotKey`).
+   * Used to drop duplicates, for example when two tabs report the same change.
+   */
+  snapshot?: string;
 }
 
 export interface NotificationsStore {
@@ -33,7 +40,8 @@ function isValidItem(value: unknown): value is NotificationItem {
     typeof v.title === 'string' &&
     typeof v.message === 'string' &&
     typeof v.createdAt === 'number' &&
-    typeof v.read === 'boolean'
+    typeof v.read === 'boolean' &&
+    (v.snapshot === undefined || typeof v.snapshot === 'string')
   );
 }
 
@@ -96,18 +104,51 @@ export function makeNotificationId(escrowId: number, type: string, now = Date.no
   return `${escrowId}:${type}:${now}:${seq}`;
 }
 
+/** Stable key for an escrow snapshot, used to de-duplicate notifications. */
+export function snapshotKey(snapshot: Snapshot): string {
+  return `${snapshot.status}|${snapshot.fundedAmount}|${snapshot.releasedIdx.join(',')}`;
+}
+
+/** True when `store` already has this event for the same escrow state within the dedupe window. */
+export function isDuplicateNotification(
+  store: NotificationsStore,
+  item: Pick<NotificationItem, 'escrowId' | 'type' | 'message'> & { snapshot?: string; createdAt?: number },
+  windowMs: number = NOTIFICATION_DEDUPE_WINDOW_MS,
+): boolean {
+  if (item.snapshot === undefined) return false;
+  const at = item.createdAt ?? Date.now();
+  return store.items.some(
+    (i) =>
+      i.snapshot === item.snapshot &&
+      i.escrowId === item.escrowId &&
+      i.type === item.type &&
+      // Several milestones released in one change share a snapshot but not a message.
+      i.message === item.message &&
+      Math.abs(at - i.createdAt) <= windowMs,
+  );
+}
+
+/**
+ * Prepends a notification. Idempotent for items that carry a `snapshot`: the
+ * same escrow, type, snapshot and message within `NOTIFICATION_DEDUPE_WINDOW_MS`
+ * returns the same store object unchanged.
+ */
 export function appendNotification(
   store: NotificationsStore,
-  item: Omit<NotificationItem, 'id' | 'createdAt' | 'read'> & Partial<Pick<NotificationItem, 'id' | 'createdAt' | 'read'>>,
+  item: Omit<NotificationItem, 'id' | 'createdAt' | 'read' | 'snapshot'> &
+    Partial<Pick<NotificationItem, 'id' | 'createdAt' | 'read' | 'snapshot'>>,
 ): NotificationsStore {
+  const createdAt = item.createdAt ?? Date.now();
+  if (isDuplicateNotification(store, { ...item, createdAt })) return store;
   const full: NotificationItem = {
-    id: item.id ?? makeNotificationId(item.escrowId, item.type, item.createdAt),
+    id: item.id ?? makeNotificationId(item.escrowId, item.type, createdAt),
     escrowId: item.escrowId,
     type: item.type,
     title: item.title,
     message: item.message,
-    createdAt: item.createdAt ?? Date.now(),
+    createdAt,
     read: item.read ?? false,
+    ...(item.snapshot === undefined ? {} : { snapshot: item.snapshot }),
   };
   const items = [full, ...store.items].slice(0, NOTIFICATIONS_MAX);
   return { version: NOTIFICATIONS_VERSION, items };

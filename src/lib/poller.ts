@@ -129,6 +129,8 @@ export async function pollOnce(deps: PollDeps): Promise<PollResult> {
 
 export interface PollerOptions extends PollDeps {
   intervalMs?: number;
+  /** Delay before the first tick. Defaults to `intervalMs`. */
+  initialDelayMs?: number;
   /** Cap for the failure backoff. Defaults to 10 minutes. */
   maxBackoffMs?: number;
   /** Source of jitter in [0, 1). Injectable for tests. */
@@ -227,7 +229,7 @@ export function startPoller(options: PollerOptions): () => void {
     scheduleNext(nextDelayMs);
   };
 
-  scheduleNext(intervalMs);
+  scheduleNext(options.initialDelayMs ?? intervalMs);
   const removeListener = options.addVisibilityListener
     ? options.addVisibilityListener(() => {
         if (isVisible()) void tick();

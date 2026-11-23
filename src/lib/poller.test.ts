@@ -157,6 +157,27 @@ describe('startPoller', () => {
     expect(fetchContract).toHaveBeenCalledTimes(2);
   });
 
+  it('runs the first tick after initialDelayMs, then on the interval', async () => {
+    const fetchContract = vi.fn().mockResolvedValue(contract());
+    const stop = startPoller({
+      fetchContract,
+      onEvents: vi.fn(),
+      onRemoved: vi.fn(),
+      loadStore: () => storeWith([1]),
+      saveStore: vi.fn(),
+      intervalMs: 1000,
+      initialDelayMs: 0,
+      isVisible: () => true,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchContract).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(999);
+    expect(fetchContract).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchContract).toHaveBeenCalledTimes(2);
+    stop();
+  });
+
   it('pauses when the tab is hidden', async () => {
     const fetchContract = vi.fn().mockResolvedValue(contract());
     let visible = false;

@@ -9,7 +9,9 @@ import {
   NOTIFICATIONS_KEY,
   NOTIFICATIONS_MAX,
   NOTIFICATIONS_VERSION,
+  NOTIFICATION_DEDUPE_WINDOW_MS,
   saveNotifications,
+  snapshotKey,
   unreadCount,
   type NotificationsStore,
 } from '@/lib/notifications';
@@ -126,5 +128,53 @@ describe('markRead and dismiss', () => {
     const store = build();
     expect(markRead(store, 'a').version).toBe(NOTIFICATIONS_VERSION);
     expect(dismiss(store, 'a').version).toBe(NOTIFICATIONS_VERSION);
+  });
+});
+
+describe('appendNotification de-duplication', () => {
+  const snapshot = snapshotKey({ status: 'Funded', releasedIdx: [0], fundedAmount: 100 });
+  const event = { escrowId: 7, type: 'funded' as const, title: 'Escrow funded', message: '#7: funded', snapshot };
+
+  it('drops the same escrow, type and snapshot within the window and returns the same store', () => {
+    const once = appendNotification(empty(), { ...event, createdAt: 1_000 });
+    const twice = appendNotification(once, { ...event, createdAt: 1_000 + NOTIFICATION_DEDUPE_WINDOW_MS });
+    expect(twice).toBe(once);
+    expect(twice.items).toHaveLength(1);
+    expect(twice.items[0].snapshot).toBe(snapshot);
+  });
+
+  it('appends again once the window has passed', () => {
+    const once = appendNotification(empty(), { ...event, createdAt: 1_000 });
+    const later = appendNotification(once, { ...event, createdAt: 1_001 + NOTIFICATION_DEDUPE_WINDOW_MS });
+    expect(later.items).toHaveLength(2);
+  });
+
+  it('keeps events that differ in escrow, type, snapshot or message', () => {
+    let store = appendNotification(empty(), { ...event, createdAt: 1 });
+    store = appendNotification(store, { ...event, escrowId: 8, createdAt: 1 });
+    store = appendNotification(store, { ...event, type: 'completed', createdAt: 1 });
+    store = appendNotification(store, { ...event, snapshot: snapshotKey({ status: 'Funded', releasedIdx: [], fundedAmount: 100 }), createdAt: 1 });
+    // Two milestones released in one change share a snapshot but not a message.
+    store = appendNotification(store, { ...event, message: '#7: milestone 2', createdAt: 1 });
+    expect(store.items).toHaveLength(5);
+  });
+
+  it('never de-duplicates items without a snapshot', () => {
+    const { snapshot: _omit, ...plain } = event;
+    const store = appendNotification(appendNotification(empty(), plain), plain);
+    expect(store.items).toHaveLength(2);
+  });
+
+  it('de-duplicates against items persisted by another tab', () => {
+    saveNotifications(appendNotification(empty(), event));
+    const reloaded = loadNotifications();
+    expect(reloaded.items[0].snapshot).toBe(snapshot);
+    expect(appendNotification(reloaded, event)).toBe(reloaded);
+  });
+
+  it('builds distinct snapshot keys for distinct states', () => {
+    expect(snapshotKey({ status: 'Funded', releasedIdx: [0, 1], fundedAmount: 5 })).not.toBe(
+      snapshotKey({ status: 'Funded', releasedIdx: [0], fundedAmount: 5 }),
+    );
   });
 });
