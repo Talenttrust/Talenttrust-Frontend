@@ -159,13 +159,12 @@ export interface ApiHealthData {
 export async function checkApi(signal?: AbortSignal): Promise<StatusResult> {
   const url = `${site.apiUrl}/health`;
   const response = await fetchJson<ApiHealthData>(
-    () => fetchWithTimeout(url),
+    () => fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS, signal),
     'from /health',
     'Request',
   );
   if (!response.ok) {
     return { state: 'down', latencyMs: response.latencyMs, detail: response.detail };
-    const res = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS, signal);
   }
 
   const { data, latencyMs } = response;
@@ -193,14 +192,13 @@ export interface ChainConfigResult extends StatusResult {
 export async function checkChainConfig(signal?: AbortSignal): Promise<ChainConfigResult> {
   const url = `${site.apiUrl}/api/v1/chain`;
   const response = await fetchJson<ChainConfigData>(
-    () => fetchWithTimeout(url),
+    () => fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS, signal),
     'from /api/v1/chain',
     'Request',
   );
   if (!response.ok) {
     return { state: 'down', latencyMs: response.latencyMs, detail: response.detail };
   }
-    const res = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS, signal);
 
   const { data, latencyMs } = response;
 
@@ -253,36 +251,27 @@ export async function checkRpc(rpcUrl: string, signal?: AbortSignal): Promise<St
   // getLatestLedger is a cheap read-only call supported by all Soroban RPCs
   const response = await fetchJson<JsonRpcResponse<{ sequence: number; protocolVersion: number }>>(
     () =>
-      fetchWithTimeout(rpcUrl, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'getLatestLedger',
-          params: {},
-        }),
+      fetchWithTimeout(
+        rpcUrl,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'getLatestLedger',
+            params: {},
+          }),
+        },
+        FETCH_TIMEOUT_MS,
+        signal,
+      ),
     'from Soroban RPC',
     'RPC request',
   );
   if (!response.ok) {
     return { state: 'down', latencyMs: response.latencyMs, detail: response.detail };
   }
-    const res = await fetchWithTimeout(
-      rpcUrl,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'getLatestLedger',
-          params: {},
-        }),
-      },
-      FETCH_TIMEOUT_MS,
-      signal,
-    );
 
   const { data, latencyMs } = response;
   if (data.error) {
@@ -317,36 +306,27 @@ export async function checkContract(rpcUrl: string, signal?: AbortSignal): Promi
   // the RPC is aware of the contract's ledger domain.
   const response = await fetchJson<JsonRpcResponse<{ sequence: number }>>(
     () =>
-      fetchWithTimeout(rpcUrl, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 2,
-          method: 'getLatestLedger',
-          params: {},
-        }),
+      fetchWithTimeout(
+        rpcUrl,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'getLatestLedger',
+            params: {},
+          }),
+        },
+        FETCH_TIMEOUT_MS,
+        signal,
+      ),
     'checking contract via RPC',
     'Contract check',
   );
   if (!response.ok) {
     return { state: 'down', latencyMs: response.latencyMs, detail: response.detail };
   }
-    const res = await fetchWithTimeout(
-      rpcUrl,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 2,
-          method: 'getLatestLedger',
-          params: {},
-        }),
-      },
-      FETCH_TIMEOUT_MS,
-      signal,
-    );
 
   const { data, latencyMs } = response;
   if (data.error) {
