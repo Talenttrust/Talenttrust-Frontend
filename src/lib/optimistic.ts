@@ -1,5 +1,8 @@
 import type { EscrowContract } from './api';
 
+/** Statuses in which releasing the last milestone completes the escrow. */
+const LIVE: EscrowContract['status'][] = ['Created', 'Funded'];
+
 /**
  * Discriminated union of all optimistic actions that can be dispatched
  * against the contracts list.  Only Release and Fund are optimistic;
@@ -17,21 +20,26 @@ export type OptimisticAction =
  * Returns a new contract that mirrors the server's outcome when milestone
  * at `index` is successfully released.
  *
+ * `index` is the milestone's own `index` field (what the release endpoint and
+ * `EscrowCard` use), not its position in the array: the API does not promise
+ * milestones in index order.
+ *
  * Rules (mirrors backend `store.release`):
  * - Mark the target milestone as released.
  * - Increment releasedAmount by the milestone amount.
- * - If every milestone is now released → status becomes "Completed".
+ * - If every milestone is now released and the escrow is still live
+ *   (Created or Funded) → status becomes "Completed". Disputed and terminal
+ *   statuses are never overwritten.
  *
- * Throws RangeError for an invalid index so callers can gate the dispatch.
+ * Throws RangeError for an unknown index so callers can gate the dispatch.
  */
 export function applyRelease(contract: EscrowContract, index: number): EscrowContract {
-  if (index < 0 || index >= contract.milestones.length) {
+  const milestone = contract.milestones.find((m) => m.index === index);
+  if (!milestone) {
     throw new RangeError(
-      `applyRelease: index ${index} is out of range (0–${contract.milestones.length - 1})`,
+      `applyRelease: no milestone with index ${index} (0–${contract.milestones.length - 1})`,
     );
   }
-
-  const milestone = contract.milestones[index];
 
   // Idempotent: if already released, return as-is.
   if (milestone.released) return contract;
@@ -47,7 +55,7 @@ export function applyRelease(contract: EscrowContract, index: number): EscrowCon
     ...contract,
     milestones: updatedMilestones,
     releasedAmount: newReleasedAmount,
-    status: allReleased ? 'Completed' : contract.status,
+    status: allReleased && LIVE.includes(contract.status) ? 'Completed' : contract.status,
   };
 }
 
@@ -61,8 +69,10 @@ export function applyRelease(contract: EscrowContract, index: number): EscrowCon
  *
  * Rules (mirrors backend `store.deposit`):
  * - Increment fundedAmount by amount.
- * - If fundedAmount reaches totalAmount → status becomes "Funded".
- *   (Status stays "Created" if still underfunded.)
+ * - If a "Created" escrow's fundedAmount reaches totalAmount → status becomes
+ *   "Funded". (Status stays "Created" if still underfunded.) Any other status is
+ *   kept: a deposit must never turn a Completed, Disputed or terminal escrow
+ *   back into "Funded".
  *
  * Throws RangeError for a non-positive amount.
  */
@@ -77,7 +87,7 @@ export function applyDeposit(contract: EscrowContract, amount: number): EscrowCo
   return {
     ...contract,
     fundedAmount: newFundedAmount,
-    status: fullyFunded ? 'Funded' : contract.status,
+    status: fullyFunded && contract.status === 'Created' ? 'Funded' : contract.status,
   };
 }
 
