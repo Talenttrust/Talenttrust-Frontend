@@ -1,24 +1,65 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { StrKey } from '@stellar/stellar-sdk';
 import { api, Reputation } from '@/lib/api';
 import { OnChainReputation, readOnChainReputation } from '@/lib/stellar/reputation';
+import { normalizeAddress, validateAddress } from '@/lib/stellar/address';
 import { site } from '@/lib/site';
+import { addReputationLookup, loadReputationHistory } from '@/lib/reputationHistory';
 
-const DEMO_ADDRESS = 'GFREELANCERDEMOBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
+function isAbortError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  if ((error as { name?: unknown }).name === 'AbortError') return true;
+  return (error as { kind?: unknown }).kind === 'aborted';
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function abortError(): Error {
+  const error = new Error('The request was cancelled.');
+  error.name = 'AbortError';
+  return error;
+}
+
+/** Reject as soon as `signal` aborts, even if the underlying promise is still pending. */
+function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(abortError());
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortError());
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      },
+    );
+  });
+}
 
 export function ReputationLookup() {
   const searchParams = useSearchParams();
-  const [address, setAddress] = useState(DEMO_ADDRESS);
+
+  const [address, setAddress] = useState('');
   const [addressError, setAddressError] = useState<string | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
 
   const [busy, setBusy] = useState(false);
   const [apiResult, setApiResult] = useState<Reputation | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [chainResult, setChainResult] = useState<OnChainReputation | null>(null);
   const [chainError, setChainError] = useState<string | null>(null);
+
+  const requestSeq = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const initialised = useRef(false);
 
   const clearResults = useCallback(() => {
     setApiResult(null);
@@ -27,78 +68,175 @@ export function ReputationLookup() {
     setChainError(null);
   }, []);
 
+  const cancelPending = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    requestSeq.current += 1;
+  }, []);
+
+  const beginRequest = useCallback(() => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    requestSeq.current += 1;
+    return { controller, seq: requestSeq.current };
+  }, []);
+
+  const recordHistory = useCallback((value: string) => {
+    setHistory((previous) => addReputationLookup(value, previous));
+  }, []);
+
+  const syncUrl = useCallback((value: string) => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('address') === value) return;
+    params.set('address', value);
+    const query = params.toString();
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`,
+    );
+  }, []);
+
+  useEffect(() => {
+    setHistory(loadReputationHistory());
+  }, []);
+
+  useEffect(
+    () => () => {
+      requestSeq.current += 1;
+      abortRef.current?.abort();
+      abortRef.current = null;
+    },
+    [],
+  );
+
+  const performLookup = useCallback(
+    async (raw: string) => {
+      const normalized = normalizeAddress(raw);
+      setAddress(normalized);
+      setAddressError(null);
+      clearResults();
+
+      const validation = validateAddress(normalized);
+      if (!validation.ok) {
+        cancelPending();
+        setBusy(false);
+        setAddressError(validation.message);
+        return;
+      }
+
+      const value = validation.value;
+      setAddress(value);
+      syncUrl(value);
+
+      const { controller, seq } = beginRequest();
+      setBusy(true);
+
+      const [apiSettled, chainSettled] = await Promise.allSettled([
+        api<Reputation>(`/api/v1/reputation/${encodeURIComponent(value)}`, {
+          signal: controller.signal,
+        }),
+        abortable(readOnChainReputation(value), controller.signal),
+      ]);
+
+      // A newer lookup (or an unmount) supersedes this one entirely.
+      if (seq !== requestSeq.current) return;
+
+      let succeeded = false;
+      if (apiSettled.status === 'fulfilled') {
+        setApiResult(apiSettled.value);
+        succeeded = true;
+      } else if (!isAbortError(apiSettled.reason)) {
+        setApiError(errorMessage(apiSettled.reason));
+      }
+
+      if (chainSettled.status === 'fulfilled') {
+        setChainResult(chainSettled.value);
+        succeeded = true;
+      } else if (!isAbortError(chainSettled.reason)) {
+        setChainError(errorMessage(chainSettled.reason));
+      }
+
+      if (succeeded) recordHistory(value);
+      if (seq === requestSeq.current) setBusy(false);
+    },
+    [beginRequest, cancelPending, clearResults, recordHistory, syncUrl],
+  );
+
+  useEffect(() => {
+    if (initialised.current) return;
+    initialised.current = true;
+
+    const queryAddress = searchParams?.get('address');
+    if (!queryAddress) return;
+
+    const validation = validateAddress(queryAddress);
+    if (validation.ok) void performLookup(validation.value);
+  }, [performLookup, searchParams]);
+
+  const lookup = (event: FormEvent) => {
+    event.preventDefault();
+    void performLookup(address);
+  };
+
+  const retryApi = useCallback(async () => {
+    const value = normalizeAddress(address);
+    const validation = validateAddress(value);
+    if (!validation.ok) {
+      setAddressError(validation.message);
+      return;
+    }
+
+    const { controller, seq } = beginRequest();
+    setApiError(null);
+    setBusy(true);
+    try {
+      const result = await api<Reputation>(`/api/v1/reputation/${encodeURIComponent(value)}`, {
+        signal: controller.signal,
+      });
+      if (seq !== requestSeq.current) return;
+      setApiResult(result);
+      recordHistory(value);
+    } catch (error) {
+      if (seq !== requestSeq.current || isAbortError(error)) return;
+      setApiError(errorMessage(error));
+    } finally {
+      if (seq === requestSeq.current) setBusy(false);
+    }
+  }, [address, beginRequest, recordHistory]);
+
+  const retryChain = useCallback(async () => {
+    const value = normalizeAddress(address);
+    const validation = validateAddress(value);
+    if (!validation.ok) {
+      setAddressError(validation.message);
+      return;
+    }
+
+    const { controller, seq } = beginRequest();
+    setChainError(null);
+    setBusy(true);
+    try {
+      const result = await abortable(readOnChainReputation(value), controller.signal);
+      if (seq !== requestSeq.current) return;
+      setChainResult(result);
+      recordHistory(value);
+    } catch (error) {
+      if (seq !== requestSeq.current || isAbortError(error)) return;
+      setChainError(errorMessage(error));
+    } finally {
+      if (seq === requestSeq.current) setBusy(false);
+    }
+  }, [address, beginRequest, recordHistory]);
+
   const mismatch =
     apiResult &&
     chainResult &&
     (apiResult.averageRating !== chainResult.averageRating ||
       apiResult.completedContracts !== chainResult.completedContracts ||
       apiResult.totalRating !== chainResult.totalRating);
-
-  const performLookup = useCallback(async (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) return;
-    setAddress(trimmed);
-    setAddressError(null);
-    clearResults();
-
-    if (!StrKey.isValidEd25519PublicKey(trimmed)) {
-      setAddressError('Enter a valid Stellar public address (it must start with G and pass the StrKey checksum).');
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const [apiSettled, chainSettled] = await Promise.allSettled([
-        api<Reputation>(`/api/v1/reputation/${encodeURIComponent(trimmed)}`),
-        readOnChainReputation(trimmed),
-      ]);
-      if (apiSettled.status === 'fulfilled') {
-        setApiResult(apiSettled.value);
-      } else {
-        setApiError((apiSettled.reason as Error).message);
-      }
-      if (chainSettled.status === 'fulfilled') {
-        setChainResult(chainSettled.value);
-      } else {
-        setChainError((chainSettled.reason as Error).message);
-      }
-    } finally {
-      setBusy(false);
-    }
-  }, [clearResults]);
-
-  useEffect(() => {
-    const queryAddress = searchParams?.get('address');
-    if (queryAddress && queryAddress.trim()) {
-      const clean = queryAddress.trim();
-      performLookup(clean);
-    }
-  }, [searchParams, performLookup]);
-
-  const lookup = async (e: FormEvent) => {
-    e.preventDefault();
-    performLookup(address);
-  };
-
-  const retryApi = async () => {
-    const value = address.trim();
-    setApiError(null);
-    try {
-      setApiResult(await api<Reputation>(`/api/v1/reputation/${encodeURIComponent(value)}`));
-    } catch (err) {
-      setApiError((err as Error).message);
-    }
-  };
-
-  const retryChain = async () => {
-    const value = address.trim();
-    setChainError(null);
-    try {
-      setChainResult(await readOnChainReputation(value));
-    } catch (err) {
-      setChainError((err as Error).message);
-    }
-  };
 
   const statRow = (label: string, value: React.ReactNode, id: string) => (
     <div key={id} className="stat-row">
@@ -117,10 +255,15 @@ export function ReputationLookup() {
               id="address"
               className="input mono"
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Enter a Stellar public address (G...)"
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e) => {
+                setAddress(e.target.value);
+                if (addressError) setAddressError(null);
+              }}
               aria-invalid={addressError ? 'true' : 'false'}
               aria-describedby={addressError ? 'address-error' : undefined}
-              required
             />
             <button className="btn btn-primary" type="submit" disabled={busy}>
               {busy ? 'Looking up...' : 'Look up'}
@@ -132,6 +275,33 @@ export function ReputationLookup() {
             </div>
           )}
         </div>
+
+        {history.length > 0 && (
+          <div className="field">
+            <span id="recent-lookups-label" className="small muted">
+              Recent lookups
+            </span>
+            <ul
+              aria-labelledby="recent-lookups-label"
+              className="row"
+              style={{ listStyle: 'none', margin: 0, padding: 0, gap: 8, flexWrap: 'wrap' }}
+            >
+              {history.map((item) => (
+                <li key={item}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm mono"
+                    onClick={() => void performLookup(item)}
+                    aria-label={`Look up ${item}`}
+                    title={item}
+                  >
+                    {item.slice(0, 6)}…{item.slice(-4)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </form>
 
       {(apiResult || chainResult || apiError || chainError) && (
@@ -204,15 +374,15 @@ export function ReputationLookup() {
                       Retry API
                     </button>
                   </>
-              ) : (
-                apiResult && (
-                  <dl className="stats" aria-labelledby="api-heading">
-                    {statRow('Completed contracts', apiResult.completedContracts, 'api-contracts')}
-                    {statRow('Total rating points', apiResult.totalRating, 'api-total')}
-                    {statRow('Average rating', `${(apiResult.averageRating ?? 0).toFixed(2)} / 5`, 'api-average')}
-                  </dl>
-                )
-              )}
+                ) : (
+                  apiResult && (
+                    <dl className="stats" aria-labelledby="api-heading">
+                      {statRow('Completed contracts', apiResult.completedContracts, 'api-contracts')}
+                      {statRow('Total rating points', apiResult.totalRating, 'api-total')}
+                      {statRow('Average rating', `${(apiResult.averageRating ?? 0).toFixed(2)} / 5`, 'api-average')}
+                    </dl>
+                  )
+                )}
               </div>
             ) : null}
           </div>

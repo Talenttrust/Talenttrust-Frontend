@@ -3,5 +3,5 @@
 import { RouteError } from '@/components/ui/RouteError';
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  return <RouteError error={error} reset={reset} />;
+  return <RouteError error={error} reset={reset} context={{ boundary: 'app/error', digest: error.digest }} />;
 }

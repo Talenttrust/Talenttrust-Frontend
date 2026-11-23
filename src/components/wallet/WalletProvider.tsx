@@ -96,6 +96,20 @@ function safeRemoveItem(key: string): void {
   }
 }
 
+/** Returns true when the autoconnect flag is set; false on any storage failure. */
+function readAutoconnect(): boolean {
+  return safeGetItem(AUTOCONNECT_KEY) === '1';
+}
+
+/** Persists or clears the autoconnect flag; never throws. */
+function writeAutoconnect(on: boolean): void {
+  if (on) {
+    safeSetItem(AUTOCONNECT_KEY, '1');
+  } else {
+    safeRemoveItem(AUTOCONNECT_KEY);
+  }
+}
+
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(walletReducer, initialState);
   const stateRef = useRef(state);
@@ -160,7 +174,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
 
       dispatch({ type: 'SET_CONNECTED', address, passphrase });
-      safeSetItem(AUTOCONNECT_KEY, '1');
+      writeAutoconnect(true);
     } catch (e) {
       dispatch({ type: 'SET_ERROR', message: (e as Error).message });
     }
@@ -168,7 +182,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const disconnect = useCallback(() => {
     dispatch({ type: 'SET_DISCONNECTED' });
-    safeRemoveItem(AUTOCONNECT_KEY);
+    writeAutoconnect(false);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -187,7 +201,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const autoconnect = safeGetItem(AUTOCONNECT_KEY) === '1';
+    const autoconnect = readAutoconnect();
     if (autoconnect) {
       checkWallet();
     } else {

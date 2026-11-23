@@ -19,18 +19,21 @@ export class StroopConversionError extends Error {
   }
 }
 
+// ── Generic token amount helpers ─────────────────────────────────────────────
+
 /**
- * Convert an XLM amount string to stroops (bigint).
+ * Parse a user-supplied decimal string into the smallest unit of a token.
+ *
+ * Works for any decimal count (0, 6, 7, 18, …).
+ * Rejects input that has more fractional digits than `decimals`.
  *
  * @throws {StroopConversionError} on any invalid input.
  */
-export function stroopsFromXlm(xlm: string): bigint {
-  const trimmed = xlm.trim();
-
-  // Must be a valid decimal number (no scientific notation, no leading sign for positive)
+export function parseTokenAmount(text: string, decimals: number): bigint {
+  const trimmed = text.trim();
   if (!/^\d+(\.\d+)?$/.test(trimmed)) {
     throw new StroopConversionError(
-      `Invalid amount "${xlm}": must be a positive decimal number (e.g. "12.5").`,
+      `Invalid amount "${text}": must be a positive decimal number.`,
     );
   }
 
@@ -38,22 +41,46 @@ export function stroopsFromXlm(xlm: string): bigint {
   const intPart = parts[0];
   const fracPart = parts[1] ?? '';
 
-  if (fracPart.length > MAX_DECIMALS) {
+  if (fracPart.length > decimals) {
     throw new StroopConversionError(
-      `Invalid amount "${xlm}": too many decimal places (max ${MAX_DECIMALS} for XLM stroops).`,
+      `Invalid amount "${text}": too many decimal places (max ${decimals}).`,
     );
   }
 
-  // Pad fractional part to exactly MAX_DECIMALS digits
-  const paddedFrac = fracPart.padEnd(MAX_DECIMALS, '0');
+  const scale = 10n ** BigInt(decimals);
+  const paddedFrac = fracPart.padEnd(decimals, '0');
+  const amount = BigInt(intPart) * scale + BigInt(paddedFrac || '0');
 
-  const stroops = BigInt(intPart) * STROOPS_PER_XLM + BigInt(paddedFrac);
-
-  if (stroops <= 0n) {
-    throw new StroopConversionError(`Invalid amount "${xlm}": must be greater than zero.`);
+  if (amount <= 0n) {
+    throw new StroopConversionError(`Invalid amount "${text}": must be greater than zero.`);
   }
 
-  return stroops;
+  return amount;
+}
+
+/**
+ * Format a raw token amount (bigint) as a human-readable string with the
+ * token's symbol appended (e.g. "12.5 USDC", "1 XLM").
+ */
+export function formatTokenAmount(raw: bigint, decimals: number, symbol: string): string {
+  if (decimals === 0) {
+    return `${raw} ${symbol}`;
+  }
+  const scale = 10n ** BigInt(decimals);
+  const intPart = raw / scale;
+  const fracPart = raw % scale;
+  const fracStr = String(fracPart).padStart(decimals, '0').replace(/0+$/, '');
+  const display = fracStr ? `${intPart}.${fracStr}` : `${intPart}`;
+  return `${display} ${symbol}`;
+}
+
+/**
+ * Convert an XLM amount string to stroops (bigint).
+ *
+ * @throws {StroopConversionError} on any invalid input.
+ */
+export function stroopsFromXlm(xlm: string): bigint {
+  return parseTokenAmount(xlm, MAX_DECIMALS);
 }
 
 /**

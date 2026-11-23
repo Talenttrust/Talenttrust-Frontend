@@ -1,5 +1,6 @@
 "use client";
 
+import { useEscrowDashboard } from "@/hooks/useEscrowDashboard";
 import {
   FormEvent,
   useCallback,

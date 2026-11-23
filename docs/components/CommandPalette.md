@@ -37,7 +37,7 @@ Static commands come from `staticCommands` in `src/lib/commands.ts`:
 
 - **Navigation** — every entry from `src/lib/nav.json` (`/`, `/contracts`, `/reputation`, `/docs`, `/status`)
 - **Actions** — `Copy contract ID` (`actionType: 'copy-contract'`) and `Open API documentation` (`actionType: 'open-docs'`)
-- **Dynamic** (`parseDynamicCommands`) — numeric queries (`#12` or `12`) resolve to `/contracts?q=12`; 56-character Stellar `G...` addresses resolve to `/reputation?address=<addr>`
+- **Dynamic** (`parseDynamicCommands`) — numeric queries (`#12` or `12`) resolve to `/contracts/${id}`; 56-character Stellar `G...` addresses resolve to `/reputation?address=<addr>`; other text searches resolve to `/contracts?q=<query>` so escrow titles and party addresses can be found from the palette
 - **Recent** (`getRecentCommands` / `saveRecentCommand`) — up to 5 recent selections stored in `localStorage` under `tt_recent_commands`
 
 ## Keyboard Shortcuts

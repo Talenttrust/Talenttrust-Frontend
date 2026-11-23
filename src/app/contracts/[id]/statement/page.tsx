@@ -5,6 +5,8 @@ import { site, explorerUrl } from '@/lib/site';
 import type { EscrowContract } from '@/lib/api';
 import { buildStatement } from '@/lib/statement';
 import { PrintButton } from '@/components/PrintButton';
+import { StatementDownloads } from '@/components/StatementDownloads';
+import { reconcile } from '@/lib/statementExport';
 
 export const metadata: Metadata = { title: 'Escrow statement' };
 
@@ -33,6 +35,7 @@ export default async function StatementPage({ params }: { params: Promise<{ id: 
 
   const statement = buildStatement(contract);
   const { totals } = statement;
+  const reconciliation = reconcile(statement);
 
   return (
     <div className="container statement">
@@ -41,6 +44,7 @@ export default async function StatementPage({ params }: { params: Promise<{ id: 
           Back to dashboard
         </Link>
         <PrintButton />
+        <StatementDownloads statement={statement} />
       </div>
 
       <header className="statement-head">
@@ -53,6 +57,16 @@ export default async function StatementPage({ params }: { params: Promise<{ id: 
           Stellar {site.network}
         </p>
       </header>
+
+      {!reconciliation.ok && (
+        <p role="alert" className="alert alert-error">
+          This statement does not reconcile to the escrow budget.
+          {reconciliation.difference === null
+            ? ' One or more amounts are invalid.'
+            : ` Ledger minus budget: ${reconciliation.difference} ${statement.token}.`}
+          {' '}Check the ledger before relying on this statement; exports include this warning result.
+        </p>
+      )}
 
       <dl className="statement-meta">
         <div>
@@ -177,8 +191,8 @@ export default async function StatementPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         <p className="small muted">
-          Totals reconcile to the escrow budget: paid to freelancer + refunded to client + still in escrow equals the total
-          budget. Funds released before a cancellation are not refunded.
+          Reconciliation compares the ledger with the escrow budget: paid to freelancer + refunded to client + still in
+          escrow / unfunded equals the total budget. Funds released before a cancellation are not refunded.
         </p>
       </section>
     </div>

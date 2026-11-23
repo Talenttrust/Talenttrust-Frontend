@@ -10,7 +10,10 @@ interface ContractListResponse {
 }
 
 export function useContracts(filters?: ContractFilters) {
-  const { data, error, isValidating, isLoading, mutate } = useSWR<ContractListResponse>(contractsListKey(filters));
+  const { data, error, isValidating, isLoading, mutate } = useSWR<ContractListResponse>(contractsListKey(filters), {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+  });
   const contracts = useMemo(
     () => (data?.data ? [...data.data].sort((a, b) => b.id - a.id) : null),
     [data],

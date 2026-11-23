@@ -50,3 +50,4 @@ Reference documentation for components, hooks, library modules, and guides in `s
 | [COPYWRITING_GUIDE.md](./COPYWRITING_GUIDE.md) | Voice, tone, and user-facing copy standards |
 | [keyboard.md](./keyboard.md) | Global and component keyboard shortcuts, dialog focus management, and live regions |
 | [stellar-address.md](./stellar-address.md) | Stellar StrKey validation and normalization (`src/lib/stellar/address.ts`) |
+| [statement-exports.md](./statement-exports.md) | Statement CSV/JSON downloads, ledger reconciliation, and mismatch warnings |

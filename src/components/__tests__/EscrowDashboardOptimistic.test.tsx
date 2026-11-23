@@ -1,3 +1,5 @@
+import React from 'react';
+import { SWRConfig } from 'swr';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -14,6 +16,8 @@ vi.mock('next/navigation', () => ({
 const fetchMock = vi.fn();
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+
+const swrWrap = (ui: React.ReactElement) => <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{ui}</SWRConfig>;
 
 const base = (over: Partial<EscrowContract> = {}) =>
   escrow(7, {
@@ -45,7 +49,7 @@ const renderWith = async (list: () => EscrowContract[], post: () => Promise<Resp
   fetchMock.mockImplementation((_url: unknown, init?: RequestInit) =>
     init?.method === 'POST' ? post() : Promise.resolve(json({ data: list() })),
   );
-  render(<EscrowDashboard />);
+  render(swrWrap(<EscrowDashboard />));
   await screen.findByRole('heading', { name: /#7 website redesign/i });
 };
 

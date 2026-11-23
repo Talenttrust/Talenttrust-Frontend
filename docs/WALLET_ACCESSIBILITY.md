@@ -269,7 +269,7 @@ Manages programmatic focus transitions between wallet connection states to ensur
 
 ### axe-core Compliance
 
-All wallet components are tested with `jest-axe` to ensure WCAG 2.1 AA compliance:
+All wallet components are tested with `vitest-axe` to ensure WCAG 2.1 AA compliance:
 
 - **WalletConnectButton:** No violations in all states (disconnected, connecting, error, connected)
 - **WalletAddressInput:** No violations in default and error states

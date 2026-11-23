@@ -28,7 +28,7 @@ function percentFor(bps: number): string {
   return (bps / 100).toFixed(2).replace(/\.?0+$/, '');
 }
 
-function parsePercent(value: string): number | null {
+export function parsePercent(value: string): number | null {
   if (!/^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(value)) return null;
 
   const [whole = '0', fraction = ''] = value.split('.');
