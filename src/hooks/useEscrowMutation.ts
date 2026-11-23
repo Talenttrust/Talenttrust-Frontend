@@ -46,6 +46,8 @@ interface ContractListResponse {
 
 export function useEscrowMutation() {
   const { mutate } = useSWRConfig();
+  // Note: cache patches here are the source of truth for list state; callers
+  // (useEscrowDashboard) rely on this for optimistic release/deposit + rollback.
 
   const patchLists = useCallback(
     (updated: EscrowContract) => {

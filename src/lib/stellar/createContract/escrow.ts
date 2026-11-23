@@ -1,6 +1,9 @@
 /**
  * Builds an unsigned create_contract invocation transaction.
  *
+ * Note: dashboard list loading and mutations are handled by the SWR hooks
+ * (useContracts / useEscrowMutation); this module only builds transactions.
+ *
  * The contract signature is:
  *   create_contract(client: Address, freelancer: Address, token: Address,
  *                   milestone_amounts: Vec<i128>) -> u64
