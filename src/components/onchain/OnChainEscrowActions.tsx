@@ -11,6 +11,7 @@ import {
   OnChainEscrow,
 } from '@/lib/stellar/escrow';
 import { simulateSignSubmit, TxStatus } from '@/lib/stellar/submit';
+import { parseContractError } from '@/lib/stellar/errors';
 import { explorerTxUrl } from '@/lib/stellar/config';
 
 // ── Guard logic (pure, exported for tests) ───────────────────────────────────
@@ -189,7 +190,7 @@ export default function OnChainEscrowActions({ id }: OnChainEscrowActionsProps) 
       const remaining = data.totalAmount - data.fundedAmount;
       if (remaining > 0n) setDepositInput(formatStroops(remaining));
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Failed to load contract.');
+      setLoadError(parseContractError(err));
     } finally {
       setLoading(false);
     }
@@ -218,7 +219,7 @@ export default function OnChainEscrowActions({ id }: OnChainEscrowActionsProps) 
         await load();
       } catch (err) {
         setTxStatus('error');
-        setTxError(err instanceof Error ? err.message : String(err));
+        setTxError(parseContractError(err));
       }
     },
     [address, load]

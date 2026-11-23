@@ -45,38 +45,34 @@ const POLL_INTERVAL_MS = 3_000;
  * can display it directly without further parsing.
  */
 export async function simulateSignSubmit(tx: Transaction): Promise<SubmitResult> {
-  const server = getRpcServer();
   const networkPassphrase = stellarConfig.passphrase;
-
-  // ── 1. Simulate & prepare ────────────────────────────────────────────────
-  let prepared: Transaction;
   try {
-    prepared = (await server.prepareTransaction(tx)) as Transaction;
+    return await submitTransaction(tx);
   } catch (err) {
     throw new Error(parseContractError(err));
   }
+}
+
+async function submitTransaction(tx: Transaction): Promise<SubmitResult> {
+  const server = getRpcServer();
+
+  // ── 1. Simulate & prepare ────────────────────────────────────────────────
+  const prepared = (await server.prepareTransaction(tx)) as Transaction;
 
   // ── 2. Sign via wallet ───────────────────────────────────────────────────
   const xdrToSign = prepared.toXDR();
   const { signedTxXdr, error: signError } = await signTransaction(xdrToSign, networkPassphrase);
   if (signError || !signedTxXdr) {
-    throw new Error(parseContractError(new Error(signError ?? 'Wallet returned an empty signature.')));
+    throw new Error(signError ?? 'Wallet returned an empty signature.');
   }
 
   // ── 3. Submit ────────────────────────────────────────────────────────────
   const signedTx = TransactionBuilder.fromXDR(signedTxXdr, networkPassphrase) as Transaction;
-  let sendResult: StellarRpc.Api.SendTransactionResponse;
-  try {
-    sendResult = await server.sendTransaction(signedTx);
-  } catch (err) {
-    throw new Error(parseContractError(err));
-  }
+  const sendResult = await server.sendTransaction(signedTx);
 
   if (sendResult.status === 'ERROR') {
     const detail = (sendResult as { errorResult?: { result?: () => unknown } }).errorResult;
-    throw new Error(
-      parseContractError(new Error(`Transaction rejected by the network: ${JSON.stringify(detail ?? sendResult.status)}`)),
-    );
+    throw new Error(`Transaction rejected by the network: ${JSON.stringify(detail ?? sendResult.status)}`);
   }
 
   const hash = sendResult.hash;
@@ -86,12 +82,7 @@ export async function simulateSignSubmit(tx: Transaction): Promise<SubmitResult>
   while (Date.now() < deadline) {
     await sleep(POLL_INTERVAL_MS);
 
-    let txStatus: StellarRpc.Api.GetTransactionResponse;
-    try {
-      txStatus = await server.getTransaction(hash);
-    } catch (err) {
-      throw new Error(parseContractError(err));
-    }
+    const txStatus = await server.getTransaction(hash);
 
     if (txStatus.status === StellarRpc.Api.GetTransactionStatus.SUCCESS) {
       // Decode the return value from the transaction's result metadata
@@ -101,21 +92,13 @@ export async function simulateSignSubmit(tx: Transaction): Promise<SubmitResult>
     }
 
     if (txStatus.status === StellarRpc.Api.GetTransactionStatus.FAILED) {
-      throw new Error(
-        parseContractError(
-          new Error(`Transaction failed on-chain. Hash: ${hash}`),
-        ),
-      );
+      throw new Error(`Transaction failed on-chain. Hash: ${hash}`);
     }
 
     // status === NOT_FOUND — still pending, keep polling
   }
 
-  throw new Error(
-    parseContractError(
-      new Error(`timeout: transaction not confirmed after ${POLL_TIMEOUT_MS / 1000}s. Hash: ${hash}`),
-    ),
-  );
+  throw new Error(`timeout: transaction not confirmed after ${POLL_TIMEOUT_MS / 1000}s. Hash: ${hash}`);
 }
 
 function sleep(ms: number): Promise<void> {

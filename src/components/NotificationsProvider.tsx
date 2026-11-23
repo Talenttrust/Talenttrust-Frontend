@@ -318,6 +318,19 @@ export function NotificationsProvider({ children, poller }: NotificationsProvide
       dismissUpdatesPaused,
     }),
     [notifications, watchStore, toggleWatch, doMarkAllRead, doMarkRead, doDismiss, doClear, announcement],
+    [notifications, watchStore, toggleWatch, doMarkAllRead, doClear, announcement, stale, staleDismissed, dismissUpdatesPaused],
+    [
+      notifications,
+      watchStore,
+      toggleWatch,
+      doMarkAllRead,
+      doClear,
+      announcement,
+      desktopSettings,
+      desktopPermission,
+      setDesktopEnabled,
+      toggleDesktopType,
+    ],
   );
 
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;

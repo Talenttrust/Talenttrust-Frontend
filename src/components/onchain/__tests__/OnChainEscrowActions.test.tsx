@@ -5,6 +5,7 @@ import OnChainEscrowActions from '../OnChainEscrowActions';
 import * as escrowLib from '@/lib/stellar/escrow';
 import * as submitLib from '@/lib/stellar/submit';
 import { useWallet } from '@/components/wallet/WalletProvider';
+import { escrowErrorMessage } from '@/lib/stellar/errors';
 
 vi.mock('@/components/wallet/WalletProvider');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,7 +54,7 @@ describe('loading and error states', () => {
     vi.spyOn(escrowLib, 'getContract').mockRejectedValue(new Error('ContractNotFound'));
     render(<OnChainEscrowActions id={1} />);
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('ContractNotFound')
+      expect(screen.getByRole('alert')).toHaveTextContent(escrowErrorMessage(5)!)
     );
   });
 });
@@ -189,7 +190,7 @@ describe('failure states', () => {
     render(<OnChainEscrowActions id={1} />);
     await clickFund();
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('InvalidStatus')
+      expect(screen.getByRole('alert')).toHaveTextContent(escrowErrorMessage(10)!)
     );
   });
 
@@ -200,7 +201,7 @@ describe('failure states', () => {
     render(<OnChainEscrowActions id={1} />);
     await clickFund();
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('MilestoneAlreadyReleased')
+      expect(screen.getByRole('alert')).toHaveTextContent(escrowErrorMessage(12)!)
     );
   });
 
@@ -211,7 +212,7 @@ describe('failure states', () => {
     render(<OnChainEscrowActions id={1} />);
     await clickFund();
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('InsufficientFunds')
+      expect(screen.getByRole('alert')).toHaveTextContent(escrowErrorMessage(13)!)
     );
   });
 
@@ -222,7 +223,7 @@ describe('failure states', () => {
     render(<OnChainEscrowActions id={1} />);
     await clickFund();
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('Transaction cancelled by user.')
+      expect(screen.getByRole('alert')).toHaveTextContent('Signature rejected: you cancelled the request in your wallet.')
     );
   });
 
@@ -235,6 +236,30 @@ describe('failure states', () => {
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('RPC timeout')
     );
+  });
+
+  it.each([
+    'Error(Contract, #3)',
+    'Unauthorized',
+    escrowErrorMessage(3)!,
+  ])('shows the shared message for %s', async (message) => {
+    vi.spyOn(submitLib, 'simulateSignSubmit').mockRejectedValue(new Error(message));
+    render(<OnChainEscrowActions id={1} />);
+    await clickFund();
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(escrowErrorMessage(3)!),
+    );
+  });
+
+  it('keeps a formatted escrow-funds error instead of treating it as an XLM fee error', async () => {
+    vi.spyOn(submitLib, 'simulateSignSubmit')
+      .mockRejectedValue(new Error(escrowErrorMessage(13)));
+    render(<OnChainEscrowActions id={1} />);
+    await clickFund();
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(escrowErrorMessage(13)!),
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Friendbot');
   });
 
   it('shows error for zero deposit amount', async () => {

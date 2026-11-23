@@ -1,100 +1,52 @@
 # TalentTrust Frontend — Documentation Index
 
-Reference documentation for components, hooks, contexts, and library utilities.
+Reference documentation for components, hooks, library modules, and guides in `src/`.
 
 ---
 
 ## Components
 
-| Document | What it covers |
-|----------|----------------|
-| [Accessibility.md](./components/Accessibility.md) | ARIA standards, axe-core audit setup, skip link, route announcer, dark-theme contrast audit |
-| [ActionPanel.md](./components/ActionPanel.md) | Contract action buttons, disabled reasons, inline dispute form, focus restoration |
-| [ContractCreationForm.md](./components/ContractCreationForm.md) | Contract creation modal — props, validation rules, submitted shape |
-| [ContractDetail.md](./components/ContractDetail.md) | Contract detail page component composition |
-| [ContractProgress.md](./components/ContractProgress.md) | Escrow summary and milestone progress panel |
-| [ContractsApi.md](./components/ContractsApi.md) | Contracts component API reference — props and minimal usage examples |
-| [**Dialogs.md**](./components/Dialogs.md) | **Unified dialog usage guide** — `ConfirmDialog`, `ContractCreationForm`, `MilestoneCreationForm`, `useDialogFocusTrap` hook, focus restoration patterns |
-| [**DialogsApi.md**](./components/DialogsApi.md) | **Dialogs component API reference** — `DialogsList`, `DialogLastUpdated`, `DialogsViewSkeleton`, `DialogIdBadge`, props, shared types, minimal usage examples |
-| [EmptyState.md](./components/EmptyState.md) | Empty-state placeholder component |
-| [HeaderActions.md](./components/HeaderActions.md) | Header action buttons |
-| [MilestoneCreationForm.md](./components/MilestoneCreationForm.md) | Milestone creation modal — props, ID generation, validation |
-| [MilestoneFilter.md](./components/MilestoneFilter.md) | Status filter radiogroup, `aria-live` result count |
-| [MilestonesApi.md](./components/MilestonesApi.md) | Milestones component API reference — props, shared types, minimal usage examples |
-| [MilestonesUsageGuide.md](./components/MilestonesUsageGuide.md) | Milestones components usage guide — composition patterns, props, accessibility, troubleshooting |
-| [MilestonesList.md](./components/MilestonesList.md) | Milestone list rendering, accessibility contract (roles, keyboard, focus), density toggle, pagination |
-| [MilestoneRow.md](./components/MilestoneRow.md) | Milestone row view/edit modes — accessibility contract (roles, keyboard, focus) |
-| [Navbar.md](./components/Navbar.md) | Global navigation, keyboard support |
-| [NotFound.md](./components/NotFound.md) | 404 page |
-| [Preferences.md](./components/Preferences.md) | `PreferencesProvider`, `usePreferences`, `formatAmount` |
-| [ReputationAccessibility.md](./components/ReputationAccessibility.md) | Reputation accessibility contract — semantic structure, ARIA roles, keyboard support, focus management, live regions, known limitations |
-| [ReputationPage.md](./components/ReputationPage.md) | Reputation score display, level bands |
-| [ReputationProfile.md](./components/ReputationProfile.md) | Reputation profile component API reference — props, rendering states, helpers |
-| [SettingsPanel.md](./components/SettingsPanel.md) | Settings drawer — preferences UI, focus trap, Escape handling |
-| [StatusBadge.md](./components/StatusBadge.md) | Contract/milestone status pill |
-| [Toast.md](./components/Toast.md) | Toast notification system — quiet mode, density, auto-dismiss, action button |
-| [WalletConnectButton.md](./components/WalletConnectButton.md) | Wallet connect/disconnect button |
-| [WalletContext.md](./components/WalletContext.md) | `WalletProvider`, `useWallet`, idle auto-disconnect |
-| [WALLET_ACCESSIBILITY.md](./WALLET_ACCESSIBILITY.md) | Wallet components accessibility contract (roles, keyboard, focus) |
+| Document | Source in `src/` | What it covers |
+|----------|------------------|----------------|
+| [AddressInput.md](./components/AddressInput.md) | `src/components/forms/AddressInput.tsx` | Stellar `G...` / `C...` address input with StrKey validation, clipboard paste, and wallet autofill |
+| [CommandPalette.md](./components/CommandPalette.md) | `src/components/palette/CommandPalette.tsx` | `Cmd+K` / `Ctrl+K` route, escrow ID, address, and quick-action command palette |
+| [ConfirmDialog.md](./components/ConfirmDialog.md) | `src/components/ui/ConfirmDialog.tsx`, `src/components/ui/ConfirmProvider.tsx` | Accessible `<dialog>` confirmation modal and `useConfirm()` hook |
+| [EscrowDashboard.md](./components/EscrowDashboard.md) | `src/components/EscrowDashboard.tsx`, `src/components/escrow/*` | Escrow dashboard, `EscrowCard`, `EscrowToolbar`, `ViewFilterControl`, `Pagination`, and dispute dialogs |
+| [ExportMenu.md](./components/ExportMenu.md) | `src/components/escrow/ExportMenu.tsx` | Escrows and milestones CSV export menu with keyboard navigation |
+| [Header.md](./components/Header.md) | `src/components/Header.tsx` | Global navigation bar, desktop controls, and collapsible mobile menu |
+| [MilestoneBuilder.md](./components/MilestoneBuilder.md) | `src/components/MilestoneBuilder.tsx`, `src/components/milestones/MilestoneTimeline.tsx` | Structured milestone form builder and escrow card milestone timeline |
+| [NotFound.md](./components/NotFound.md) | `src/app/not-found.tsx` | App Router 404 fallback page |
+| [NotificationBell.md](./components/NotificationBell.md) | `src/components/NotificationBell.tsx`, `src/components/NotificationsProvider.tsx`, `src/components/WatchToggle.tsx` | Watchlist notification bell popover, unread badge, and `NotificationsProvider` context |
+| [ReputationLookup.md](./components/ReputationLookup.md) | `src/components/ReputationLookup.tsx`, `src/components/reputation/StarRating.tsx` | On-chain and API freelancer reputation lookup and 1–5 star rating widget |
+| [Toast.md](./components/Toast.md) | `src/components/toast/ToastProvider.tsx` | Toast notification provider, `useToast`, and `useOptionalToast` |
+| [WalletButton.md](./components/WalletButton.md) | `src/components/wallet/WalletButton.tsx`, `src/components/wallet/NetworkGuard.tsx` | Header Freighter wallet menu button and wrong-network banner |
+| [WalletContext.md](./components/WalletContext.md) | `src/components/wallet/WalletProvider.tsx`, `src/contexts/WalletContext.tsx` | Global `WalletProvider` state machine and on-chain `WalletContext` |
 
 ---
 
 ## Hooks
 
-| Document | What it covers |
-|----------|----------------|
-| [**ContractsHooks.md**](./hooks/ContractsHooks.md) | **Contracts hooks usage reference** — `useContractProgress` / `calculateContractProgress` (escrow metrics, memoization contract) and `useOptimisticContractStatus` (optimistic status writes, rollback, stale detection) with inputs, returns, and states |
-| [**MilestonesHooks.md**](./hooks/MilestonesHooks.md) | **Milestones hooks usage reference** — `useOptimisticMilestoneMutation` (optimistic create, update, delete, rollback) with inputs, returns, and states |
-| [useCopyToClipboard.md](./hooks/useCopyToClipboard.md) | Clipboard copy with status management |
-| [useDialogFocusTrap.md](./hooks/useDialogFocusTrap.md) | Focus management for dialogs |
-| [useFormAnnouncer.md](./hooks/useFormAnnouncer.md) | ARIA announcements for forms |
-| [useMediaQuery.md](./hooks/useMediaQuery.md) | SSR-safe media query hook |
-| [useMilestonesRouteError.md](./hooks/useMilestonesRouteError.md) | Milestones route error recovery — report dedupe, single-flight reset, graceful degradation |
-
-> The `useDialogFocusTrap` hook is documented in [Dialogs.md](./components/Dialogs.md#usedialogfocustrap-hook).
+| Document | Source in `src/` | What it covers |
+|----------|------------------|----------------|
+| [useContracts.md](./hooks/useContracts.md) | `src/hooks/useContracts.ts`, `src/hooks/useEscrowMutation.ts` | SWR hooks (`useContracts`, `useContract`, `useReputation`) and `useEscrowMutation` |
+| [useUIHooks.md](./hooks/useUIHooks.md) | `src/hooks/useDisclosure.ts`, `src/hooks/useHotkeys.ts`, `src/hooks/useOnlineStatus.ts`, `src/hooks/useTheme.ts` | Disclosure state, dashboard keyboard shortcuts, online status detection, and theme persistence |
 
 ---
 
-## Contexts
+## Library
 
-| Document | What it covers |
-|----------|----------------|
-| [wallet-session.md](./contexts/wallet-session.md) | Wallet session lifecycle, persistence, idle auto-disconnect |
-
----
-
-## Library utilities
-
-| Document | What it covers |
-|----------|----------------|
-| [currencyMismatch.md](./lib/currencyMismatch.md) | Currency mismatch detection helper |
-| [dueSoon.md](./lib/dueSoon.md) | Due-soon date helpers |
-| [milestoneStatusTally.md](./lib/milestoneStatusTally.md) | Milestone status count helper |
-| [milestonesRouteError.md](./lib/milestonesRouteError.md) | Sanitized milestones route-failure metadata |
-| [validate-login.md](./lib/validate-login.md) | Login form validation |
-| [webAppManifest.md](./lib/webAppManifest.md) | Web app manifest contract — canonical icons, validation, bounded fallbacks, immutable output, diagnostics |
+| Document | Source in `src/` | What it covers |
+|----------|------------------|----------------|
+| [apiAndNetworking.md](./lib/apiAndNetworking.md) | `src/lib/api.ts`, `src/lib/swr.tsx`, `src/lib/commands.ts`, `src/lib/status.ts`, `src/lib/swRouting.ts`, `src/lib/site.ts` | REST client, SWR provider, command palette ranking, system status checks, and service worker routing |
+| [contractQueryAndExport.md](./lib/contractQueryAndExport.md) | `src/lib/contractQuery.ts`, `src/lib/csv.ts`, `src/lib/exportContracts.ts`, `src/lib/optimistic.ts`, `src/lib/statement.ts` | Escrow filtering/sorting/pagination, CSV formula sanitization and export, optimistic reducers, and statement ledger |
+| [notificationsAndWatchlist.md](./lib/notificationsAndWatchlist.md) | `src/lib/watchlist.ts`, `src/lib/notifications.ts`, `src/lib/poller.ts` | Watchlist snapshot diffing, `localStorage` notification store, and background poller |
 
 ---
 
-## Architecture and guides
+## Guides
 
 | Document | What it covers |
 |----------|----------------|
-| [keyboard.md](./keyboard.md) | Keyboard shortcuts, focus-trap behaviours, screen-reader announcement model |
-| [COPYWRITING_GUIDE.md](./COPYWRITING_GUIDE.md) | Voice, tone, and copy standards |
-| [data-model.md](./data-model.md) | Domain types, `Contract`, `Milestone`, optional `contractId` |
-| [error-reporting.md](./error-reporting.md) | Pluggable error reporting abstraction |
-| [route-failure-recovery.md](./route-failure-recovery.md) | Deterministic failure recovery for the `/contracts` loading fallback (stall, retry budget, error isolation) and for `/sitemap.xml` (base-URL validation, entry invariants, report codes) |
-| [persistence.md](./persistence.md) | `safeStorage`, `localStorage` fallback, SSR safety |
-| [preferences.md](./preferences.md) | `PreferencesProvider` hydration, theme application, amount formatting |
-| [security-headers.md](./security-headers.md) | CSP, `X-Frame-Options`, and other HTTP response headers |
-| [stellar-address.md](./stellar-address.md) | `isValidStellarAddress`, `normalizeStellarAddress` |
-| [walkthrough.md](./walkthrough.md) | Cumulative change log — reputation legend, ActionPanel hotfix, milestone docs, dialog docs |
-
----
-
-## Implementation notes
-
-| Document | What it covers |
-|----------|----------------|
-| [implementation/ISSUE_383_IMPLEMENTATION.md](./implementation/ISSUE_383_IMPLEMENTATION.md) | Issue #383 implementation summary |
+| [COPYWRITING_GUIDE.md](./COPYWRITING_GUIDE.md) | Voice, tone, and user-facing copy standards |
+| [keyboard.md](./keyboard.md) | Global and component keyboard shortcuts, dialog focus management, and live regions |
+| [stellar-address.md](./stellar-address.md) | Stellar StrKey validation and normalization (`src/lib/stellar/address.ts`) |

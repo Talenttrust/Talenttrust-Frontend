@@ -1,7 +1,7 @@
 import { rpc as StellarRpc, TransactionBuilder, xdr } from '@stellar/stellar-sdk';
 import { getRpcServer, NETWORK_PASSPHRASE } from './rpc';
 import { signTransaction } from './freighter';
-import { extractContractErrorCode, CONTRACT_ERRORS } from './escrow';
+import { parseContractError } from './errors';
 
 export type TxStatus =
   | 'idle'
@@ -22,6 +22,18 @@ export async function simulateSignSubmit(
   signerAddress: string,
   onStatus: StatusCallback
 ): Promise<string> {
+  try {
+    return await submitTransaction(txXdr, signerAddress, onStatus);
+  } catch (err) {
+    throw new Error(parseContractError(err));
+  }
+}
+
+async function submitTransaction(
+  txXdr: string,
+  signerAddress: string,
+  onStatus: StatusCallback
+): Promise<string> {
   const server = getRpcServer();
 
   // 1. Simulate
@@ -30,10 +42,7 @@ export async function simulateSignSubmit(
   const simResult = await server.simulateTransaction(rawTx);
 
   if (StellarRpc.Api.isSimulationError(simResult)) {
-    const code = extractContractErrorCode(simResult.error);
-    const name =
-      code !== null ? (CONTRACT_ERRORS[code] ?? `Error #${code}`) : simResult.error;
-    throw new Error(name);
+    throw new Error(simResult.error);
   }
 
   const assembled = StellarRpc.assembleTransaction(
@@ -43,19 +52,10 @@ export async function simulateSignSubmit(
 
   // 2. Sign
   onStatus('awaiting_signature');
-  let signedXdr: string;
-  try {
-    signedXdr = await signTransaction(assembled.toXDR(), {
-      networkPassphrase: NETWORK_PASSPHRASE,
-      address: signerAddress,
-    });
-  } catch (err) {
-    throw new Error(
-      err instanceof Error && err.message.toLowerCase().includes('cancel')
-        ? 'Transaction cancelled by user.'
-        : `Wallet error: ${err instanceof Error ? err.message : String(err)}`
-    );
-  }
+  const signedXdr = await signTransaction(assembled.toXDR(), {
+    networkPassphrase: NETWORK_PASSPHRASE,
+    address: signerAddress,
+  });
 
   // 3. Submit
   onStatus('submitting');

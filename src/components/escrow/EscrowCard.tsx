@@ -208,6 +208,13 @@ export function EscrowCard({
           <span className="small muted">Rated. Thanks!</span>
         )}
         {extraActions}
+        <Link
+          href={`/contracts/${contract.id}/activity`}
+          className="btn btn-secondary btn-sm"
+          aria-label={`View on-chain activity for escrow #${contract.id} ${contract.title}`}
+        >
+          Activity
+        </Link>
       </div>
       {contract.status === 'Disputed' && resolveSlot}
     </article>

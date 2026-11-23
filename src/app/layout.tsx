@@ -14,6 +14,7 @@ import { NetworkGuard } from '@/components/wallet/NetworkGuard';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import OfflineIndicator from '@/components/OfflineIndicator';
 import { site, explorerUrl, apiDocsUrl, BRAND_THEME_COLORS } from '@/lib/site';
+import { rootMetadata } from '@/lib/metadata';
 
 export const metadata = rootMetadata;
 

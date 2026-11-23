@@ -25,6 +25,18 @@ export function NotificationBell() {
 
 function NotificationBellPanel() {
   const { items, unread, markAllRead, markRead, dismiss, clear, announcement } = useNotifications();
+  const { items, unread, markAllRead, clear, announcement, updatesPaused, dismissUpdatesPaused } = useNotifications();
+  const {
+    items,
+    unread,
+    markAllRead,
+    clear,
+    announcement,
+    desktopSettings,
+    desktopPermission,
+    setDesktopEnabled,
+    toggleDesktopType,
+  } = useNotifications();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
