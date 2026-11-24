@@ -8,6 +8,7 @@ import {
   buildReleaseTx,
   buildCancelTx,
   formatStroops,
+  ContractStatus,
   OnChainEscrow,
 } from '@/lib/stellar/escrow';
 import { simulateSignSubmit, TxStatus } from '@/lib/stellar/submit';
@@ -36,7 +37,8 @@ export function computeGuards(
   const isTerminal =
     escrow.status === 'Completed' ||
     escrow.status === 'Cancelled' ||
-    escrow.status === 'Disputed';
+    escrow.status === 'Disputed' ||
+    escrow.status === 'Resolved';
 
   const remaining = escrow.totalAmount - escrow.fundedAmount;
 
@@ -62,6 +64,15 @@ const STATUS_LABELS: Record<TxStatus, string> = {
   submitting: 'Submitting…',
   confirmed: 'Confirmed!',
   error: '',
+};
+
+const STATUS_NAMES: Record<ContractStatus, string> = {
+  Created: 'Created',
+  Funded: 'Funded',
+  Completed: 'Completed',
+  Cancelled: 'Cancelled',
+  Disputed: 'Disputed',
+  Resolved: 'Resolved',
 };
 
 function xlm(stroops: bigint): string {
@@ -311,7 +322,7 @@ export default function OnChainEscrowActions({ id }: OnChainEscrowActionsProps) 
           <dl className="onchain-meta small">
             <div>
               <dt className="muted">Status</dt>
-              <dd>{escrow.status}</dd>
+              <dd>{STATUS_NAMES[escrow.status]}</dd>
             </div>
             <div>
               <dt className="muted">Total</dt>
