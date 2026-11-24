@@ -1,3 +1,4 @@
+import type { Snapshot } from './watchlist';
 import type { Snapshot, WatchEventType } from './watchlist';
 import { createVersionedStore } from './safeStorage';
 
