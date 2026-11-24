@@ -990,6 +990,36 @@ tr:last-child td { border-bottom: 0; }
   gap: 8px;
 }
 
+.status-row-history {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 12px 46px;
+  font-size: 0.78rem;
+}
+.status-history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.status-history-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+}
+.status-history-item--operational { border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+.status-history-item--degraded { border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.status-history-item--down { border-color: color-mix(in srgb, var(--bad) 35%, transparent); }
+.status-history-item time { font-variant-numeric: tabular-nums; }
+
 .status-mismatch-badge {
   display: inline-flex;
   align-items: center;
@@ -1019,6 +1049,7 @@ tr:last-child td { border-bottom: 0; }
   .status-row-main { flex-wrap: wrap; gap: 8px; }
   .status-row-meta { margin-left: 0; width: 100%; }
   .status-row-detail { padding-left: 16px; }
+  .status-row-history { padding-left: 16px; }
 }
 
 /* Dispute resolution (arbiter) */

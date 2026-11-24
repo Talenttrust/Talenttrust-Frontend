@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { Address, scValToNative, xdr } from '@stellar/stellar-sdk';
 import {
   checkApi,
   checkChainConfig,
@@ -8,6 +9,10 @@ import {
   DEGRADED_THRESHOLD_MS,
   fetchWithTimeout,
 } from './status';
+import { site } from './site';
+
+const CONTRACT_ID = site.contractId;
+const OTHER_CONTRACT_ID = 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock fetch globally
@@ -20,7 +25,7 @@ global.fetch = mockFetch;
 vi.mock('./site', () => ({
   site: {
     apiUrl: 'https://api.example.com',
-    contractId: 'CONTRACT_FRONTEND_ID',
+    contractId: 'CCZMIVUBMG5SBC47SDTC32RWLBJ2HW2DCFVWJEOKCH2IFJBZGBKTXK5W',
     network: 'testnet',
     name: 'TalentTrust',
     tagline: '',
@@ -205,7 +210,7 @@ describe('checkChainConfig', () => {
     mockFetch.mockResolvedValueOnce(
       makeResponse({
         network: 'testnet',
-        contractId: 'CONTRACT_FRONTEND_ID',
+        contractId: CONTRACT_ID,
         rpcUrl: 'https://rpc.example.com',
       }),
     );
@@ -220,21 +225,21 @@ describe('checkChainConfig', () => {
     mockFetch.mockResolvedValueOnce(
       makeResponse({
         network: 'testnet',
-        contractId: 'CONTRACT_BACKEND_OTHER_ID',
+        contractId: OTHER_CONTRACT_ID,
         rpcUrl: 'https://rpc.example.com',
       }),
     );
     const result = await checkChainConfig();
     expect(result.state).toBe('degraded');
     expect(result.mismatch).toMatch(/Contract ID mismatch/);
-    expect(result.detail).toMatch(/CONTRACT_FRONTEND_ID/);
+    expect(result.detail).toMatch(new RegExp(CONTRACT_ID));
   });
 
   it('returns degraded with mismatch when network differs', async () => {
     mockFetch.mockResolvedValueOnce(
       makeResponse({
         network: 'mainnet',
-        contractId: 'CONTRACT_FRONTEND_ID',
+        contractId: CONTRACT_ID,
         rpcUrl: 'https://rpc.example.com',
       }),
     );
@@ -247,7 +252,7 @@ describe('checkChainConfig', () => {
     mockFetch.mockResolvedValueOnce(
       makeResponse({
         network: 'mainnet',
-        contractId: 'DIFFERENT_CONTRACT',
+        contractId: OTHER_CONTRACT_ID,
         rpcUrl: 'https://rpc.example.com',
       }),
     );
@@ -391,21 +396,98 @@ describe('checkRpc', () => {
 // checkContract
 // ─────────────────────────────────────────────────────────────────────────────
 
+const INSTANCE_XDR =
+  'AAAABgAAAAAAAAABssRWgWG7IIufkOYt6jZYU6PbQxFrZJHKEfSCpDkwVTsAAAAUAAAAAQAAABMAAAAAbGDr2DatCP6h+Qa00JuCIYPARH8HnqHtSeY/wlmdrMgAAAABAAAAAwAAABAAAAABAAAAAQAAAA8AAAAFQWRtaW4AAAAAAAASAAAAAAAAAAA/O5AsI+AlnRgVht/FQHdQyI9Ur9355uwlvVzRhLtjywAAABAAAAABAAAAAQAAAA8AAAAGTmV4dElkAAAAAAAFAAAAAAAAAAEAAAAQAAAAAQAAAAEAAAAPAAAABlBhdXNlZAAAAAAAAAAAAAA=';
+
+function contractInstanceXdr(paused: boolean): string {
+  const entry = xdr.LedgerEntryData.fromXdr(INSTANCE_XDR, 'base64');
+  if (entry.type !== 'contractData') throw new Error('fixture is not a contract data entry');
+  const value = entry.contractData.val;
+  if (value.type !== 'scvContractInstance') throw new Error('fixture is not a contract instance');
+  const instance = value.instance;
+  const storage = instance.storage ?? [];
+  const pausedIndex = storage.findIndex((item) => {
+    const key = scValToNative(item.key);
+    return Array.isArray(key) && key[0] === 'Paused';
+  });
+  if (pausedIndex < 0) throw new Error('fixture is missing the Paused entry');
+  storage[pausedIndex] = new xdr.ScMapEntry({
+    key: storage[pausedIndex].key,
+    val: xdr.ScVal.scvBool(paused),
+  });
+  return entry.toXDR('base64');
+}
+
+function expectedLedgerKey(contractId = CONTRACT_ID): string {
+  return xdr.LedgerKey.contractData(
+    new xdr.LedgerKeyContractData({
+      contract: Address.fromString(contractId).toScAddress(),
+      key: xdr.ScVal.scvLedgerKeyContractInstance(),
+      durability: xdr.ContractDataDurability.persistent,
+    }),
+  ).toXDR('base64');
+}
+
+function ledgerEntriesResponse(entryXdr?: string, latestLedger = 55000) {
+  return makeResponse({
+    jsonrpc: '2.0',
+    id: 2,
+    result: {
+      entries: entryXdr ? [{ key: 'ignored', xdr: entryXdr, lastModifiedLedgerSeq: 123 }] : [],
+      latestLedger,
+    },
+  });
+}
+
 describe('checkContract', () => {
   const RPC_URL = 'https://soroban-testnet.stellar.org';
 
-  it('returns operational when RPC confirms latest ledger', async () => {
-    mockFetch.mockResolvedValueOnce(
-      makeResponse({
-        jsonrpc: '2.0',
-        id: 2,
-        result: { sequence: 55000 },
-      }),
-    );
+  it('queries the contract instance ledger key and reports operational', async () => {
+    mockFetch.mockResolvedValueOnce(ledgerEntriesResponse(contractInstanceXdr(false), 55000));
+
     const result = await checkContract(RPC_URL);
+
     expect(result.state).toBe('operational');
-    expect(result.detail).toMatch(/CONTRACT/);
+    expect(result.detail).toMatch(/CCZMIVUB/);
     expect(result.detail).toMatch(/55000/);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(RPC_URL);
+    const body = JSON.parse(String(init.body));
+    expect(body).toMatchObject({ jsonrpc: '2.0', method: 'getLedgerEntries' });
+    expect(body.params.keys).toEqual([expectedLedgerKey()]);
+  });
+
+  it('returns down when the contract instance is missing', async () => {
+    mockFetch.mockResolvedValueOnce(ledgerEntriesResponse(undefined, 55000));
+
+    const result = await checkContract(RPC_URL);
+
+    expect(result.state).toBe('down');
+    expect(result.detail).toMatch(/not found on-chain/i);
+  });
+
+  it('returns degraded with the exact paused detail for a paused contract', async () => {
+    mockFetch.mockResolvedValueOnce(ledgerEntriesResponse(contractInstanceXdr(true), 55000));
+
+    const result = await checkContract(RPC_URL);
+
+    expect(result.state).toBe('degraded');
+    expect(result.detail).toBe('paused');
+  });
+
+  it('returns down for an invalid contract ID', async () => {
+    const original = site.contractId;
+    site.contractId = 'NOT_A_CONTRACT';
+    try {
+      const result = await checkContract(RPC_URL);
+      expect(result.state).toBe('down');
+      expect(result.detail).toMatch(/not a valid Stellar contract address/i);
+      expect(mockFetch).not.toHaveBeenCalled();
+    } finally {
+      site.contractId = original;
+    }
   });
 
   it('returns down when rpcUrl is empty', async () => {
@@ -441,6 +523,13 @@ describe('checkContract', () => {
     const result = await checkContract(RPC_URL);
     expect(result.state).toBe('down');
     expect(result.detail).toMatch(/-32700/);
+  });
+
+  it('returns down on a malformed contract instance entry', async () => {
+    mockFetch.mockResolvedValueOnce(ledgerEntriesResponse('not-valid-xdr', 55000));
+    const result = await checkContract(RPC_URL);
+    expect(result.state).toBe('down');
+    expect(result.detail).toMatch(/Malformed contract instance response/);
   });
 
   it('returns down on network error', async () => {

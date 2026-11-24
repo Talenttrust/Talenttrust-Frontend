@@ -1,8 +1,16 @@
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
-import StatusClient from './StatusClient';
+import StatusClient, {
+  AUTO_REFRESH_MS,
+  HISTORY_LIMIT,
+  HISTORY_STORAGE_KEY,
+  appendHistory,
+  emptyHistory,
+  loadHistory,
+} from './StatusClient';
 import {
   checkApi,
   checkChainConfig,
@@ -32,6 +40,7 @@ const down = (detail: string): StatusResult => ({ state: 'down', latencyMs: 0, d
 const degraded = (detail: string): StatusResult => ({ state: 'degraded', latencyMs: 2500, detail });
 
 beforeEach(() => {
+  sessionStorage.clear();
   vi.clearAllMocks();
   api.mockResolvedValue(ok('API v1.2.3 responded in 12ms'));
   chain.mockResolvedValue({
@@ -55,7 +64,7 @@ describe('StatusClient', () => {
     expect(screen.getByText('Chain Config (/api/v1/chain)')).toBeInTheDocument();
     expect(screen.getByText('Soroban RPC')).toBeInTheDocument();
     expect(screen.getByText('Escrow Contract')).toBeInTheDocument();
-    expect(screen.getAllByText('Operational')).toHaveLength(4);
+    expect(screen.getAllByText('Operational').length).toBeGreaterThanOrEqual(4);
     expect(screen.getAllByText('12ms').length).toBeGreaterThan(0);
     expect(screen.getByText(/Last checked:/)).toBeInTheDocument();
     expect(rpc).toHaveBeenCalledWith('https://rpc.example.com', expect.any(AbortSignal));
@@ -78,7 +87,7 @@ describe('StatusClient', () => {
         'Partial outage — one or more systems are down',
       ),
     );
-    expect(screen.getByText('Down')).toBeInTheDocument();
+    expect(screen.getAllByText('Down').length).toBeGreaterThan(0);
     expect(screen.getByTestId('status-announcer')).toHaveTextContent(/Partial outage/);
   });
 
@@ -110,7 +119,7 @@ describe('StatusClient', () => {
         'Partial outage — some systems degraded',
       ),
     );
-    expect(screen.getAllByText('Degraded')).toHaveLength(1);
+    expect(screen.getAllByText('Degraded').length).toBeGreaterThanOrEqual(1);
   });
 
   it('falls back to the configured RPC URL when chain config is unavailable', async () => {
@@ -269,5 +278,142 @@ describe('StatusClient', () => {
       unmount();
       expect(capturedSignal?.aborted).toBe(true);
     });
+  });
+
+  it('records one history entry per check and persists it to sessionStorage', async () => {
+    render(<StatusClient />);
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('group', { name: /recent .* checks/i })).toHaveLength(4),
+    );
+
+    const stored = JSON.parse(sessionStorage.getItem(HISTORY_STORAGE_KEY) ?? '{}');
+    for (const key of ['api', 'chain', 'rpc', 'contract']) {
+      expect(stored[key]).toHaveLength(1);
+      expect(stored[key][0].state).toBe('operational');
+    }
+  });
+
+  it('keeps RPC and contract histories independent', async () => {
+    rpc.mockResolvedValue(degraded('slow RPC'));
+    contract.mockResolvedValue(down('contract missing'));
+    render(<StatusClient />);
+
+    await waitFor(() => expect(screen.getByTestId('status-banner')).toHaveTextContent(/Partial outage/));
+
+    const stored = JSON.parse(sessionStorage.getItem(HISTORY_STORAGE_KEY) ?? '{}');
+    expect(stored.rpc.map((entry: { state: string }) => entry.state)).toEqual(['degraded']);
+    expect(stored.contract.map((entry: { state: string }) => entry.state)).toEqual(['down']);
+    expect(stored.api.map((entry: { state: string }) => entry.state)).toEqual(['operational']);
+    expect(stored.chain.map((entry: { state: string }) => entry.state)).toEqual(['operational']);
+  });
+
+  it('caps each history list at 20 entries', () => {
+    let history = emptyHistory();
+    for (let i = 0; i < HISTORY_LIMIT + 5; i += 1) {
+      const at = new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString();
+      history = appendHistory(
+        history,
+        { api: ok('a'), chain: ok('c'), rpc: ok('r'), contract: ok('x') },
+        at,
+      );
+    }
+
+    expect(history.api).toHaveLength(HISTORY_LIMIT);
+    expect(history.api[0].at).toBe(new Date(Date.UTC(2026, 0, 1, 0, 0, HISTORY_LIMIT + 4)).toISOString());
+    expect(history.contract).toHaveLength(HISTORY_LIMIT);
+  });
+
+  it('ignores corrupted stored history and still renders', async () => {
+    sessionStorage.setItem(HISTORY_STORAGE_KEY, '{not json');
+
+    render(<StatusClient />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('status-banner')).toHaveTextContent('All systems operational'),
+    );
+    expect(screen.getAllByRole('group', { name: /recent .* checks/i })).toHaveLength(4);
+  });
+
+  it('filters unexpected stored history entries', () => {
+    sessionStorage.setItem(
+      HISTORY_STORAGE_KEY,
+      JSON.stringify({
+        api: [
+          { state: 'weird', at: 'not-a-date' },
+          { state: 'operational', at: '2026-01-01T00:00:00.000Z' },
+          'nope',
+        ],
+        chain: 'nope',
+      }),
+    );
+
+    const history = loadHistory();
+    expect(history.api).toEqual([{ state: 'operational', at: '2026-01-01T00:00:00.000Z' }]);
+    expect(history.chain).toEqual([]);
+    expect(history.rpc).toEqual([]);
+    expect(history.contract).toEqual([]);
+  });
+
+  it('renders when sessionStorage is unavailable', async () => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+
+    try {
+      render(<StatusClient />);
+      await waitFor(() =>
+        expect(screen.getByTestId('status-banner')).toHaveTextContent('All systems operational'),
+      );
+    } finally {
+      getItem.mockRestore();
+      setItem.mockRestore();
+    }
+  });
+
+  it('does not add history entries on rerender', async () => {
+    const { rerender } = render(<StatusClient />);
+    await waitFor(() =>
+      expect(screen.getAllByRole('group', { name: /recent .* checks/i })).toHaveLength(4),
+    );
+
+    rerender(<StatusClient />);
+    await waitFor(() =>
+      expect(screen.getAllByRole('group', { name: /recent .* checks/i })).toHaveLength(4),
+    );
+
+    const stored = JSON.parse(sessionStorage.getItem(HISTORY_STORAGE_KEY) ?? '{}');
+    expect(stored.api).toHaveLength(1);
+  });
+
+  it('shows the status and timestamp in each recent-history list', async () => {
+    render(<StatusClient />);
+
+    const group = await screen.findByRole('group', { name: /recent REST API/i });
+    expect(within(group).getByText('Operational')).toBeInTheDocument();
+    const time = group.querySelector('time');
+    expect(time?.getAttribute('datetime')).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(time?.textContent).toMatch(/\d{1,2}:\d{2}/);
+  });
+
+  it('auto-refreshes every 30 seconds', async () => {
+    expect(AUTO_REFRESH_MS).toBe(30_000);
+    vi.useFakeTimers();
+    try {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+      render(<StatusClient />);
+      await act(async () => {});
+      expect(api).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(AUTO_REFRESH_MS);
+      });
+      expect(api).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
