@@ -26,6 +26,7 @@ export type WalletState =
   | { type: 'connecting' }
   | { type: 'connected'; address: string; passphrase: string }
   | { type: 'wrong-network'; address: string; passphrase: string }
+  | { type: 'network-unreadable'; address: string }
   | { type: 'error'; message: string };
 
 export type WalletAction =
@@ -34,6 +35,7 @@ export type WalletAction =
   | { type: 'SET_CONNECTING' }
   | { type: 'SET_CONNECTED'; address: string; passphrase: string }
   | { type: 'SET_WRONG_NETWORK'; address: string; passphrase: string }
+  | { type: 'SET_NETWORK_UNREADABLE'; address: string }
   | { type: 'SET_ERROR'; message: string };
 
 const initialState: WalletState = { type: 'disconnected' };
@@ -50,6 +52,8 @@ export function walletReducer(state: WalletState, action: WalletAction): WalletS
       return { type: 'connected', address: action.address, passphrase: action.passphrase };
     case 'SET_WRONG_NETWORK':
       return { type: 'wrong-network', address: action.address, passphrase: action.passphrase };
+    case 'SET_NETWORK_UNREADABLE':
+      return { type: 'network-unreadable', address: action.address };
     case 'SET_ERROR':
       return { type: 'error', message: action.message };
     default:
@@ -137,6 +141,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (!passphrase) {
+        dispatch({ type: 'SET_NETWORK_UNREADABLE', address });
+        return;
+      }
+
       const expected = expectedPassphrase();
       if (passphrase !== expected) {
         dispatch({ type: 'SET_WRONG_NETWORK', address, passphrase });
@@ -166,13 +175,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
       const address = result.address;
       const passphrase = await getNetworkPassphrase();
+      if (!passphrase) {
+        dispatch({ type: 'SET_NETWORK_UNREADABLE', address });
+        return;
+      }
       const expected = expectedPassphrase();
-
       if (passphrase !== expected) {
         dispatch({ type: 'SET_WRONG_NETWORK', address, passphrase });
         return;
       }
-
       dispatch({ type: 'SET_CONNECTED', address, passphrase });
       writeAutoconnect(true);
     } catch (e) {
@@ -227,7 +238,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             if (params.error || !params.address) {
               if (
                 stateRef.current.type === 'connected' ||
-                stateRef.current.type === 'wrong-network'
+                stateRef.current.type === 'wrong-network' ||
+                stateRef.current.type === 'network-unreadable'
               ) {
                 dispatch({ type: 'SET_DISCONNECTED' });
               }
@@ -235,7 +247,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             }
 
             const expected = expectedPassphrase();
-            const passphrase = params.networkPassphrase || expected;
+            const passphrase = params.networkPassphrase;
+            if (!passphrase) {
+              dispatch({ type: 'SET_NETWORK_UNREADABLE', address: params.address });
+              return;
+            }
 
             if (passphrase !== expected) {
               dispatch({
@@ -261,7 +277,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const handleFocus = () => {
       if (
         stateRef.current.type === 'connected' ||
-        stateRef.current.type === 'wrong-network'
+        stateRef.current.type === 'wrong-network' ||
+        stateRef.current.type === 'network-unreadable'
       ) {
         checkWallet();
       }
@@ -271,7 +288,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (
         !document.hidden &&
         (stateRef.current.type === 'connected' ||
-          stateRef.current.type === 'wrong-network')
+          stateRef.current.type === 'wrong-network' ||
+          stateRef.current.type === 'network-unreadable')
       ) {
         checkWallet();
       }
@@ -294,7 +312,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [checkWallet]);
 
   const address =
-    state.type === 'connected' || state.type === 'wrong-network'
+    state.type === 'connected' || state.type === 'wrong-network' || state.type === 'network-unreadable'
       ? state.address
       : null;
   const isConnecting = state.type === 'connecting';

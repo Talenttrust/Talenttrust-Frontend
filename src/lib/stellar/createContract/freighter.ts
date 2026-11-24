@@ -39,15 +39,23 @@ export async function getWalletAddress(): Promise<WalletAddress> {
 
 /** Return network details from the connected wallet. */
 export async function getWalletNetworkDetails(): Promise<NetworkDetails> {
-  const result = await getNetworkDetails();
-  if (result.error) {
-    return { network: '', networkPassphrase: '', error: result.error.message };
+  try {
+    const result = await getNetworkDetails();
+    if (result.error) {
+      return { network: '', networkPassphrase: '', error: result.error.message };
+    }
+    return {
+      network: result.network,
+      networkPassphrase: result.networkPassphrase,
+      sorobanRpcUrl: result.sorobanRpcUrl,
+    };
+  } catch (error) {
+    return {
+      network: '',
+      networkPassphrase: '',
+      error: error instanceof Error ? error.message : 'Unable to read wallet network.',
+    };
   }
-  return {
-    network: result.network,
-    networkPassphrase: result.networkPassphrase,
-    sorobanRpcUrl: result.sorobanRpcUrl,
-  };
 }
 
 /**

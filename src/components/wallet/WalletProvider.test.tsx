@@ -87,6 +87,21 @@ describe('WalletProvider', () => {
     expect(result.current.address).toBe('GTEST123');
   });
 
+  it('does not assume testnet when the wallet network cannot be read', async () => {
+    vi.mocked(freighter.isInstalled).mockResolvedValue(true);
+    vi.mocked(freighter.requestAccessSafe).mockResolvedValue({ address: 'GTEST123' });
+    vi.mocked(freighter.getNetworkPassphrase).mockResolvedValue('');
+
+    const { result } = renderHook(() => useWallet(), { wrapper });
+
+    await act(async () => {
+      await result.current.connect();
+    });
+
+    expect(result.current.state.type).toBe('network-unreadable');
+    expect(result.current.address).toBe('GTEST123');
+  });
+
   it('transitions from connected to disconnected on disconnect', async () => {
     vi.mocked(freighter.isInstalled).mockResolvedValue(true);
     vi.mocked(freighter.requestAccessSafe).mockResolvedValue({ address: 'GTEST123' });

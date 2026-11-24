@@ -18,7 +18,7 @@ function WalletButtonMenu() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleCopyAddress = async () => {
-    if (state.type === 'connected' || state.type === 'wrong-network') {
+    if (state.type === 'connected' || state.type === 'wrong-network' || state.type === 'network-unreadable') {
       await navigator.clipboard.writeText(state.address);
       setIsOpen(false);
       buttonRef.current?.focus();
@@ -110,7 +110,7 @@ function WalletButtonMenu() {
     );
   }
 
-  const address = state.type === 'connected' || state.type === 'wrong-network' ? state.address : '';
+  const address = state.type === 'connected' || state.type === 'wrong-network' || state.type === 'network-unreadable' ? state.address : '';
   const explorerLink = `https://stellar.expert/explorer/${site.network}/account/${address}`;
 
   return (
