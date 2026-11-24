@@ -61,8 +61,8 @@ export async function getStats(): Promise<Stats> {
   }
   return parsed.data;
 }
-export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'aborted';
 export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'aborted' | 'schema';
+export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'aborted' | 'parse';
 
 const FRIENDLY_CODES: Record<string, string> = {
   contract_not_found: 'That escrow could not be found. It may have been removed.',
@@ -81,6 +81,7 @@ const FRIENDLY_KIND: Record<ApiErrorKind, string> = {
   timeout: 'The TalentTrust API took too long to respond. Please try again.',
   http: 'The TalentTrust API returned an error. Please try again.',
   aborted: 'The request was cancelled.',
+  parse: 'The TalentTrust API sent a response we could not read. Please try again.',
 };
 
 export class ApiError extends Error {
@@ -185,6 +186,22 @@ function readError(data: unknown): { code?: string; message?: string } {
   return {};
 }
 
+async function readBody(res: Response): Promise<unknown> {
+  const text = await res.text().catch(() => null);
+  if (text !== null && text.trim() === '') return {};
+  try {
+    if (text === null) throw new Error('Response body could not be read');
+    return JSON.parse(text);
+  } catch {
+    if (!res.ok) return {};
+    throw new ApiError({
+      kind: 'parse',
+      status: res.status,
+      message: `Invalid JSON in response (${res.status})`,
+    });
+  }
+}
+
 function isGet(method: string): boolean {
   return method.toUpperCase() === 'GET';
 }
@@ -231,7 +248,7 @@ export async function api<T>(path: string, init: ApiOptions = {}): Promise<T> {
     }
     clearTimeout(timer);
 
-    const data = await res.json().catch(() => ({}));
+    const data = await readBody(res);
 
     if (!res.ok) {
       const { code } = readError(data);

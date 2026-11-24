@@ -5,6 +5,7 @@ import { stroopsFromXlm, xlmFromStroops, StroopConversionError } from '@/lib/ste
 import { getWalletAddress, getWalletNetworkDetails } from '@/lib/stellar/createContract/freighter';
 import { buildCreateContractTx, TESTNET_PASSPHRASE, XLM_SAC_ID } from '@/lib/stellar/createContract/escrow';
 import { simulateSignSubmit } from '@/lib/stellar/createContract/submit';
+import { isTransactionCancelled } from '@/lib/stellar/transaction';
 import { explorerTxUrl } from '@/lib/stellar/config';
 
 /** UX phases for the on-chain submit flow. */
@@ -36,6 +37,7 @@ export function OnchainCreateForm() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<OnchainResult | null>(null);
   const successRef = useRef<HTMLParagraphElement>(null);
+  const submitController = useRef<AbortController | null>(null);
 
   // Connect the wallet and verify it is on testnet.
   useEffect(() => {
@@ -72,6 +74,13 @@ export function OnchainCreateForm() {
   useEffect(() => {
     if (phase === 'confirmed') successRef.current?.focus();
   }, [phase]);
+
+  useEffect(
+    () => () => {
+      submitController.current?.abort();
+    },
+    [],
+  );
 
   const parts = () =>
     form.milestones
@@ -120,6 +129,9 @@ export function OnchainCreateForm() {
     );
     if (!confirmed) return;
 
+    submitController.current?.abort();
+    const controller = new AbortController();
+    submitController.current = controller;
     try {
       setPhase('simulating');
       const tx = await buildCreateContractTx({
@@ -130,10 +142,12 @@ export function OnchainCreateForm() {
       });
       // simulateSignSubmit handles prepare → sign → send → poll
       setPhase('signing');
-      const { hash, returnValue } = await simulateSignSubmit(tx);
+      const { hash, returnValue } = await simulateSignSubmit(tx, { signal: controller.signal });
+      if (controller.signal.aborted) return;
       setResult({ hash, escrowId: String(returnValue ?? '?') });
       setPhase('confirmed');
     } catch (err) {
+      if (isTransactionCancelled(err) || controller.signal.aborted) return;
       setError((err as Error).message);
       setPhase('error');
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useId } from 'react';
+import React, { useEffect, useState, useCallback, useId, useRef } from 'react';
 import { useWallet } from '@/components/wallet/WalletProvider';
 import {
   getContract,
@@ -11,6 +11,7 @@ import {
   OnChainEscrow,
 } from '@/lib/stellar/escrow';
 import { simulateSignSubmit, TxStatus } from '@/lib/stellar/submit';
+import { isTransactionCancelled } from '@/lib/stellar/transaction';
 import { parseContractError } from '@/lib/stellar/errors';
 import { explorerTxUrl } from '@/lib/stellar/config';
 
@@ -177,6 +178,7 @@ export default function OnChainEscrowActions({ id }: OnChainEscrowActionsProps) 
 
   const [depositInput, setDepositInput] = useState('');
   const [showCancel, setShowCancel] = useState(false);
+  const submitController = useRef<AbortController | null>(null);
 
   const cancelTitleId = useId();
   const depositInputId = useId();
@@ -198,6 +200,13 @@ export default function OnChainEscrowActions({ id }: OnChainEscrowActionsProps) 
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(
+    () => () => {
+      submitController.current?.abort();
+    },
+    [],
+  );
+
   const guards = computeGuards(escrow, address ?? null);
   const isClient =
     escrow ? (address ?? '').toLowerCase() === escrow.client.toLowerCase() : false;
@@ -205,19 +214,25 @@ export default function OnChainEscrowActions({ id }: OnChainEscrowActionsProps) 
   const runTx = useCallback(
     async (buildFn: () => Promise<{ xdr: string; networkPassphrase: string }>) => {
       if (!address) return;
+      submitController.current?.abort();
+      const controller = new AbortController();
+      submitController.current = controller;
       setTxStatus('idle');
       setTxError(null);
       setTxHash(null);
       try {
         const { xdr } = await buildFn();
         const hash = await simulateSignSubmit(xdr, address, (s, detail) => {
+          if (controller.signal.aborted) return;
           setTxStatus(s);
           if (s === 'confirmed' && detail) setTxHash(detail);
-        });
+        }, { signal: controller.signal });
+        if (controller.signal.aborted) return;
         setTxHash(hash);
         setTxStatus('confirmed');
         await load();
       } catch (err) {
+        if (isTransactionCancelled(err) || controller.signal.aborted) return;
         setTxStatus('error');
         setTxError(parseContractError(err));
       }

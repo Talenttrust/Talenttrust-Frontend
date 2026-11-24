@@ -1,7 +1,12 @@
-import { rpc as StellarRpc, TransactionBuilder, xdr } from '@stellar/stellar-sdk';
 import { getRpcServer, NETWORK_PASSPHRASE } from './rpc';
 import { signTransaction } from './freighter';
 import { parseContractError } from './errors';
+import {
+  isTransactionCancelled,
+  submitTransaction as runSubmitTransaction,
+  type SubmitTransactionOptions,
+  type TransactionStage,
+} from './transaction';
 
 export type TxStatus =
   | 'idle'
@@ -20,74 +25,25 @@ export type StatusCallback = (status: TxStatus, detail?: string) => void;
 export async function simulateSignSubmit(
   txXdr: string,
   signerAddress: string,
-  onStatus: StatusCallback
+  onStatus: StatusCallback,
+  options: SubmitTransactionOptions = {},
 ): Promise<string> {
   try {
-    return await submitTransaction(txXdr, signerAddress, onStatus);
+    const forwardStatus = (stage: TransactionStage, detail?: string) => {
+      onStatus(stage === 'signing' ? 'awaiting_signature' : stage, detail);
+    };
+    const result = await runSubmitTransaction(txXdr, {
+      ...options,
+      signerAddress,
+      onStatus: forwardStatus,
+      server: options.server ?? (getRpcServer() as never),
+      sign: options.sign ?? signTransaction,
+      networkPassphrase: options.networkPassphrase ?? NETWORK_PASSPHRASE,
+      errorLabel: options.errorLabel ?? 'Submit failed',
+    });
+    return result.hash;
   } catch (err) {
+    if (isTransactionCancelled(err)) throw err;
     throw new Error(parseContractError(err));
   }
-}
-
-async function submitTransaction(
-  txXdr: string,
-  signerAddress: string,
-  onStatus: StatusCallback
-): Promise<string> {
-  const server = getRpcServer();
-
-  // 1. Simulate
-  onStatus('simulating');
-  const rawTx = TransactionBuilder.fromXDR(txXdr, NETWORK_PASSPHRASE);
-  const simResult = await server.simulateTransaction(rawTx);
-
-  if (StellarRpc.Api.isSimulationError(simResult)) {
-    throw new Error(simResult.error);
-  }
-
-  const assembled = StellarRpc.assembleTransaction(
-    rawTx,
-    simResult as StellarRpc.Api.SimulateTransactionSuccessResponse
-  ).build();
-
-  // 2. Sign
-  onStatus('awaiting_signature');
-  const signedXdr = await signTransaction(assembled.toXDR(), {
-    networkPassphrase: NETWORK_PASSPHRASE,
-    address: signerAddress,
-  });
-
-  // 3. Submit
-  onStatus('submitting');
-  const signedTx = TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
-  const sendResult = await server.sendTransaction(signedTx);
-
-  if (sendResult.status === 'ERROR') {
-    const errXdr = (sendResult as { errorResult?: xdr.TransactionResult })
-      .errorResult;
-    throw new Error(`Submit failed: ${errXdr?.toString() ?? 'unknown'}`);
-  }
-
-  const hash = sendResult.hash;
-
-  // 4. Poll
-  const POLL_MS = 2_000;
-  const TIMEOUT_MS = 30_000;
-  const deadline = Date.now() + TIMEOUT_MS;
-
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, POLL_MS));
-    const poll = await server.getTransaction(hash);
-
-    if (poll.status === StellarRpc.Api.GetTransactionStatus.SUCCESS) {
-      onStatus('confirmed', hash);
-      return hash;
-    }
-    if (poll.status === StellarRpc.Api.GetTransactionStatus.FAILED) {
-      throw new Error(`Transaction failed on-chain.`);
-    }
-    // NOT_FOUND → still pending
-  }
-
-  throw new Error('RPC timeout: transaction not confirmed within 30 s.');
 }

@@ -9,10 +9,13 @@ import { WalletButton } from '@/components/wallet/WalletButton';
 import { CommandPalette } from '@/components/palette/CommandPalette';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
+import { useIsArbiter } from '@/lib/stellar/useIsArbiter';
 
 export function Header() {
   const pathname = usePathname();
+  const isArbiter = useIsArbiter();
   const { open, toggle, close, triggerRef, panelRef } = useDisclosure();
+  const visibleNav = nav.filter((item) => item.href !== '/arbiter' || isArbiter === true);
 
   // First-link ref — receives focus when the panel opens
   const firstLinkRef = useRef<HTMLAnchorElement | null>(null);
@@ -64,7 +67,7 @@ export function Header() {
 
         {/* Desktop nav */}
         <nav className="nav" aria-label="Main">
-          {nav.map((item) => (
+          {visibleNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -111,7 +114,7 @@ export function Header() {
         aria-label="Mobile"
         aria-hidden={!open}
       >
-        {nav.map((item, i) => (
+        {visibleNav.map((item, i) => (
           <Link
             key={item.href}
             href={item.href}

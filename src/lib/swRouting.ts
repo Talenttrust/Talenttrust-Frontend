@@ -1,11 +1,8 @@
 /**
  * Pure service-worker routing logic.
  *
- * The actual `public/sw.js` service worker mirrors the decisions made here
- * so that the routing rules are unit-testable without a browser environment.
- * Keeping this module free of `self`, `caches`, `fetch`, and any other
- * service-worker global means the tests can run under jsdom / Node and the
- * production SW can import the same decisions via copy-paste.
+ * `scripts/build-sw.mjs` bundles this module with `src/service-worker.ts`
+ * into `public/sw.js`. Tests and the browser worker use the same policy.
  *
  * ## Strategies
  *
@@ -50,7 +47,9 @@ export interface RouteDecision {
  * Bump this version whenever the precache asset list changes so the
  * `activate` event can delete old caches left over from previous versions.
  */
-export const STATIC_CACHE = 'talenttrust-static-v1';
+export const STATIC_CACHE = 'talenttrust-static-v2';
+export const RUNTIME_CACHE = 'talenttrust-runtime-v2';
+export const MAX_RUNTIME_ENTRIES = 100;
 
 /**
  * Fallback URL used when a same-origin navigation fails and the device is
@@ -58,6 +57,29 @@ export const STATIC_CACHE = 'talenttrust-static-v1';
  * guaranteed to be available without a network round-trip.
  */
 export const OFFLINE_URL = '/offline';
+export const PRECACHE_URLS = ['/', OFFLINE_URL, '/icon.svg', '/icon-192x192.png', '/icon-512x512.png'];
+
+/** Delete oldest entries in Cache Storage insertion order. */
+export async function trimRuntimeCache(cache: Pick<Cache, 'keys' | 'delete'>): Promise<void> {
+  const keys = await cache.keys();
+  for (const key of keys.slice(0, Math.max(0, keys.length - MAX_RUNTIME_ENTRIES))) {
+    await cache.delete(key);
+  }
+}
+
+// Fetch events can overlap. Serialize refresh/put/trim to enforce the cap,
+// including when separate caches.open calls return different Cache objects.
+let runtimeWrites = Promise.resolve();
+export function cacheRuntimeResponse(cache: Pick<Cache, 'keys' | 'delete' | 'put'>, request: Request, response: Response): Promise<void> {
+  const write = runtimeWrites.catch(() => undefined).then(async () => {
+    // Reinsert a refreshed entry at the end so eviction retains fresh pages.
+    await cache.delete(request);
+    await cache.put(request, response);
+    await trimRuntimeCache(cache);
+  });
+  runtimeWrites = write;
+  return write;
+}
 
 /**
  * Determine the caching strategy for an outgoing request.
@@ -93,7 +115,7 @@ export function routeRequest(
   // This covers NEXT_PUBLIC_API_URL, Soroban RPC endpoints, Horizon, and
   // any wallet relay.  No cross-origin response is ever stored in Cache
   // Storage.
-  if (!isSameOrigin) {
+  if (!isSameOrigin || !['http:', 'https:'].includes(parsedUrl.protocol)) {
     return {
       strategy: 'network-only',
       cacheName: null,
@@ -102,6 +124,11 @@ export function routeRequest(
   }
 
   const pathname = parsedUrl.pathname;
+
+  // Same-origin API responses and the worker update script also stay fresh.
+  if (pathname === '/api' || pathname.startsWith('/api/') || pathname === '/sw.js') {
+    return { strategy: 'network-only', cacheName: null, fallbackUrl: null };
+  }
 
   // ── Next.js static assets: cache-first ──────────────────────────────
   // These are immutable, content-hashed files served from `/_next/static/`.
@@ -120,7 +147,7 @@ export function routeRequest(
   if (mode === 'navigate') {
     return {
       strategy: 'network-first',
-      cacheName: STATIC_CACHE,
+      cacheName: RUNTIME_CACHE,
       fallbackUrl: OFFLINE_URL,
     };
   }
@@ -131,7 +158,7 @@ export function routeRequest(
   // so the shell can still load offline.
   return {
     strategy: 'network-first',
-    cacheName: STATIC_CACHE,
+    cacheName: RUNTIME_CACHE,
     fallbackUrl: null,
   };
 }
