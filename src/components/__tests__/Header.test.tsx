@@ -12,6 +12,11 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotificationsProvider } from '@/components/NotificationsProvider';
 
+const arbiter = vi.hoisted(() => ({ value: false as boolean | null }));
+vi.mock('@/lib/stellar/useIsArbiter', () => ({
+  useIsArbiter: () => arbiter.value,
+}));
+
 // ── Mock next/navigation ──────────────────────────────────────────────────────
 const mockPathname = vi.fn(() => '/');
 const mockPush = vi.fn();
@@ -59,6 +64,7 @@ vi.mock('next/link', () => ({
 
 // ── matchMedia stub (jsdom doesn't have it) ───────────────────────────────────
 beforeEach(() => {
+  arbiter.value = false;
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
@@ -280,5 +286,27 @@ describe('Header – desktop nav', () => {
     const mainNav = screen.getByRole('navigation', { name: /main/i });
     expect(within(mainNav).getByRole('link', { name: /home/i })).toBeInTheDocument();
     expect(within(mainNav).getByRole('link', { name: /launch app/i })).toBeInTheDocument();
+  });
+});
+
+describe('Header – arbiter nav link', () => {
+  it('is hidden for non-arbiters', () => {
+    render(
+      <NotificationsProvider>
+        <Header />
+      </NotificationsProvider>,
+    );
+    expect(screen.queryByRole('link', { name: /arbiter/i })).not.toBeInTheDocument();
+  });
+
+  it('is visible for the arbiter', () => {
+    arbiter.value = true;
+    render(
+      <NotificationsProvider>
+        <Header />
+      </NotificationsProvider>,
+    );
+    const mainNav = screen.getByRole('navigation', { name: /main/i });
+    expect(within(mainNav).getByRole('link', { name: /arbiter/i })).toHaveAttribute('href', '/arbiter');
   });
 });

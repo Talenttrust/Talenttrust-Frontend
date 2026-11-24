@@ -1,4 +1,4 @@
-import type { WatchEventType } from './watchlist';
+import type { Snapshot, WatchEventType } from './watchlist';
 import { createVersionedStore } from './safeStorage';
 
 export const NOTIFICATIONS_KEY = 'tt.notifications.v1';

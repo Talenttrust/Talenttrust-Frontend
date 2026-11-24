@@ -11,6 +11,8 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+vi.mock('@/lib/stellar/useIsArbiter', () => ({ useIsArbiter: () => false }));
+
 // jsdom does not implement window.matchMedia; Header uses it in a useEffect.
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

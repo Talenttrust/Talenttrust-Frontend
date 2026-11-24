@@ -61,7 +61,7 @@ describe('ServiceWorkerRegister', () => {
     if (visibilityStateDescriptor) {
       Object.defineProperty(document, 'visibilityState', visibilityStateDescriptor);
     } else {
-      delete (document as Partial<Document>).visibilityState;
+      Reflect.deleteProperty(document, 'visibilityState');
     }
     vi.useRealTimers();
   });
