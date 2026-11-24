@@ -192,6 +192,59 @@ describe('api client hardening', () => {
     await vi.advanceTimersByTimeAsync(3000);
     await assertion;
   });
+
+  const rawResponse = (body: string | null, status: number, contentType = 'text/html') =>
+    new Response(body, { status, headers: { 'content-type': contentType } });
+
+  it('throws kind: parse with a friendly message for an HTML body on a 200', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rawResponse('<!doctype html><p>Gateway</p>', 200)));
+
+    const error = await api('/x').catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ kind: 'parse', status: 200 });
+    expect((error as ApiError).userMessage).toBe(
+      'The TalentTrust API sent a response we could not read. Please try again.',
+    );
+  });
+
+  it('throws kind: parse for a truncated JSON body on a 200 and does not retry', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(rawResponse('{"data": [', 200, 'application/json'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(api('/x')).rejects.toMatchObject({ kind: 'parse' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves an empty 204 response as an empty object', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rawResponse(null, 204)));
+
+    await expect(api('/x', { method: 'DELETE' })).resolves.toEqual({});
+  });
+
+  it('resolves a whitespace-only 200 body as an empty object', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rawResponse('  \n', 200)));
+
+    await expect(api('/x')).resolves.toEqual({});
+  });
+
+  it('keeps the HTTP status when a 500 response has invalid JSON', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rawResponse('<h1>Internal error</h1>', 500)));
+
+    const error = await api('/x', { retries: 0 }).catch((e: unknown) => e);
+
+    expect(error).toMatchObject({ kind: 'http', status: 500, code: undefined });
+    expect((error as ApiError).message).toBe('Request failed (500)');
+  });
+
+  it('keeps the backend code when an error response has valid JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ error: 'invalid_status', message: 'Nope' }, 409)),
+    );
+
+    await expect(api('/x')).rejects.toMatchObject({ kind: 'http', status: 409, code: 'invalid_status' });
+  });
 });
 
 describe('unwrapContract', () => {

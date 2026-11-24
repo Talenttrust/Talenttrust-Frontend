@@ -17,8 +17,9 @@ Core networking, caching, health-check, and offline routing utilities in `src/li
 
 Typed wrapper around `fetch` targeting `site.apiUrl`:
 
-- **Types**: `EscrowContract`, `Milestone`, `Dispute`, `Reputation`, `Stats`, `ViewFilter`, `ApiError`, `ApiErrorKind` (`'network' | 'timeout' | 'http' | 'aborted'`).
+- **Types**: `EscrowContract`, `Milestone`, `Dispute`, `Reputation`, `Stats`, `ViewFilter`, `ApiError`, `ApiErrorKind` (`'network' | 'timeout' | 'http' | 'aborted' | 'parse'`).
 - `api<T>(path, init)` — applies a `10000` ms default timeout (`combineSignals`) and retries `GET` requests up to 2 times on network errors or HTTP `502`/`503`/`504` with exponential backoff and jitter.
+- Response bodies: an empty body (for example `204`) resolves as `{}`. A successful response whose body is not valid JSON throws `ApiError` with kind `'parse'` and is not retried. Error responses (`!res.ok`) with invalid JSON still throw kind `'http'` with their status.
 - `listContracts(opts)` — fetches `/api/v1/contracts` with optional `?party=` and `?status=` query parameters.
 - `getStats()` — fetches `/stats`.
 - `unwrapContract(payload)` / `unwrapReputation(payload)` — unwraps `{ data: ... }` or direct response payloads.
