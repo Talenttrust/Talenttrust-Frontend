@@ -49,10 +49,20 @@ export interface Stats {
   totalReleased: number;
 }
 
-export function getStats(): Promise<Stats> {
-  return api<Stats>("/stats");
+export async function getStats(): Promise<Stats> {
+  const res = await api<unknown>('/stats');
+  const parsed = parseStats(unwrapData(res), 'data');
+  if (!parsed.ok) {
+    throw new ApiError({
+      kind: 'schema',
+      message: `${parsed.path}: ${parsed.message}`,
+      userMessage: `Invalid stats payload (${parsed.path}).`,
+    });
+  }
+  return parsed.data;
 }
 export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'aborted';
+export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'aborted' | 'schema';
 
 const FRIENDLY_CODES: Record<string, string> = {
   contract_not_found: 'That escrow could not be found. It may have been removed.',
@@ -65,7 +75,7 @@ const FRIENDLY_CODES: Record<string, string> = {
   invalid_rating: 'Ratings must be a whole number from 1 to 5.',
   unauthorized: 'You are not allowed to perform that action.',
 };
-
+schema: 'The API returned data in an unexpected shape. Please refresh or try again later.',
 const FRIENDLY_KIND: Record<ApiErrorKind, string> = {
   network: 'We could not reach the TalentTrust API. Check your connection and try again.',
   timeout: 'The TalentTrust API took too long to respond. Please try again.',
@@ -247,20 +257,15 @@ export async function api<T>(path: string, init: ApiOptions = {}): Promise<T> {
 
 /** Unwrap the Reputation that the rate endpoint returns, if present. */
 export function unwrapReputation(payload: unknown): Reputation | null {
-  if (!payload || typeof payload !== 'object') return null;
-  const obj = payload as { data?: Reputation; address?: string };
-  if (obj.data && typeof obj.data.address === 'string') return obj.data;
-  if (typeof obj.address === 'string') return payload as Reputation;
-  return null;
+  const raw = unwrapData(payload);
+  const parsed = parseReputation(raw, 'data');
+  return parsed.ok ? parsed.data : null;
 }
 
-/** Unwrap the EscrowContract that mutation endpoints return, if present. */
 export function unwrapContract(payload: unknown): EscrowContract | null {
-  if (!payload || typeof payload !== 'object') return null;
-  const obj = payload as { data?: EscrowContract; id?: number };
-  if (obj.data && typeof obj.data.id === 'number') return obj.data;
-  if (typeof obj.id === 'number' && 'status' in obj) return payload as EscrowContract;
-  return null;
+  const raw = unwrapData(payload);
+  const parsed = parseContract(raw, 'data');
+  return parsed.ok ? parsed.data : null;
 }
 
 /** View filter values persisted in the URL ?view= param. */
@@ -283,8 +288,14 @@ export async function listContracts(opts?: {
   if (opts?.party) params.set('party', opts.party);
   if (opts?.status) params.set('status', opts.status);
   const qs = params.toString();
-  const res = await api<{ data: EscrowContract[] }>(
-    `/api/v1/contracts${qs ? `?${qs}` : ''}`,
-  );
-  return res.data;
+  const res = await api<unknown>(`/api/v1/contracts\( {qs ? `? \){qs}` : ''}`);
+  const list = parseContractList(unwrapData(res), 'data');
+  if (!list.ok) {
+    throw new ApiError({
+      kind: 'schema',
+      message: `${list.path}: ${list.message}`,
+      userMessage: `Invalid contract list (${list.path}).`,
+    });
+  }
+  return list.data;
 }
