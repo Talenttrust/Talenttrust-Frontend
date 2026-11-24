@@ -8,7 +8,7 @@
  *  - REST API  : GET /health
  *  - Chain config: GET /api/v1/chain  (+ mismatch detection)
  *  - Soroban RPC : JSON-RPC getHealth + getLatestLedger (no SDK)
- *  - Contract    : simulate version() via RPC simulateTransaction stub
+ *  - Contract    : JSON-RPC getLedgerEntries for the contract instance (lazy SDK import)
  */
 
 import { site } from './site';
@@ -291,16 +291,85 @@ export async function checkRpc(rpcUrl: string, signal?: AbortSignal): Promise<St
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// checkContract — simulate version() via getLatestLedger as a proxy liveness
-// check (the contract is on-chain if the RPC is alive and the contract id is
-// present; a full simulation requires SDK signing which is out of scope)
+// checkContract — verify the contract instance via JSON-RPC getLedgerEntries
 // ──────────────────────────────────────────────────────────────────────────────
+
+interface LedgerEntryJson {
+  key?: string;
+  /** Base64-encoded `xdr.LedgerEntryData`. */
+  xdr?: string;
+  lastModifiedLedgerSeq?: number;
+  liveUntilLedgerSeq?: number;
+}
+
+interface GetLedgerEntriesResult {
+  entries?: LedgerEntryJson[];
+  latestLedger?: number;
+}
+
+/**
+ * Build the ledger key for a contract's instance entry.
+ *
+ * `getLedgerEntries` expects the base64 XDR of a `LedgerKey`. The instance key
+ * is the contract data entry with the `LedgerKeyContractInstance` key and
+ * persistent durability — the same key the SDK's `Contract.getFootprint()`
+ * produces. The SDK is imported lazily so the status page's initial bundle
+ * stays small.
+ */
+async function contractInstanceLedgerKey(contractId: string): Promise<string> {
+  const { Address, xdr } = await import('@stellar/stellar-sdk');
+  return xdr.LedgerKey.contractData(
+    new xdr.LedgerKeyContractData({
+      contract: Address.fromString(contractId).toScAddress(),
+      key: xdr.ScVal.scvLedgerKeyContractInstance(),
+      durability: xdr.ContractDataDurability.persistent,
+    }),
+  ).toXDR('base64');
+}
+
+/**
+ * Read the contract's circuit breaker from its instance storage.
+ *
+ * The contract stores `Paused` in instance storage (the value exposed by the
+ * `is_paused` method read by `readContractStatus()`).
+ */
+async function isContractPaused(entryXdr: string): Promise<boolean> {
+  const { scValToNative, xdr } = await import('@stellar/stellar-sdk');
+  const ledgerEntry = xdr.LedgerEntryData.fromXdr(entryXdr, 'base64');
+  if (ledgerEntry.type !== 'contractData') throw new Error('Expected a contract data entry');
+
+  const value = ledgerEntry.contractData.val;
+  if (value.type !== 'scvContractInstance') throw new Error('Expected a contract instance');
+
+  return (value.instance.storage ?? []).some((item) => {
+    try {
+      const key = scValToNative(item.key);
+      if (!Array.isArray(key) || key.length !== 1 || key[0] !== 'Paused') return false;
+      return scValToNative(item.val) === true;
+    } catch {
+      return false;
+    }
+  });
+}
 
 export async function checkContract(rpcUrl: string, signal?: AbortSignal): Promise<StatusResult> {
   if (!rpcUrl) {
     return { state: 'down', latencyMs: 0, detail: 'RPC URL required to check contract' };
   }
 
+    let ledgerKey: string;
+    try {
+      ledgerKey = await contractInstanceLedgerKey(site.contractId);
+    } catch {
+      return {
+        state: 'down',
+        latencyMs: Date.now() - t0,
+        detail: 'Contract ID is not a valid Stellar contract address',
+      };
+    }
+
+        method: 'getLedgerEntries',
+        params: { keys: [ledgerKey] },
   // Use getLedgerEntries to verify the contract exists on-chain.
   // We POST a valid JSON-RPC request; a 200 response with a result means
   // the RPC is aware of the contract's ledger domain.
@@ -328,6 +397,29 @@ export async function checkContract(rpcUrl: string, signal?: AbortSignal): Promi
     return { state: 'down', latencyMs: response.latencyMs, detail: response.detail };
   }
 
+    let data: JsonRpcResponse<GetLedgerEntriesResult>;
+    const entries = Array.isArray(data.result.entries) ? data.result.entries : [];
+    const instance = entries.find((entry) => typeof entry.xdr === 'string');
+
+    if (!instance?.xdr) {
+      return { state: 'down', latencyMs, detail: `Contract ${shortId}… not found on-chain` };
+    }
+
+    let paused: boolean;
+    try {
+      paused = await isContractPaused(instance.xdr);
+    } catch {
+      return { state: 'down', latencyMs, detail: 'Malformed contract instance response' };
+    }
+
+    if (paused) return { state: 'degraded', latencyMs, detail: 'paused' };
+
+    const ledger = data.result.latestLedger ? ` at ledger #${data.result.latestLedger}` : '';
+    return {
+      state: classify(latencyMs),
+      latencyMs,
+      detail: `Contract ${shortId}… verified${ledger}`,
+    };
   const { data, latencyMs } = response;
   if (data.error) {
     return {

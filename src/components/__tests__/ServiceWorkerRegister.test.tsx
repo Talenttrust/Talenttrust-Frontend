@@ -66,6 +66,7 @@ describe('ServiceWorkerRegister', () => {
         configurable: true,
         writable: true,
       });
+      Reflect.deleteProperty(document, 'visibilityState');
     }
     vi.useRealTimers();
   });

@@ -14,7 +14,85 @@ import {
 import { site } from '@/lib/site';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
-const AUTO_REFRESH_MS = 30_000;
+export const AUTO_REFRESH_MS = 30_000;
+export const HISTORY_LIMIT = 20;
+export const HISTORY_STORAGE_KEY = 'talenttrust:status-history';
+
+export interface CheckHistoryEntry {
+  state: CheckState;
+  /** ISO timestamp of the completed check. */
+  at: string;
+}
+
+export type CheckKey = 'api' | 'chain' | 'rpc' | 'contract';
+export type CheckHistory = Record<CheckKey, CheckHistoryEntry[]>;
+
+const CHECK_KEYS: CheckKey[] = ['api', 'chain', 'rpc', 'contract'];
+
+export function emptyHistory(): CheckHistory {
+  return { api: [], chain: [], rpc: [], contract: [] };
+}
+
+function isCheckState(value: unknown): value is CheckState {
+  return value === 'operational' || value === 'degraded' || value === 'down';
+}
+
+function parseHistoryEntry(value: unknown): CheckHistoryEntry | null {
+  if (!value || typeof value !== 'object') return null;
+  const { state, at } = value as { state?: unknown; at?: unknown };
+  if (!isCheckState(state) || typeof at !== 'string' || Number.isNaN(Date.parse(at))) return null;
+  return { state, at };
+}
+
+/** Read the stored history, tolerating missing or corrupted sessionStorage. */
+export function loadHistory(): CheckHistory {
+  const empty = emptyHistory();
+  if (typeof window === 'undefined') return empty;
+
+  try {
+    const raw = window.sessionStorage.getItem(HISTORY_STORAGE_KEY);
+    if (!raw) return empty;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return empty;
+
+    const record = parsed as Record<string, unknown>;
+    for (const key of CHECK_KEYS) {
+      const value = record[key];
+      if (!Array.isArray(value)) continue;
+      empty[key] = value
+        .map(parseHistoryEntry)
+        .filter((entry): entry is CheckHistoryEntry => entry !== null)
+        .slice(0, HISTORY_LIMIT);
+    }
+    return empty;
+  } catch {
+    return empty;
+  }
+}
+
+/** Persist history; storage may be unavailable, full, or blocked. */
+export function saveHistory(history: CheckHistory): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+  } catch {
+    // History is best-effort and must never break the status page.
+  }
+}
+
+/** Prepend one result per check, keeping the newest HISTORY_LIMIT entries. */
+export function appendHistory(
+  history: CheckHistory,
+  results: Record<CheckKey, StatusResult>,
+  at: string,
+): CheckHistory {
+  const next = emptyHistory();
+  for (const key of CHECK_KEYS) {
+    next[key] = [{ state: results[key].state, at }, ...history[key]].slice(0, HISTORY_LIMIT);
+  }
+  return next;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Icons (inline SVG, aria-hidden — state is always conveyed by text too)
@@ -89,9 +167,10 @@ interface CheckRowProps {
   label: string;
   state: CheckState | 'loading';
   result: StatusResult | null;
+  history: CheckHistoryEntry[];
 }
 
-function CheckRow({ label, state, result }: CheckRowProps) {
+function CheckRow({ label, state, result, history }: CheckRowProps) {
   const [open, setOpen] = useState(false);
   const detailId = useId();
 
@@ -131,6 +210,24 @@ function CheckRow({ label, state, result }: CheckRowProps) {
           )}
         </div>
       )}
+      {history.length > 0 && (
+        <div className="status-row-history" role="group" aria-label={`Recent ${label} checks`}>
+          <span className="small muted">Recent:</span>
+          <ol className="status-history-list">
+            {history.map((entry, index) => (
+              <li
+                key={`${entry.at}-${index}`}
+                className={`status-history-item status-history-item--${entry.state}`}
+              >
+                <span>{stateLabel(entry.state)}</span>
+                <time dateTime={entry.at} title={new Date(entry.at).toLocaleString()}>
+                  {new Date(entry.at).toLocaleTimeString()}
+                </time>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }
@@ -151,9 +248,11 @@ const EMPTY_CHECKS: Checks = { api: null, chain: null, rpc: null, contract: null
 export default function StatusClient() {
   const isOnline = useOnlineStatus();
   const [checks, setChecks] = useState<Checks>(EMPTY_CHECKS);
+  const [history, setHistory] = useState<CheckHistory>(emptyHistory);
   const [running, setRunning] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [announcement, setAnnouncement] = useState('');
+  const historyRef = useRef<CheckHistory>(emptyHistory());
   const inFlight = useRef(false);
   const mounted = useRef(true);
   const isOnlineRef = useRef(isOnline);
@@ -193,6 +292,16 @@ export default function StatusClient() {
       lastCheckedAtRef.current = Date.now();
       setLastChecked(new Date());
       setAnnouncement(bannerLabel(aggregateState([apiResult, chainResult, rpcResult, contractResult])));
+
+      // Record history only when a full check cycle finishes, never on render.
+      const nextHistory = appendHistory(
+        historyRef.current,
+        { api: apiResult, chain: chainResult, rpc: rpcResult, contract: contractResult },
+        new Date().toISOString(),
+      );
+      historyRef.current = nextHistory;
+      setHistory(nextHistory);
+      saveHistory(nextHistory);
     } finally {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
@@ -200,6 +309,12 @@ export default function StatusClient() {
       inFlight.current = false;
       if (mounted.current) setRunning(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const stored = loadHistory();
+    historyRef.current = stored;
+    setHistory(stored);
   }, []);
 
   // Run on mount, every 30s while visible & online, and immediately when returning to a visible tab after the interval.
@@ -292,14 +407,30 @@ export default function StatusClient() {
         <h2 id="checks-heading" className="sr-only">
           Individual component checks
         </h2>
-        <CheckRow label="REST API (/health)" state={checks.api?.state ?? 'loading'} result={checks.api} />
+        <CheckRow
+          label="REST API (/health)"
+          state={checks.api?.state ?? 'loading'}
+          result={checks.api}
+          history={history.api}
+        />
         <CheckRow
           label="Chain Config (/api/v1/chain)"
           state={checks.chain?.state ?? 'loading'}
           result={checks.chain}
+          history={history.chain}
         />
-        <CheckRow label="Soroban RPC" state={checks.rpc?.state ?? 'loading'} result={checks.rpc} />
-        <CheckRow label="Escrow Contract" state={checks.contract?.state ?? 'loading'} result={checks.contract} />
+        <CheckRow
+          label="Soroban RPC"
+          state={checks.rpc?.state ?? 'loading'}
+          result={checks.rpc}
+          history={history.rpc}
+        />
+        <CheckRow
+          label="Escrow Contract"
+          state={checks.contract?.state ?? 'loading'}
+          result={checks.contract}
+          history={history.contract}
+        />
       </section>
 
       <div className="status-controls">
