@@ -27,9 +27,9 @@ export async function getNetworkPassphrase(): Promise<string> {
   try {
     const f = await freighter();
     const result = await f.getNetworkDetails();
-    return result.networkPassphrase;
+    return result.networkPassphrase || '';
   } catch {
-    return 'Test SDF Network ; September 2015';
+    return '';
   }
 }
 

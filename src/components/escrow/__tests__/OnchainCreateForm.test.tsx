@@ -37,6 +37,12 @@ afterEach(() => {
 });
 
 describe('OnchainCreateForm', () => {
+    it('shows error if wallet network is unreadable', async () => {
+      m.getWalletNetworkDetails.mockResolvedValue({ network: '', networkPassphrase: '' });
+      render(<OnchainCreateForm />);
+      expect(await screen.findByRole('alert')).toHaveTextContent('Could not read wallet network');
+      expect(screen.getByRole('button', { name: 'Create on-chain escrow' })).toBeDisabled();
+    });
   it('builds create_contract with stroop amounts and shows the new escrow id', async () => {
     m.buildCreateContractTx.mockResolvedValue({ tx: true });
     m.simulateSignSubmit.mockResolvedValue({ hash: 'abc123', returnValue: 42n });

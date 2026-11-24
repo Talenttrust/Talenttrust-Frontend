@@ -53,8 +53,8 @@ export function OnchainCreateForm() {
         }
         const { networkPassphrase, error: netErr } = await getWalletNetworkDetails();
         if (cancelled) return;
-        if (netErr) {
-          setWalletError(`Could not read wallet network: ${netErr}`);
+        if (netErr || !networkPassphrase) {
+          setWalletError(`Could not read wallet network${netErr ? ': ' + netErr : ''}`);
           return;
         }
         if (networkPassphrase !== TESTNET_PASSPHRASE) {
