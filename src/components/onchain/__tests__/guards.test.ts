@@ -98,6 +98,16 @@ describe('computeGuards — button visibility', () => {
     expect(g.canCancel).toBe(false);
   });
 
+  test('client + Resolved: no actions', () => {
+    const g = computeGuards(
+      make({ status: 'Resolved', fundedAmount: 100_000_000n }),
+      CLIENT
+    );
+    expect(g.canFund).toBe(false);
+    expect(g.canReleaseMilestone(0)).toBe(false);
+    expect(g.canCancel).toBe(false);
+  });
+
   test('freelancer: no actions on Funded', () => {
     const g = computeGuards(
       make({ status: 'Funded', fundedAmount: 100_000_000n }),

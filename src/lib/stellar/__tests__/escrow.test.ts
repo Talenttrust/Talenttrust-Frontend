@@ -2,7 +2,7 @@
 // stellar-base XDR needs Node typed arrays; jsdom has its own Uint8Array realm
 // (same pattern as createContract/escrow.test.ts).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TransactionBuilder, xdr, type Transaction } from '@stellar/stellar-sdk';
+import { nativeToScVal, TransactionBuilder, xdr, type Transaction } from '@stellar/stellar-sdk';
 import {
   formatStroops,
   extractContractErrorCode,
@@ -12,6 +12,8 @@ import {
   buildReleaseTx,
   buildCancelTx,
   TX_TIMEOUT_SECONDS,
+  decodeEscrow,
+  EscrowDecodeError,
 } from '../escrow';
 import { simulateRead } from '../rpc';
 import { CONTRACT_ERRORS as sharedNames, escrowErrorMessage } from '../errors';
@@ -100,7 +102,7 @@ describe('getContract', () => {
   });
 
   it('delegates to simulateRead with a u32 ScVal id and decodes the result', async () => {
-    mockSimulateRead.mockResolvedValue({ map: () => [] } as unknown as xdr.ScVal);
+    mockSimulateRead.mockResolvedValue(escrowFixture() as xdr.ScVal);
 
     const result = await getContract(42);
 
@@ -115,7 +117,7 @@ describe('getContract', () => {
 
     expect(result.id).toBe(42);
     expect(result.status).toBe('Created');
-    expect(result.milestones).toEqual([]);
+    expect(result.milestones).toHaveLength(1);
   });
 
   it('maps contract error code 5 to a readable not-found message', async () => {
@@ -137,5 +139,54 @@ describe('getContract', () => {
   it('preserves unknown simulation messages', async () => {
     mockSimulateRead.mockRejectedValue(new Error('Unexpected RPC response'));
     await expect(getContract(99)).rejects.toThrow('Unexpected RPC response');
+  });
+});
+
+const escrowFixture = (overrides: Record<string, unknown> = {}) => {
+  const fields: Record<string, unknown> = {
+    client: 'GCLIENT',
+    freelancer: 'GFREELANCER',
+    token: 'CTOKEN',
+    total_amount: 2n ** 100n,
+    funded_amount: 0n,
+    released_amount: 0n,
+    status: ['Created'],
+    milestones: [{ title: 'Build', amount: -(2n ** 100n), released: false }],
+    ...overrides,
+  };
+  for (const [key, value] of Object.entries(fields)) {
+    if (value === undefined) delete fields[key];
+  }
+  return nativeToScVal(fields, { type: 'map' });
+};
+
+describe('decodeEscrow', () => {
+  it.each(['Created', 'Funded', 'Completed', 'Cancelled', 'Disputed', 'Resolved'] as const)(
+    'decodes the %s contract status strictly', (status) => {
+      const decoded = decodeEscrow(escrowFixture({ status: [status] }), 9);
+      expect(decoded.status).toBe(status);
+      expect(decoded.id).toBe(9);
+    },
+  );
+
+  it('preserves large and negative i128 amounts', () => {
+    const decoded = decodeEscrow(escrowFixture(), 1);
+    expect(decoded.totalAmount).toBe(2n ** 100n);
+    expect(decoded.milestones[0].amount).toBe(-(2n ** 100n));
+  });
+
+  it.each([
+    ['missing status', { status: undefined }, 'status'],
+    ['wrong amount type', { total_amount: '100' }, 'total_amount'],
+    ['wrong milestone type', { milestones: 'none' }, 'milestones'],
+    ['unknown status variant', { status: ['Unexpected'] }, 'status'],
+  ])('rejects %s with a field-specific error', (_name, overrides, field) => {
+    expect(() => decodeEscrow(escrowFixture(overrides), 1)).toThrow(EscrowDecodeError);
+    expect(() => decodeEscrow(escrowFixture(overrides), 1)).toThrow(field);
+  });
+
+  it('rejects a missing required milestone field', () => {
+    expect(() => decodeEscrow(escrowFixture({ milestones: [{ title: 'Build', released: false }] }), 1))
+      .toThrow(/milestones\[0\]\.amount/);
   });
 });

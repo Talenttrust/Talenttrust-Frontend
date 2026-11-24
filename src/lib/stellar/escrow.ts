@@ -3,8 +3,8 @@ import {
   TransactionBuilder,
   BASE_FEE,
   nativeToScVal,
+  scValToNative,
   xdr,
-  Address,
 } from '@stellar/stellar-sdk';
 import { getRpcServer, NETWORK_PASSPHRASE, simulateRead } from './rpc';
 import { site } from '../site';
@@ -31,7 +31,8 @@ export type ContractStatus =
   | 'Funded'
   | 'Completed'
   | 'Cancelled'
-  | 'Disputed';
+  | 'Disputed'
+  | 'Resolved';
 
 export type OnChainMilestone = {
   title: string;
@@ -60,124 +61,90 @@ export function getEscrowContract(): Contract {
 }
 
 // ── ScVal decoders ──────────────────────────────────────────────────────────
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
-// The installed @stellar/stellar-sdk (v17) exposes ScVal arms as properties
-// (val.type, val.map, val.vec, val.i128, val.sym, …), not as the method calls
-// (val.map(), val.switch(), …) of older stellar-base releases. The decoders
-// below read the property form; every decoder stays defensive and falls back
-// to a neutral value on unexpected shapes.
-
-// XDR text values (symbols, strings) arrive as XdrString objects; decode
-// their raw bytes directly so the result does not depend on which realm's
-// typed arrays the value was created with (jsdom tests, SSR, browser).
-function xdrText(v: any): string {
-  if (v == null) return '';
-  if (typeof v === 'string') return v;
-  if (Buffer.isBuffer(v)) return v.toString('utf8');
-  if (v.bytes) return Buffer.from(v.bytes as Uint8Array).toString('utf8');
-  return String(v);
-}
-
-function symName(val: xdr.ScVal): string {
-  try {
-    return xdrText((val as any).sym);
-  } catch { return ''; }
-}
-
-function decodeStatus(val: xdr.ScVal): ContractStatus {
-  try {
-    // Soroban enum values arrive as scvVec([scvSymbol('Funded')]);
-    // accept a bare symbol as well.
-    const inner =
-      (val as any).type === 'scvVec' ? ((val as any).vec?.[0] as xdr.ScVal) : val;
-    const name = inner ? symName(inner) : '';
-    if (name.includes('Funded')) return 'Funded';
-    if (name.includes('Completed')) return 'Completed';
-    if (name.includes('Cancelled')) return 'Cancelled';
-    if (name.includes('Disputed')) return 'Disputed';
-  } catch { /* ignore */ }
-  return 'Created';
-}
-
-function decodeI128(val: xdr.ScVal): bigint {
-  try {
-    const parts = (val as any).i128 as { hi: any; lo: any };
-    if (!parts) return 0n;
-    const hi = BigInt(parts.hi.toString());
-    const lo = BigInt(parts.lo.toString());
-    return (hi << 64n) | lo;
-  } catch {
-    return 0n;
+export class EscrowDecodeError extends Error {
+  constructor(field: string, received: unknown) {
+    const type = received === null ? 'null' : Array.isArray(received) ? 'array' : typeof received;
+    super(`Unable to decode escrow field "${field}": expected a valid value, received ${type}`);
+    this.name = 'EscrowDecodeError';
   }
 }
 
-function decodeString(val: xdr.ScVal): string {
-  try {
-    const s = (val as any).str;
-    if (s != null) return xdrText(s);
-    return symName(val);
-  } catch { return ''; }
-}
+const STATUS_VALUES: readonly ContractStatus[] = [
+  'Created', 'Funded', 'Completed', 'Cancelled', 'Disputed', 'Resolved',
+];
 
-function decodeAddress(val: xdr.ScVal): string {
-  try {
-    return Address.fromScVal(val).toString();
-  } catch { return ''; }
-}
-
-function decodeBool(val: xdr.ScVal): boolean {
-  try { return Boolean((val as any).b); } catch { return false; }
-}
-
-function scMapGet(entries: xdr.ScMapEntry[], key: string): xdr.ScVal | undefined {
-  const found = entries.find((e) => {
-    try { return symName((e as any).key as xdr.ScVal) === key; } catch { return false; }
-  });
-  if (!found) return undefined;
-  return (found as any).val as xdr.ScVal;
-}
-
-function decodeMilestone(val: xdr.ScVal): OnChainMilestone {
-  try {
-    const rawMap = (val as any).map;
-    const entries: xdr.ScMapEntry[] = Array.isArray(rawMap) ? rawMap : [];
-    return {
-      title: decodeString(scMapGet(entries, 'title') ?? xdr.ScVal.scvVoid()),
-      amount: decodeI128(scMapGet(entries, 'amount') ?? xdr.ScVal.scvVoid()),
-      released: decodeBool(scMapGet(entries, 'released') ?? xdr.ScVal.scvVoid()),
-    };
-  } catch {
-    return { title: '', amount: 0n, released: false };
+function asRecord(value: unknown, field: string): Record<string, unknown> {
+  if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Map)) {
+    return value as Record<string, unknown>;
   }
+  if (value instanceof Map) return Object.fromEntries(value);
+  throw new EscrowDecodeError(field, value);
 }
 
-export function decodeEscrow(raw: xdr.ScVal, id: number): OnChainEscrow {
-  const rawMap = (raw as any).map;
-  const entries: xdr.ScMapEntry[] = Array.isArray(rawMap) ? rawMap : [];
-  const get = (k: string) => scMapGet(entries, k) ?? xdr.ScVal.scvVoid();
+function required(record: Record<string, unknown>, key: string, parent = ''): unknown {
+  const value = record[key];
+  if (value === undefined || value === null) throw new EscrowDecodeError(parent ? `${parent}.${key}` : key, value);
+  return value;
+}
 
-  const milestones: OnChainMilestone[] = [];
-  try {
-    for (const m of ((get('milestones') as any).vec ?? []) as xdr.ScVal[]) {
-      milestones.push(decodeMilestone(m));
-    }
-  } catch { /* empty */ }
+function asString(value: unknown, field: string): string {
+  if (typeof value === 'string' && value.length > 0) return value;
+  throw new EscrowDecodeError(field, value);
+}
 
+function asBigInt(value: unknown, field: string): bigint {
+  if (typeof value === 'bigint') return value;
+  throw new EscrowDecodeError(field, value);
+}
+
+function asBoolean(value: unknown, field: string): boolean {
+  if (typeof value === 'boolean') return value;
+  throw new EscrowDecodeError(field, value);
+}
+
+function decodeStatus(value: unknown): ContractStatus {
+  // Soroban unit enums are native string vectors, for example ['Funded'].
+  const variant = Array.isArray(value) && value.length === 1 ? value[0] : value;
+  if (typeof variant === 'string' && STATUS_VALUES.includes(variant as ContractStatus)) {
+    return variant as ContractStatus;
+  }
+  throw new EscrowDecodeError('status', value);
+}
+
+function decodeMilestone(value: unknown, index: number): OnChainMilestone {
+  const field = `milestones[${index}]`;
+  const milestone = asRecord(value, field);
   return {
-    id,
-    client: decodeAddress(get('client')),
-    freelancer: decodeAddress(get('freelancer')),
-    token: decodeAddress(get('token')),
-    totalAmount: decodeI128(get('total_amount')),
-    fundedAmount: decodeI128(get('funded_amount')),
-    releasedAmount: decodeI128(get('released_amount')),
-    status: decodeStatus(get('status')),
-    milestones,
+    title: asString(required(milestone, 'title', field), `${field}.title`),
+    amount: asBigInt(required(milestone, 'amount', field), `${field}.amount`),
+    released: asBoolean(required(milestone, 'released', field), `${field}.released`),
   };
 }
 
-/* eslint-enable @typescript-eslint/no-explicit-any */
+export function decodeEscrow(raw: xdr.ScVal, id: number): OnChainEscrow {
+  let native: unknown;
+  try {
+    native = scValToNative(raw);
+  } catch {
+    throw new EscrowDecodeError('escrow', raw);
+  }
+  const escrow = asRecord(native, 'escrow');
+  const milestonesValue = required(escrow, 'milestones');
+  if (!Array.isArray(milestonesValue)) throw new EscrowDecodeError('milestones', milestonesValue);
+
+  return {
+    id,
+    client: asString(required(escrow, 'client'), 'client'),
+    freelancer: asString(required(escrow, 'freelancer'), 'freelancer'),
+    token: asString(required(escrow, 'token'), 'token'),
+    totalAmount: asBigInt(required(escrow, 'total_amount'), 'total_amount'),
+    fundedAmount: asBigInt(required(escrow, 'funded_amount'), 'funded_amount'),
+    releasedAmount: asBigInt(required(escrow, 'released_amount'), 'released_amount'),
+    status: decodeStatus(required(escrow, 'status')),
+    milestones: milestonesValue.map(decodeMilestone),
+  };
+}
 
 // ── Read helper ─────────────────────────────────────────────────────────────
 
@@ -188,6 +155,7 @@ export async function getContract(id: number): Promise<OnChainEscrow> {
     ]);
     return decodeEscrow(retval, id);
   } catch (err) {
+    if (err instanceof EscrowDecodeError) throw err;
     throw new Error(parseContractError(err));
   }
 }

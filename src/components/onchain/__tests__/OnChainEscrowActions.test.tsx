@@ -57,6 +57,16 @@ describe('loading and error states', () => {
       expect(screen.getByRole('alert')).toHaveTextContent(escrowErrorMessage(5)!)
     );
   });
+
+  it('shows a field-specific decode error instead of a blank contract', async () => {
+    vi.spyOn(escrowLib, 'getContract').mockRejectedValue(
+      new escrowLib.EscrowDecodeError('total_amount', 'string')
+    );
+    render(<OnChainEscrowActions id={1} />);
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('total_amount')
+    );
+  });
 });
 
 // ── Success path ──────────────────────────────────────────────────────────────
